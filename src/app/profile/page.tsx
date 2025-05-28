@@ -29,33 +29,35 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
+  
   const [activeTab, setActiveTab] = useState('edit-profile');
-  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Default to false
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null); // Default to null
 
- useEffect(() => {
-    if (typeof window !== 'undefined') {
+
+  useEffect(() => {
+    setHasMounted(true); // Signal client has mounted
+  }, []);
+
+  useEffect(() => {
+    if (hasMounted) { // Only run this logic on the client after mounting
       const email = localStorage.getItem('currentUserEmail');
       const loggedInStatus = localStorage.getItem('isLoggedInPrototype') === 'true';
       setCurrentUserEmail(email);
       setIsLoggedIn(loggedInStatus);
-      if (!loggedInStatus) {
-        // toast({title: "Login Required", description: "Please log in to view your profile.", variant:"destructive"});
-        // router.push("/login?redirect=/profile"); // Redirect if not logged in
+
+      const tabQueryParam = searchParams.get('tab');
+      if (tabQueryParam && ['edit-profile', 'addresses', 'orders', 'wishlist'].includes(tabQueryParam)) {
+        setActiveTab(tabQueryParam);
+      } else if (tabQueryParam) { // If tab is invalid or not one of the main ones, default
+        router.replace('/profile?tab=edit-profile', { scroll: false });
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
-
-  useEffect(() => {
-    const tabQueryParam = searchParams.get('tab');
-    if (tabQueryParam && ['edit-profile', 'addresses', 'orders', 'wishlist'].includes(tabQueryParam)) {
-      setActiveTab(tabQueryParam);
-    }
-  }, [searchParams]);
+  }, [hasMounted, searchParams, router]);
 
   const fetchOrders = useCallback(async () => {
-    if (!currentUserEmail || !isLoggedIn) {
+    if (!currentUserEmail || !isLoggedIn || !hasMounted) { // Ensure all conditions met
         setOrders([]);
         setLoadingOrders(false);
         return;
@@ -71,17 +73,16 @@ export default function ProfilePage() {
     } finally {
       setLoadingOrders(false);
     }
-  }, [currentUserEmail, toast, isLoggedIn]);
+  }, [currentUserEmail, toast, isLoggedIn, hasMounted]);
 
   useEffect(() => {
-    if (activeTab === 'orders' && isLoggedIn) { // Fetch orders only if logged in and tab is active
+    if (hasMounted && isLoggedIn && activeTab === 'orders') { 
         fetchOrders();
     }
-    if (activeTab === 'wishlist' && isLoggedIn) { // Refresh wishlist if tab is active
+    if (hasMounted && isLoggedIn && activeTab === 'wishlist') { 
         refreshWishlist();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, fetchOrders, isLoggedIn]); // refreshWishlist can be added if stable
+  }, [activeTab, fetchOrders, isLoggedIn, hasMounted, refreshWishlist]);
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -93,21 +94,40 @@ export default function ProfilePage() {
     }
   };
   
-  if (typeof window !== 'undefined' && !isLoggedIn && !currentUserEmail) {
-     // This part will only run on client after initial mount if not logged in.
-     // It's better to handle this with a redirect in the first useEffect or a wrapper component.
-     // For now, just showing a message.
-      return (
-        <div className="space-y-8 text-center">
-            <User className="mx-auto h-10 w-10 text-primary" />
-            <h1 className="text-3xl font-bold tracking-tight text-primary">My Profile</h1>
-            <p className="text-muted-foreground">Please log in to view your profile.</p>
-            <Button asChild className="mt-4"><Link href="/login?redirect=/profile">Login</Link></Button>
+  if (!hasMounted) {
+    // Consistent loading skeleton for server and initial client render
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center space-x-3 mb-8">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div>
+            <Skeleton className="h-7 w-32" />
+            <Skeleton className="h-4 w-48 mt-1" />
+          </div>
         </div>
+        <Skeleton className="h-32 w-full mb-8" /> {/* Placeholder for UserProfileDisplay */}
+        <Skeleton className="h-12 w-full" /> {/* Placeholder for TabsList */}
+        <Skeleton className="h-64 w-full mt-6" /> {/* Placeholder for TabsContent */}
+      </div>
     );
   }
 
+  if (!isLoggedIn || !currentUserEmail) {
+    // This part runs only on the client, after hasMounted is true, if user is not logged in.
+    const redirectTab = searchParams.get('tab') || 'edit-profile';
+    return (
+      <div className="space-y-8 text-center">
+          <User className="mx-auto h-10 w-10 text-primary" />
+          <h1 className="text-3xl font-bold tracking-tight text-primary">My Profile</h1>
+          <p className="text-muted-foreground">Please log in to view your profile.</p>
+          <Button asChild className="mt-4">
+            <Link href={`/login?redirect=/profile?tab=${redirectTab}`}>Login</Link>
+          </Button>
+      </div>
+    );
+  }
 
+  // If hasMounted and user is logged in, render the actual profile content.
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3 mb-8">
@@ -120,7 +140,7 @@ export default function ProfilePage() {
 
       <UserProfileDisplay /> 
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={(value) => router.push(`/profile?tab=${value}`)} className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2 h-auto">
           <TabsTrigger value="edit-profile" className="flex flex-col sm:flex-row items-center gap-2 py-2 px-3 text-xs sm:text-sm">
             <Lock className="h-4 w-4" /> Edit Profile
@@ -169,7 +189,7 @@ export default function ProfilePage() {
             <CardContent>
               {loadingOrders ? (
                      <Skeleton className="h-24 w-full" />
-                ) : !isLoggedIn ? (
+                ) : !isLoggedIn ? ( // This check might be redundant if already handled above
                     <p className="text-muted-foreground text-center py-4">Please log in to view your order history.</p>
                 ) : orders.length === 0 ? (
                     <div className="text-center py-12 border border-dashed rounded-lg">
@@ -223,7 +243,7 @@ export default function ProfilePage() {
             <CardContent>
               {isLoadingWishlist ? (
                     <Skeleton className="h-64 w-full" />
-                ) : !isLoggedIn ? (
+                ) : !isLoggedIn ? ( // This check might be redundant
                     <p className="text-muted-foreground text-center py-4">Please log in to manage your wishlist.</p>
                 ) : wishlistItems.length === 0 ? (
                     <div className="text-center py-12 border border-dashed rounded-lg">
