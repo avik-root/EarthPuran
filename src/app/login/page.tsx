@@ -11,17 +11,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { PinInput } from "@/components/ui/pin-input";
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation"; // Added useSearchParams
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation"; 
 import { useToast } from "@/hooks/use-toast";
-import { getUserData, initializeUserAccount } from "@/app/actions/userActions"; // To fetch profile data if needed
+import { getUserData, initializeUserAccount } from "@/app/actions/userActions"; 
 import type { UserProfile } from "@/types/userData";
 
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }).refine(val => val.endsWith('@gmail.com'), { message: "Only Gmail addresses are allowed." }),
-  password: z.string().min(1, { message: "Password is required." }), // In real app, compare with hashed password
-  pin: z.string().length(6, { message: "PIN must be 6 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }), // In real app, compare with hashed PIN
+  password: z.string().min(1, { message: "Password is required." }), 
+  pin: z.string().length(6, { message: "PIN must be 6 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }), 
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -29,9 +29,24 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [showPin, setShowPin] = useState(true); 
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (hasMounted) {
+      // If already logged in, redirect away from login page
+      if (localStorage.getItem("isLoggedInPrototype") === "true") {
+        router.push(searchParams.get('redirect') || "/");
+      }
+    }
+  }, [hasMounted, searchParams, router, pathname]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -44,26 +59,25 @@ export default function LoginPage() {
 
   async function onSubmit(values: LoginFormValues) {
     console.log("Login form submitted:", values);
-
-    // Prototype login logic:
-    // For this prototype, we'll assume any valid email format with any password/pin is a successful login.
-    // In a real app, you'd verify password and PIN against hashed stored values.
     
-    let userProfileData: UserProfile | null = await getUserData(values.email);
+    let userProfileData: UserProfile | null = null;
+    try {
+      userProfileData = await getUserData(values.email);
+    } catch (e) {
+      console.warn("Could not fetch user data for login, proceeding with potential initialization:", e);
+    }
+
 
     if (!userProfileData) {
-      // If user data doesn't exist in users.json, create a basic profile.
-      // This might happen if they signed up before users.json was implemented,
-      // or it's a new "guest" login being converted.
       const newProfile: UserProfile = {
-        firstName: values.email.split('@')[0] || "User", // Basic first name from email
+        firstName: values.email.split('@')[0] || "User", 
         lastName: "",
         email: values.email,
-        countryCode: "IN", // Default country
-        phoneNumber: "0000000000", // Placeholder phone
+        countryCode: "IN", 
+        phoneNumber: "0000000000", 
       };
       try {
-        userProfileData = await initializeUserAccount(newProfile); // Save to users.json
+        userProfileData = await initializeUserAccount(newProfile); 
       } catch (error) {
         console.error("Failed to initialize user account on login:", error);
         toast({ title: "Login Error", description: "Could not retrieve or create user profile.", variant: "destructive" });
@@ -72,20 +86,33 @@ export default function LoginPage() {
     }
     
     localStorage.setItem("isLoggedInPrototype", "true");
-    localStorage.setItem('userProfilePrototype', JSON.stringify(userProfileData)); // Store fetched or created profile
-    localStorage.setItem('currentUserEmail', values.email); // Important for userActions
+    localStorage.setItem('currentUserEmail', values.email); 
+    if (userProfileData) { // Ensure profile data is available before storing
+      localStorage.setItem('userProfilePrototype', JSON.stringify(userProfileData));
+    }
+
 
     toast({ title: "Login Successful", description: "Welcome back!" });
     const redirectUrl = searchParams.get('redirect') || "/";
     router.push(redirectUrl);
+    // Force a reload if going to the same page, to ensure header updates if it didn't via pathname change
+    if (redirectUrl === pathname) {
+        router.refresh(); // Or window.location.href = redirectUrl; for full reload
+    }
   }
+  
+  if (!hasMounted) {
+    // Optional: Render a loading skeleton or null while waiting for client-side checks
+    return null; 
+  }
+
 
   return (
     <div className="flex items-center justify-center py-12">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold text-primary">Welcome Back!</CardTitle>
-          <CardDescription>Sign in to continue your journey with Earth Puran.</CardDescription>
+          <CardDescription>Log in to continue your journey with Earth Puran.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -162,7 +189,7 @@ export default function LoginPage() {
                 )}
               />
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" size="lg">
-                Sign In
+                Log In
               </Button>
             </form>
           </Form>
