@@ -5,7 +5,14 @@ import Link from "next/link";
 import { ShoppingBag, User, Heart, Search, Menu, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter
+} from "@/components/ui/sheet";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +22,8 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -26,7 +35,19 @@ const navItems = [
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [mobileSearchTerm, setMobileSearchTerm] = useState("");
+  const router = useRouter();
   const isLoggedIn = true; // Placeholder for actual auth state
+
+  const handleMobileSearchSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault(); 
+    if (mobileSearchTerm.trim()) {
+      router.push(`/products?q=${encodeURIComponent(mobileSearchTerm.trim())}`);
+      setMobileSearchTerm(""); 
+      setMobileSearchOpen(false); 
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -48,9 +69,40 @@ export function Header() {
         </nav>
 
         <div className="flex items-center space-x-1 sm:space-x-3">
+          {/* Mobile Search Button & Sheet */}
+          <div className="sm:hidden"> {/* Visible only on screens smaller than 'sm' */}
+            <Sheet open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Search products (mobile)">
+                  <Search className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="top" className="p-4">
+                <SheetHeader className="mb-4 text-left">
+                  <SheetTitle>Search Earth Puran</SheetTitle>
+                </SheetHeader>
+                <form onSubmit={handleMobileSearchSubmit} className="space-y-4">
+                  <Input
+                    type="search"
+                    placeholder="What are you looking for?"
+                    value={mobileSearchTerm}
+                    onChange={(e) => setMobileSearchTerm(e.target.value)}
+                    autoFocus
+                    className="text-base" 
+                  />
+                  <Button type="submit" className="w-full">
+                    Search
+                  </Button>
+                </form>
+              </SheetContent>
+            </Sheet>
+          </div>
+
+          {/* Existing Search for larger screens (sm and up) */}
           <Button variant="ghost" size="icon" aria-label="Search" className="hidden sm:inline-flex">
             <Search className="h-5 w-5" />
           </Button>
+
           <Link href="/wishlist" passHref>
             <Button variant="ghost" size="icon" aria-label="Wishlist">
               <Heart className="h-5 w-5" />
