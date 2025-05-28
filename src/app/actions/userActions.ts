@@ -4,7 +4,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import type { AllUsersData, UserData, UserProfile, UserAddress, Order, Product as WishlistProduct, FullCartItem } from '@/types/userData';
-import type { Product } from '@/types/product'; // For WishlistProduct if it's just Product
+import type { Product } from '@/types/product';
 
 const dataFilePath = path.join(process.cwd(), 'src', 'data', 'users.json');
 
@@ -12,6 +12,8 @@ async function readUsersFile(): Promise<AllUsersData> {
   try {
     const jsonData = await fs.readFile(dataFilePath, 'utf-8');
     if (!jsonData.trim()) {
+      // If the file is empty, initialize with an empty object
+      await fs.writeFile(dataFilePath, JSON.stringify({}, null, 2), 'utf-8');
       return {};
     }
     return JSON.parse(jsonData) as AllUsersData;
@@ -30,7 +32,7 @@ async function writeUsersFile(data: AllUsersData): Promise<void> {
     await fs.writeFile(dataFilePath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (error) {
     console.error("Failed to write to users.json:", error);
-    throw new Error("Could not save user data."); // Propagate error
+    throw new Error("Could not save user data.");
   }
 }
 
@@ -53,12 +55,10 @@ export async function getUserData(email: string): Promise<UserData | null> {
   return allUsers[email] || null;
 }
 
-// Called on signup to create the user's data structure
 export async function initializeUserAccount(profile: UserProfile): Promise<UserData> {
     const allUsers = await readUsersFile();
     if (allUsers[profile.email]) {
-        // console.warn(`User ${profile.email} already exists. Returning existing data.`);
-        return allUsers[profile.email]; // Or throw error if signup should fail for existing email
+        return allUsers[profile.email];
     }
     allUsers[profile.email] = getDefaultUserData(profile);
     await writeUsersFile(allUsers);
@@ -94,7 +94,6 @@ export async function addOrder(email: string, newOrder: Order): Promise<boolean>
     const allUsers = await readUsersFile();
     if (!allUsers[email]) {
       console.error(`Attempted to add order for non-existent user: ${email}`);
-       // Optionally create user here if an order can create a guest user account
       return false;
     }
     allUsers[email].orders.push(newOrder);
@@ -115,7 +114,116 @@ export async function updateUserOrders(email: string, updatedOrders: Order[]): P
     return true;
 }
 
+// --- Wishlist Actions ---
+export async function addProductToWishlistAction(email: string, product: Product): Promise<{ success: boolean; wishlist?: Product[] }> {
+  if (!email) return { success: false };
+  const allUsers = await readUsersFile();
+  if (!allUsers[email]) {
+    console.error(`Wishlist: User ${email} not found.`);
+    return { success: false };
+  }
+  if (!allUsers[email].wishlist.find(p => p.id === product.id)) {
+    allUsers[email].wishlist.push(product);
+    await writeUsersFile(allUsers);
+  }
+  return { success: true, wishlist: allUsers[email].wishlist };
+}
 
+export async function removeProductFromWishlistAction(email: string, productId: string): Promise<{ success: boolean; wishlist?: Product[] }> {
+  if (!email) return { success: false };
+  const allUsers = await readUsersFile();
+  if (!allUsers[email]) {
+    console.error(`Wishlist: User ${email} not found.`);
+    return { success: false };
+  }
+  const initialLength = allUsers[email].wishlist.length;
+  allUsers[email].wishlist = allUsers[email].wishlist.filter(p => p.id !== productId);
+  if (allUsers[email].wishlist.length < initialLength) {
+    await writeUsersFile(allUsers);
+  }
+  return { success: true, wishlist: allUsers[email].wishlist };
+}
+
+export async function clearUserWishlistAction(email: string): Promise<{ success: boolean; wishlist?: Product[] }> {
+    if (!email) return { success: false };
+    const allUsers = await readUsersFile();
+    if (!allUsers[email]) {
+        console.error(`Wishlist: User ${email} not found.`);
+        return { success: false };
+    }
+    allUsers[email].wishlist = [];
+    await writeUsersFile(allUsers);
+    return { success: true, wishlist: allUsers[email].wishlist };
+}
+
+// --- Cart Actions ---
+export async function addItemToUserCartAction(email: string, product: Product, quantity: number): Promise<{ success: boolean; cart?: FullCartItem[] }> {
+  if (!email || quantity <= 0) return { success: false };
+  const allUsers = await readUsersFile();
+  if (!allUsers[email]) {
+    console.error(`Cart: User ${email} not found.`);
+    return { success: false };
+  }
+  const existingItemIndex = allUsers[email].cart.findIndex(item => item.product.id === product.id);
+  if (existingItemIndex > -1) {
+    const newQuantity = allUsers[email].cart[existingItemIndex].quantity + quantity;
+    allUsers[email].cart[existingItemIndex].quantity = Math.min(newQuantity, product.stock);
+  } else {
+    allUsers[email].cart.push({ product, quantity: Math.min(quantity, product.stock) });
+  }
+  await writeUsersFile(allUsers);
+  return { success: true, cart: allUsers[email].cart };
+}
+
+export async function removeItemFromUserCartAction(email: string, productId: string): Promise<{ success: boolean; cart?: FullCartItem[] }> {
+  if (!email) return { success: false };
+  const allUsers = await readUsersFile();
+  if (!allUsers[email]) {
+    console.error(`Cart: User ${email} not found.`);
+    return { success: false };
+  }
+  const initialLength = allUsers[email].cart.length;
+  allUsers[email].cart = allUsers[email].cart.filter(item => item.product.id !== productId);
+  if (allUsers[email].cart.length < initialLength) {
+    await writeUsersFile(allUsers);
+  }
+  return { success: true, cart: allUsers[email].cart };
+}
+
+export async function updateUserItemQuantityInCartAction(email: string, productId: string, newQuantity: number): Promise<{ success: boolean; cart?: FullCartItem[] }> {
+  if (!email) return { success: false };
+  const allUsers = await readUsersFile();
+  if (!allUsers[email]) {
+    console.error(`Cart: User ${email} not found.`);
+    return { success: false };
+  }
+  const itemIndex = allUsers[email].cart.findIndex(item => item.product.id === productId);
+  if (itemIndex > -1) {
+    if (newQuantity <= 0) {
+      allUsers[email].cart.splice(itemIndex, 1);
+    } else {
+      allUsers[email].cart[itemIndex].quantity = Math.min(newQuantity, allUsers[email].cart[itemIndex].product.stock);
+    }
+    await writeUsersFile(allUsers);
+  }
+  return { success: true, cart: allUsers[email].cart };
+}
+
+export async function clearUserCartAction(email: string): Promise<{ success: boolean; cart?: FullCartItem[] }> {
+  if (!email) return { success: false };
+  const allUsers = await readUsersFile();
+  if (!allUsers[email]) {
+    console.error(`Cart: User ${email} not found.`);
+    return { success: false };
+  }
+  allUsers[email].cart = [];
+  await writeUsersFile(allUsers);
+  return { success: true, cart: allUsers[email].cart };
+}
+
+// The following functions are deprecated in favor of the more granular actions above
+// to prevent race conditions. They can be removed if no longer used directly.
+/*
 export async function updateUserWishlist(email: string, wishlist: WishlistProduct[]): Promise<boolean> {
     if (!email) return false;
     const allUsers = await readUsersFile();
@@ -139,12 +247,4 @@ export async function updateUserCart(email: string, cart: FullCartItem[]): Promi
     await writeUsersFile(allUsers);
     return true;
 }
-
-// Helper to get current user's email from client-side localStorage.
-// This is not a server action but a utility for client components.
-// export const getCurrentUserEmailClient = (): string | null => {
-//   if (typeof window !== 'undefined') {
-//     return localStorage.getItem('currentUserEmail');
-//   }
-//   return null;
-// };
+*/

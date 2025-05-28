@@ -4,8 +4,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Product } from '@/types/product';
 import { useToast } from './use-toast';
-import { getUserData, updateUserWishlist } from '@/app/actions/userActions';
-import { useRouter } from 'next/navigation'; // Added for potential redirect
+import { 
+    getUserData, 
+    addProductToWishlistAction, 
+    removeProductFromWishlistAction, 
+    clearUserWishlistAction 
+} from '@/app/actions/userActions';
+import { useRouter } from 'next/navigation';
 
 export function useWishlist() {
   const [wishlistItems, setWishlistItems] = useState<Product[]>([]);
@@ -34,7 +39,6 @@ export function useWishlist() {
     } catch (error) {
       console.error("Failed to load wishlist data:", error);
       setWishlistItems([]);
-      // Already deferred
       setTimeout(() => {
         toast({ title: "Error", description: "Could not load your wishlist.", variant: "destructive" });
       }, 0);
@@ -47,72 +51,50 @@ export function useWishlist() {
     loadWishlistData();
   }, [loadWishlistData]);
 
-
-  const persistWishlist = useCallback(async (updatedWishlistItems: Product[]) => {
-    if (!currentUserEmail) {
-      console.warn("Attempted to persist wishlist without a current user email.");
-      // Or throw an error to be caught by the caller
-      throw new Error("User not logged in. Cannot persist wishlist.");
-    }
-    try {
-      const success = await updateUserWishlist(currentUserEmail, updatedWishlistItems);
-      if (!success) {
-          // This means the server action itself returned false, not an exception.
-          throw new Error("Server action updateUserWishlist returned false.");
-      }
-    } catch (error) {
-      console.error("Failed to persist wishlist:", error);
-      setTimeout(() => {
-          toast({ title: "Sync Error", description: "Could not save wishlist changes to server.", variant: "destructive" });
-      }, 0);
-      throw error; // Re-throw to allow the caller (toggleWishlist) to handle it
-    }
-  }, [currentUserEmail, toast]);
-
   const toggleWishlist = useCallback(async (product: Product) => {
     if (!currentUserEmail) {
-        router.push('/login'); 
+        router.push('/login');
         return;
     }
-    
-    const originalWishlistItems = [...wishlistItems]; // Store current state for potential revert
+
+    const originalWishlistItems = [...wishlistItems];
     const productIsInWishlist = originalWishlistItems.some(item => item.id === product.id);
-    let nextWishlistItems: Product[];
-
+    
+    // Optimistic update
     if (productIsInWishlist) {
-      nextWishlistItems = originalWishlistItems.filter(item => item.id !== product.id);
+        setWishlistItems(prevItems => prevItems.filter(item => item.id !== product.id));
     } else {
-      nextWishlistItems = [...originalWishlistItems, product];
+        setWishlistItems(prevItems => [...prevItems, product]);
     }
 
-    // 1. Update local React state immediately
-    setWishlistItems(nextWishlistItems);
-
-    // 2. Attempt to persist the change
     try {
-      await persistWishlist(nextWishlistItems);
-      // 3. Show success toast AFTER successful persistence
-      setTimeout(() => {
-        if (productIsInWishlist) { // Refers to state *before* toggle
-          toast({
-            title: "Removed from Wishlist",
-            description: `${product.name} has been removed from your wishlist.`,
-            variant: "destructive"
-          });
+        let serverResponse;
+        if (productIsInWishlist) {
+            serverResponse = await removeProductFromWishlistAction(currentUserEmail, product.id);
         } else {
-          toast({
-            title: "Added to Wishlist",
-            description: `${product.name} has been added to your wishlist.`,
-          });
+            serverResponse = await addProductToWishlistAction(currentUserEmail, product);
         }
-      }, 0);
+
+        if (serverResponse.success && serverResponse.wishlist) {
+            setWishlistItems(serverResponse.wishlist); // Sync with server's authoritative state
+            setTimeout(() => {
+                toast({
+                    title: productIsInWishlist ? "Removed from Wishlist" : "Added to Wishlist",
+                    description: `${product.name} has been ${productIsInWishlist ? 'removed from' : 'added to'} your wishlist.`,
+                    variant: productIsInWishlist ? "destructive" : "default",
+                });
+            }, 0);
+        } else {
+            throw new Error(serverResponse.success === false ? "Server action indicated failure." : "Server action failed to update wishlist or returned unexpected data.");
+        }
     } catch (error) {
-      // 4. If persistence failed, revert local state
-      console.error("Wishlist persistence failed, reverting local state.");
-      setWishlistItems(originalWishlistItems);
-      // Error toast is handled by persistWishlist
+        console.error("Wishlist toggle persistence failed, reverting local state.", error);
+        setWishlistItems(originalWishlistItems); // Revert optimistic update
+        setTimeout(() => {
+            toast({ title: "Wishlist Error", description: "Could not update your wishlist. Please try again.", variant: "destructive" });
+        }, 0);
     }
-  }, [currentUserEmail, wishlistItems, persistWishlist, toast, router]);
+  }, [currentUserEmail, wishlistItems, toast, router]);
 
   const isInWishlist = useCallback((productId: string): boolean => {
     return wishlistItems.some(item => item.id === productId);
@@ -125,24 +107,29 @@ export function useWishlist() {
     }
     
     const originalWishlistItems = [...wishlistItems];
-    const newComputedItems: Product[] = [];
-    
-    setWishlistItems(newComputedItems); 
+    setWishlistItems([]); // Optimistic update
     
     try {
-        await persistWishlist(newComputedItems);
-        setTimeout(() => {
-        toast({
-            title: "Wishlist Cleared",
-            description: "All items have been removed from your wishlist.",
-        });
-        }, 0);
+        const serverResponse = await clearUserWishlistAction(currentUserEmail);
+        if (serverResponse.success && serverResponse.wishlist !== undefined) {
+            setWishlistItems(serverResponse.wishlist); // Sync with server, should be []
+            setTimeout(() => {
+                toast({
+                    title: "Wishlist Cleared",
+                    description: "All items have been removed from your wishlist.",
+                });
+            }, 0);
+        } else {
+            throw new Error(serverResponse.success === false ? "Server action indicated failure." : "Server action failed to clear wishlist or returned unexpected data.");
+        }
     } catch (error) {
-        console.error("Failed to clear wishlist on server, reverting local state.");
-        setWishlistItems(originalWishlistItems);
-        // Error toast handled by persistWishlist
+        console.error("Failed to clear wishlist on server, reverting local state.", error);
+        setWishlistItems(originalWishlistItems); // Revert
+        setTimeout(() => {
+            toast({ title: "Error Clearing Wishlist", description: "Could not clear your wishlist.", variant: "destructive" });
+        }, 0);
     }
-  }, [currentUserEmail, persistWishlist, toast, router, wishlistItems]);
+  }, [currentUserEmail, wishlistItems, toast, router]);
 
   return {
     wishlistItems,
