@@ -37,11 +37,13 @@ export function ProductCard({ product }: ProductCardProps) {
     if (product.stock > 0) {
       addToCart(product);
     } else {
-      toast({
-        title: "Out of Stock",
-        description: `${product.name} is currently out of stock.`,
-        variant: "destructive",
-      });
+      setTimeout(() => {
+        toast({
+          title: "Out of Stock",
+          description: `${product.name} is currently out of stock.`,
+          variant: "destructive",
+        });
+      }, 0);
     }
   };
 

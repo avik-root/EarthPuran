@@ -51,19 +51,23 @@ export function useCart() {
       }
       return [...prevItems, { product, quantity: Math.min(quantity, product.stock) }];
     });
-    toast({
-      title: "Added to Cart",
-      description: `${product.name} has been added to your cart.`,
-    });
+    setTimeout(() => {
+      toast({
+        title: "Added to Cart",
+        description: `${product.name} has been added to your cart.`,
+      });
+    }, 0);
   }, [toast]);
 
   const removeFromCart = useCallback((productId: string) => {
     setCartItems(prevItems => prevItems.filter(item => item.product.id !== productId));
-    toast({
-      title: "Item Removed",
-      description: "The item has been removed from your cart.",
-      variant: "destructive"
-    });
+    setTimeout(() => {
+      toast({
+        title: "Item Removed",
+        description: "The item has been removed from your cart.",
+        variant: "destructive"
+      });
+    }, 0);
   }, [toast]);
 
   const updateQuantity = useCallback((productId: string, newQuantity: number) => {
@@ -81,10 +85,12 @@ export function useCart() {
 
   const clearCart = useCallback(() => {
     setCartItems([]);
-    toast({
-      title: "Cart Cleared",
-      description: "All items have been removed from your cart.",
-    });
+    setTimeout(() => {
+      toast({
+        title: "Cart Cleared",
+        description: "All items have been removed from your cart.",
+      });
+    }, 0);
   }, [toast]);
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);

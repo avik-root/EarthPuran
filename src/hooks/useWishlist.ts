@@ -36,17 +36,21 @@ export function useWishlist() {
     setWishlistItems(prevItems => {
       const isInWishlist = prevItems.some(item => item.id === product.id);
       if (isInWishlist) {
-        toast({
-          title: "Removed from Wishlist",
-          description: `${product.name} has been removed from your wishlist.`,
-          variant: "destructive"
-        });
+        setTimeout(() => {
+          toast({
+            title: "Removed from Wishlist",
+            description: `${product.name} has been removed from your wishlist.`,
+            variant: "destructive"
+          });
+        }, 0);
         return prevItems.filter(item => item.id !== product.id);
       } else {
-        toast({
-          title: "Added to Wishlist",
-          description: `${product.name} has been added to your wishlist.`,
-        });
+        setTimeout(() => {
+          toast({
+            title: "Added to Wishlist",
+            description: `${product.name} has been added to your wishlist.`,
+          });
+        }, 0);
         return [...prevItems, product];
       }
     });
@@ -58,10 +62,12 @@ export function useWishlist() {
   
   const clearWishlist = useCallback(() => {
     setWishlistItems([]);
+    setTimeout(() => {
      toast({
       title: "Wishlist Cleared",
       description: "All items have been removed from your wishlist.",
     });
+    }, 0);
   }, [toast]);
 
   return {
