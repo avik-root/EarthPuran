@@ -20,48 +20,56 @@ export function useWishlist() {
       }
     } catch (error) {
       console.error("Failed to load wishlist from localStorage", error);
+      setWishlistItems([]); // Reset to empty on error
     }
   }, []);
 
-  useEffect(() => {
-    // Save wishlist to localStorage whenever it changes
-    try {
-      localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlistItems));
-    } catch (error) {
-      console.error("Failed to save wishlist to localStorage", error);
-    }
-  }, [wishlistItems]);
-
   const toggleWishlist = useCallback((product: Product) => {
-    setWishlistItems(prevItems => {
-      const isInWishlist = prevItems.some(item => item.id === product.id);
-      if (isInWishlist) {
-        setTimeout(() => {
-          toast({
-            title: "Removed from Wishlist",
-            description: `${product.name} has been removed from your wishlist.`,
-            variant: "destructive"
-          });
-        }, 0);
-        return prevItems.filter(item => item.id !== product.id);
+    const wasInWishlist = wishlistItems.some(item => item.id === product.id);
+    let newItemsState: Product[];
+
+    if (wasInWishlist) {
+      newItemsState = wishlistItems.filter(item => item.id !== product.id);
+    } else {
+      newItemsState = [...wishlistItems, product];
+    }
+
+    try {
+      localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(newItemsState));
+    } catch (error) {
+      console.error("Failed to save wishlist to localStorage immediately in toggleWishlist", error);
+    }
+    setWishlistItems(newItemsState);
+
+    setTimeout(() => {
+      if (wasInWishlist) {
+        toast({
+          title: "Removed from Wishlist",
+          description: `${product.name} has been removed from your wishlist.`,
+          variant: "destructive"
+        });
       } else {
-        setTimeout(() => {
-          toast({
-            title: "Added to Wishlist",
-            description: `${product.name} has been added to your wishlist.`,
-          });
-        }, 0);
-        return [...prevItems, product];
+        toast({
+          title: "Added to Wishlist",
+          description: `${product.name} has been added to your wishlist.`,
+        });
       }
-    });
-  }, [toast]);
+    }, 0);
+  }, [wishlistItems, toast]);
 
   const isInWishlist = useCallback((productId: string): boolean => {
     return wishlistItems.some(item => item.id === productId);
   }, [wishlistItems]);
   
   const clearWishlist = useCallback(() => {
-    setWishlistItems([]);
+    const newItemsState: Product[] = [];
+    try {
+      localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(newItemsState));
+    } catch (error) {
+      console.error("Failed to save wishlist to localStorage immediately in clearWishlist", error);
+    }
+    setWishlistItems(newItemsState);
+    
     setTimeout(() => {
      toast({
       title: "Wishlist Cleared",

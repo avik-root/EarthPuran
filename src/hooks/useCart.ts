@@ -25,66 +25,87 @@ export function useCart() {
       }
     } catch (error) {
       console.error("Failed to load cart from localStorage", error);
-      // Optionally clear corrupted storage
-      // localStorage.removeItem(CART_STORAGE_KEY); 
+      setCartItems([]); // Reset to empty on error
     }
   }, []);
 
-  useEffect(() => {
-    // Save cart to localStorage whenever it changes
-    try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
-    } catch (error) {
-      console.error("Failed to save cart to localStorage", error);
-    }
-  }, [cartItems]);
-
   const addToCart = useCallback((product: Product, quantity: number = 1) => {
-    setCartItems(prevItems => {
-      const existingItem = prevItems.find(item => item.product.id === product.id);
-      if (existingItem) {
-        return prevItems.map(item =>
-          item.product.id === product.id
-            ? { ...item, quantity: Math.min(item.quantity + quantity, product.stock) } // Respect stock
-            : item
-        );
-      }
-      return [...prevItems, { product, quantity: Math.min(quantity, product.stock) }];
-    });
+    let newItemsState: CartItem[];
+    const existingItem = cartItems.find(item => item.product.id === product.id);
+    if (existingItem) {
+      newItemsState = cartItems.map(item =>
+        item.product.id === product.id
+          ? { ...item, quantity: Math.min(item.quantity + quantity, product.stock) } // Respect stock
+          : item
+      );
+    } else {
+      newItemsState = [...cartItems, { product, quantity: Math.min(quantity, product.stock) }];
+    }
+
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItemsState));
+    } catch (error) {
+      console.error("Failed to save cart to localStorage immediately in addToCart", error);
+    }
+    setCartItems(newItemsState);
+
     setTimeout(() => {
       toast({
         title: "Added to Cart",
         description: `${product.name} has been added to your cart.`,
       });
     }, 0);
-  }, [toast]);
+  }, [cartItems, toast]);
 
   const removeFromCart = useCallback((productId: string) => {
-    setCartItems(prevItems => prevItems.filter(item => item.product.id !== productId));
-    setTimeout(() => {
-      toast({
-        title: "Item Removed",
-        description: "The item has been removed from your cart.",
-        variant: "destructive"
-      });
-    }, 0);
-  }, [toast]);
+    const productToRemove = cartItems.find(item => item.product.id === productId)?.product;
+    const newItemsState = cartItems.filter(item => item.product.id !== productId);
+
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItemsState));
+    } catch (error) {
+      console.error("Failed to save cart to localStorage immediately in removeFromCart", error);
+    }
+    setCartItems(newItemsState);
+
+    if (productToRemove) {
+      setTimeout(() => {
+        toast({
+          title: "Item Removed",
+          description: `${productToRemove.name} has been removed from your cart.`,
+          variant: "destructive"
+        });
+      }, 0);
+    }
+  }, [cartItems, toast]);
 
   const updateQuantity = useCallback((productId: string, newQuantity: number) => {
-    setCartItems(prevItems =>
-      prevItems.map(item => {
-        if (item.product.id === productId) {
-          // Ensure quantity is at least 1 and not more than stock
-          const validatedQuantity = Math.max(1, Math.min(newQuantity, item.product.stock));
-          return { ...item, quantity: validatedQuantity };
-        }
-        return item;
-      })
-    );
-  }, []);
+    const newItemsState = cartItems.map(item => {
+      if (item.product.id === productId) {
+        // Ensure quantity is at least 1 and not more than stock
+        const validatedQuantity = Math.max(1, Math.min(newQuantity, item.product.stock));
+        return { ...item, quantity: validatedQuantity };
+      }
+      return item;
+    });
+
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItemsState));
+    } catch (error) {
+      console.error("Failed to save cart to localStorage immediately in updateQuantity", error);
+    }
+    setCartItems(newItemsState);
+  }, [cartItems]);
 
   const clearCart = useCallback(() => {
-    setCartItems([]);
+    const newItemsState: CartItem[] = [];
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItemsState));
+    } catch (error) {
+      console.error("Failed to save cart to localStorage immediately in clearCart", error);
+    }
+    setCartItems(newItemsState);
+
     setTimeout(() => {
       toast({
         title: "Cart Cleared",
