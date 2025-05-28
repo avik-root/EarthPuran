@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -17,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'LuxeBeau - Premium Makeup & Beauty',
-  description: 'Discover your ultimate beauty with LuxeBeau. Shop high-quality makeup, skincare, and fragrances.',
+  title: 'Earth Puran - Natural & Organic Products',
+  description: 'Discover the purity of nature with Earth Puran. Shop high-quality, natural, and organic beauty products exclusively from Earth Puran.',
 };
 
 export default function RootLayout({

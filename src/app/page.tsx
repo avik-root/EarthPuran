@@ -1,3 +1,4 @@
+
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -15,10 +16,10 @@ export default async function HomePage() {
       <section className="relative rounded-lg overflow-hidden bg-gradient-to-r from-rose-50 via-stone-50 to-pink-50 dark:from-rose-900/30 dark:via-stone-900/30 dark:to-pink-900/30 p-8 md:p-16 flex flex-col md:flex-row items-center">
         <div className="md:w-1/2 space-y-6 text-center md:text-left">
           <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-primary">
-            Elegance Redefined. Beauty Unveiled.
+            Purely You. Naturally Radiant.
           </h1>
           <p className="text-lg text-foreground/80">
-            Discover LuxeBeau's curated collection of premium makeup and skincare, designed to enhance your natural radiance.
+            Discover Earth Puran's curated collection of natural and organic beauty products, designed to enhance your natural radiance. All products are exclusively from Earth Puran.
           </p>
           <Button asChild size="lg" className="group bg-accent hover:bg-accent/90 text-accent-foreground">
             <Link href="/products">
@@ -30,11 +31,11 @@ export default async function HomePage() {
         <div className="md:w-1/2 mt-8 md:mt-0 flex justify-center md:justify-end">
           <Image
             src="https://placehold.co/500x500.png"
-            alt="Luxury makeup products"
+            alt="Natural and organic beauty products by Earth Puran"
             width={500}
             height={500}
             className="rounded-lg shadow-2xl"
-            data-ai-hint="luxury makeup lifestyle"
+            data-ai-hint="natural beauty lifestyle"
             priority
           />
         </div>

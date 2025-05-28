@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -12,11 +13,11 @@ import { Lightbulb } from "lucide-react";
 // In a real app, this would query your product database/API
 async function fetchProductsByNames(names: string[]): Promise<Product[]> {
   // This is a placeholder. You'd need to implement logic to fetch actual product data.
-  // For now, returning mock products.
+  // For now, returning mock products branded as Earth Puran.
   const mockProducts: Product[] = [
-    { id: "rec1", name: "Velvet Matte Lipstick", category: "Lips", brand: "LuxeBeau", price: 28.00, description: "Recommended for you!", imageUrl: "https://placehold.co/600x600.png", imageHint: "lipstick beauty", stock: 10, rating: 4.5, reviews: 10 },
-    { id: "rec2", name: "Radiant Glow Foundation", category: "Face", brand: "Aura Cosmetics", price: 45.00, description: "A great match based on your history.", imageUrl: "https://placehold.co/600x600.png", imageHint: "foundation makeup", stock: 10, rating: 4.8, reviews: 15 },
-    { id: "rec3", name: "Midnight Sparkle Eyeshadow Palette", category: "Eyes", brand: "LuxeBeau", price: 55.00, description: "Users like you loved this!", imageUrl: "https://placehold.co/600x600.png", imageHint: "eyeshadow palette", stock: 10, rating: 4.7, reviews: 20 },
+    { id: "rec1", name: "Velvet Matte Lipstick", category: "Lips", brand: "Earth Puran", price: 28.00, description: "Recommended for you! From Earth Puran.", imageUrl: "https://placehold.co/600x600.png", imageHint: "lipstick beauty", stock: 10, rating: 4.5, reviews: 10 },
+    { id: "rec2", name: "Radiant Glow Foundation", category: "Face", brand: "Earth Puran", price: 45.00, description: "A great match based on your history. From Earth Puran.", imageUrl: "https://placehold.co/600x600.png", imageHint: "foundation makeup", stock: 10, rating: 4.8, reviews: 15 },
+    { id: "rec3", name: "Midnight Sparkle Eyeshadow Palette", category: "Eyes", brand: "Earth Puran", price: 55.00, description: "Users like you loved this! From Earth Puran.", imageUrl: "https://placehold.co/600x600.png", imageHint: "eyeshadow palette", stock: 10, rating: 4.7, reviews: 20 },
   ];
   return mockProducts.filter(p => names.includes(p.name)).slice(0,3);
 }
@@ -35,9 +36,9 @@ export function PersonalizedRecommendations() {
         setError(null);
         // Mock user preferences and history for demonstration
         const mockInput = {
-          userPreferences: "Loves matte lipsticks and hydrating foundations. Prefers cruelty-free brands.",
-          browsingHistory: "Viewed 'Velvet Matte Lipstick - Ruby Red', 'Silk Finish Primer', 'Organic Rosewater Toner'",
-          trendingProducts: "Radiant Glow Foundation, Midnight Sparkle Eyeshadow Palette, Volumizing Lash Mascara"
+          userPreferences: "Loves matte lipsticks and hydrating foundations. Prefers cruelty-free products from Earth Puran.",
+          browsingHistory: "Viewed 'Velvet Matte Lipstick - Ruby Red' by Earth Puran, 'Silk Finish Primer' by Earth Puran, 'Organic Rosewater Toner' by Earth Puran",
+          trendingProducts: "Radiant Glow Foundation, Midnight Sparkle Eyeshadow Palette, Volumizing Lash Mascara" // These names will be matched against Earth Puran products by fetchProductsByNames
         };
         const result = await getProductRecommendations(mockInput);
         setRecommendations(result);

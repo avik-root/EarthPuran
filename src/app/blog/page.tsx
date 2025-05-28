@@ -1,3 +1,4 @@
+
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ const blogPosts = [
     excerpt: "Achieve a perfect, airbrushed look with our step-by-step guide to foundation application. Learn tips and tricks from the pros.",
     imageUrl: "https://placehold.co/800x500.png",
     imageHint: "makeup tutorial",
-    author: "LuxeBeau Experts",
+    author: "Earth Puran Experts",
     date: "October 26, 2023",
     category: "Tutorials"
   },
@@ -42,9 +43,9 @@ export default function BlogPage() {
   return (
     <div className="space-y-12">
       <div className="text-center">
-        <h1 className="text-4xl font-extrabold tracking-tight text-primary">LuxeBeau Beauty Blog</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight text-primary">Earth Puran Beauty Blog</h1>
         <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-          Your source for beauty inspiration, tips, tutorials, and the latest trends in makeup and skincare.
+          Your source for beauty inspiration, tips, tutorials, and the latest trends in natural makeup and skincare.
         </p>
       </div>
 

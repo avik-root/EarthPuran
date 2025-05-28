@@ -1,76 +1,77 @@
+
 [
   {
     "id": "1",
     "name": "Velvet Matte Lipstick",
     "category": "Lips",
-    "brand": "LuxeBeau",
+    "brand": "Earth Puran",
     "price": 28.00,
-    "description": "A luxurious, long-wearing matte lipstick with a velvety finish. Infused with nourishing oils for comfortable wear. Experience intense color payoff and a smooth, non-drying feel.",
+    "description": "A luxurious, long-wearing matte lipstick with a velvety finish. Infused with nourishing oils for comfortable wear. Experience intense color payoff and a smooth, non-drying feel. Exclusively from Earth Puran.",
     "imageUrl": "https://placehold.co/600x600.png",
     "imageHint": "lipstick beauty",
     "colors": ["Ruby Red", "Dusty Rose", "Nude Beige", "Deep Plum"],
     "rating": 4.5,
     "reviews": 120,
     "stock": 50,
-    "tags": ["matte", "long-wearing", "lipstick", "velvet"]
+    "tags": ["matte", "long-wearing", "lipstick", "velvet", "natural"]
   },
   {
     "id": "2",
     "name": "Radiant Glow Foundation",
     "category": "Face",
-    "brand": "Aura Cosmetics",
+    "brand": "Earth Puran",
     "price": 45.00,
-    "description": "Achieve a flawless, radiant complexion with this lightweight foundation. Provides buildable coverage and a natural, dewy finish. Enriched with hyaluronic acid for all-day hydration.",
+    "description": "Achieve a flawless, radiant complexion with this lightweight foundation. Provides buildable coverage and a natural, dewy finish. Enriched with hyaluronic acid for all-day hydration. Discover Earth Puran's commitment to quality.",
     "imageUrl": "https://placehold.co/600x600.png",
     "imageHint": "foundation makeup",
     "shades": ["Porcelain", "Ivory", "Sand", "Beige", "Tan", "Mocha"],
     "rating": 4.8,
     "reviews": 250,
     "stock": 30,
-    "tags": ["foundation", "radiant", "dewy", "hydrating"]
+    "tags": ["foundation", "radiant", "dewy", "hydrating", "organic"]
   },
   {
     "id": "3",
     "name": "Midnight Sparkle Eyeshadow Palette",
     "category": "Eyes",
-    "brand": "LuxeBeau",
+    "brand": "Earth Puran",
     "price": 55.00,
-    "description": "Unleash your inner artist with this versatile eyeshadow palette. Features 12 highly pigmented shades in matte, shimmer, and glitter finishes. Perfect for creating day-to-night looks.",
+    "description": "Unleash your inner artist with this versatile eyeshadow palette. Features 12 highly pigmented shades in matte, shimmer, and glitter finishes. Perfect for creating day-to-night looks. Part of the Earth Puran collection.",
     "imageUrl": "https://placehold.co/600x600.png",
     "imageHint": "eyeshadow palette",
     "paletteName": "Midnight Sparkle",
     "rating": 4.7,
     "reviews": 180,
     "stock": 40,
-    "tags": ["eyeshadow", "palette", "sparkle", "pigmented"]
+    "tags": ["eyeshadow", "palette", "sparkle", "pigmented", "natural-minerals"]
   },
   {
     "id": "4",
     "name": "Silk Finish Primer",
     "category": "Face",
-    "brand": "Elysian Beauty",
+    "brand": "Earth Puran",
     "price": 32.00,
-    "description": "Create a smooth canvas for makeup application with this silk-finish primer. Minimizes pores, blurs imperfections, and extends makeup wear. Lightweight and non-greasy formula.",
+    "description": "Create a smooth canvas for makeup application with this silk-finish primer. Minimizes pores, blurs imperfections, and extends makeup wear. Lightweight and non-greasy formula. Experience the Earth Puran difference.",
     "imageUrl": "https://placehold.co/600x600.png",
     "imageHint": "makeup primer",
     "rating": 4.6,
     "reviews": 95,
     "stock": 60,
-    "tags": ["primer", "face", "smoothing", "pore-minimizing"]
+    "tags": ["primer", "face", "smoothing", "pore-minimizing", "organic-extracts"]
   },
   {
     "id": "5",
     "name": "Volumizing Lash Mascara",
     "category": "Eyes",
-    "brand": "LuxeBeau",
+    "brand": "Earth Puran",
     "price": 24.00,
-    "description": "Get dramatic, voluminous lashes with this intense black mascara. The specially designed brush coats every lash for maximum impact. Smudge-proof and long-lasting.",
+    "description": "Get dramatic, voluminous lashes with this intense black mascara. The specially designed brush coats every lash for maximum impact. Smudge-proof and long-lasting. A signature product from Earth Puran.",
     "imageUrl": "https://placehold.co/600x600.png",
     "imageHint": "mascara product",
     "color": "Intense Black",
     "rating": 4.4,
     "reviews": 150,
     "stock": 70,
-    "tags": ["mascara", "volumizing", "lashes", "smudge-proof"]
+    "tags": ["mascara", "volumizing", "lashes", "smudge-proof", "natural-waxes"]
   }
 ]

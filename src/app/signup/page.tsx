@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -12,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 // Simplified country data
 const countries = [
@@ -45,6 +48,7 @@ const signupSchema = z.object({
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
+  const router = useRouter();
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -79,6 +83,7 @@ export default function SignupPage() {
     // TODO: Implement signup logic
     console.log("Signup form submitted:", values);
     // toast({ title: "Account Creation", description: "Setting up your account..." });
+    router.push("/");
   }
 
   return (
@@ -86,7 +91,7 @@ export default function SignupPage() {
       <Card className="w-full max-w-lg shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold text-primary">Create Your Account</CardTitle>
-          <CardDescription>Join LuxeBeau and unlock exclusive beauty perks.</CardDescription>
+          <CardDescription>Join Earth Puran and embrace natural beauty.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -133,7 +138,7 @@ export default function SignupPage() {
                   render={({ field }) => (
                     <FormItem className="sm:col-span-1">
                       <FormLabel>Country</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select" />
@@ -183,7 +188,16 @@ export default function SignupPage() {
                         </Button>
                       </div>
                     </FormControl>
-                    <Progress value={passwordStrength} className="h-2 mt-1" />
+                    <Progress
+                      value={passwordStrength}
+                      className={cn(
+                        "h-2 mt-1",
+                        passwordStrength === 0 ? "bg-transparent" : // Hide if 0 or handle initial state
+                        passwordStrength < 30 ? "bg-red-500" :
+                        passwordStrength < 70 ? "bg-yellow-500" :
+                        "bg-green-500"
+                      )}
+                    />
                     <FormDescription className="text-xs">
                       Min 8 chars, 1 uppercase, 1 number, 1 special char.
                     </FormDescription>

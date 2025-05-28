@@ -1,3 +1,4 @@
+
 // src/app/admin/products/new/page.tsx
 "use client"
 
@@ -28,7 +29,7 @@ const productSchema = z.object({
 type ProductFormValues = z.infer<typeof productSchema>;
 
 const categories = ["Lips", "Face", "Eyes", "Skincare", "Tools", "Fragrance"];
-const brands = ["LuxeBeau", "Aura Cosmetics", "Elysian Beauty", "Other"]; // Example brands
+const brands = ["Earth Puran"]; 
 
 export default function NewProductPage() {
   const form = useForm<ProductFormValues>({
@@ -38,7 +39,7 @@ export default function NewProductPage() {
       description: "",
       price: 0,
       category: "",
-      brand: "",
+      brand: "Earth Puran", // Default to Earth Puran
       stock: 0,
       imageUrl: "",
       imageHint: "",
@@ -62,7 +63,7 @@ export default function NewProductPage() {
       <Card>
         <CardHeader>
           <CardTitle>Add New Product</CardTitle>
-          <CardDescription>Fill in the details for the new product.</CardDescription>
+          <CardDescription>Fill in the details for the new Earth Puran product.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>

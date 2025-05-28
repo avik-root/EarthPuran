@@ -1,3 +1,4 @@
+
 // src/app/admin/products/edit/[id]/page.tsx
 "use client"
 
@@ -13,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getProductById } from "@/app/actions/productActions"; // Assuming this can be called client-side for initial data
+import { getProductById } from "@/app/actions/productActions"; 
 import type { Product } from "@/types/product";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -31,7 +32,7 @@ const productSchema = z.object({
 type ProductFormValues = z.infer<typeof productSchema>;
 
 const categories = ["Lips", "Face", "Eyes", "Skincare", "Tools", "Fragrance"];
-const brands = ["LuxeBeau", "Aura Cosmetics", "Elysian Beauty", "Other"];
+const brands = ["Earth Puran"];
 
 interface EditProductPageProps {
   params: { id: string };
@@ -44,12 +45,12 @@ export default function EditProductPage({ params }: EditProductPageProps) {
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: { // Default values will be overridden by fetched product data
+    defaultValues: { 
       name: "",
       description: "",
       price: 0,
       category: "",
-      brand: "",
+      brand: "Earth Puran",
       stock: 0,
       imageUrl: "",
       imageHint: "",
@@ -59,7 +60,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
   useEffect(() => {
     async function fetchProductData() {
       setLoading(true);
-      const fetchedProduct = await getProductById(productId); // This ideally should be a client-callable action or API
+      const fetchedProduct = await getProductById(productId); 
       if (fetchedProduct) {
         setProduct(fetchedProduct);
         form.reset({
@@ -67,13 +68,12 @@ export default function EditProductPage({ params }: EditProductPageProps) {
           description: fetchedProduct.description,
           price: fetchedProduct.price,
           category: fetchedProduct.category,
-          brand: fetchedProduct.brand,
+          brand: fetchedProduct.brand, // Should be "Earth Puran" from updated data
           stock: fetchedProduct.stock,
           imageUrl: fetchedProduct.imageUrl,
           imageHint: fetchedProduct.imageHint || "",
         });
       } else {
-        // Handle product not found, e.g., redirect or show error
         console.error("Product not found");
       }
       setLoading(false);
@@ -133,7 +133,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
       <Card>
         <CardHeader>
           <CardTitle>Edit Product: {product?.name || "Loading..."}</CardTitle>
-          <CardDescription>Update the details for this product.</CardDescription>
+          <CardDescription>Update the details for this Earth Puran product.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -255,4 +255,3 @@ export default function EditProductPage({ params }: EditProductPageProps) {
     </div>
   );
 }
-

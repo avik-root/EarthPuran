@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import {
   Sidebar,
@@ -30,7 +31,7 @@ export default function AdminLayout({
             <Link href="/admin/dashboard" className="flex items-center gap-2">
               <Package className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden">
-                LuxeAdmin
+                EarthPuran Admin
               </h1>
             </Link>
             <SidebarTrigger className="group-data-[collapsible=icon]:hidden" />

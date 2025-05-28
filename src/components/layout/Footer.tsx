@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { Facebook, Instagram, Twitter, Youtube } from "lucide-react";
 
@@ -8,9 +9,9 @@ export function Footer() {
       <div className="container mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div>
-            <h3 className="text-lg font-semibold text-primary">LuxeBeau</h3>
+            <h3 className="text-lg font-semibold text-primary">Earth Puran</h3>
             <p className="mt-2 text-sm text-foreground/80">
-              Discover your ultimate beauty.
+              Nurturing your beauty, naturally. We exclusively feature Earth Puran products.
             </p>
             <div className="mt-4 flex space-x-4">
               <Link href="#" className="text-foreground/60 hover:text-primary">
@@ -62,7 +63,7 @@ export function Footer() {
           </div>
         </div>
         <div className="mt-8 border-t border-border/40 pt-8 text-center text-sm text-foreground/60">
-          &copy; {currentYear} LuxeBeau. All rights reserved.
+          &copy; {currentYear} Earth Puran. All rights reserved.
         </div>
       </div>
     </footer>

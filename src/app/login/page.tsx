@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -10,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }).refine(val => val.endsWith('@gmail.com'), { message: "Only Gmail addresses are allowed." }),
@@ -20,6 +22,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showPin, setShowPin] = useState(false);
 
@@ -37,6 +40,7 @@ export default function LoginPage() {
     console.log("Login form submitted:", values);
     // For demonstration, you might use react-hot-toast here
     // toast({ title: "Login Attempt", description: "Processing your login..." });
+    router.push("/");
   }
 
   return (
@@ -44,7 +48,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold text-primary">Welcome Back!</CardTitle>
-          <CardDescription>Sign in to continue your beauty journey.</CardDescription>
+          <CardDescription>Sign in to continue your journey with Earth Puran.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
