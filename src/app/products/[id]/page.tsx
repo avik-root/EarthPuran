@@ -1,8 +1,8 @@
 
-"use client"; // Required for hooks like useState, useEffect, and custom hooks
+"use client"; 
 
 import Image from "next/image";
-import { notFound, useParams } from "next/navigation"; // useParams for client components
+import { useParams } from "next/navigation"; 
 import { getProductById, getProducts } from "@/app/actions/productActions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,8 +16,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast"; // Import useToast
+import Link from "next/link";
 
-// Removed generateStaticParams as this page is now client-rendered for dynamic data hooks
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -30,6 +31,7 @@ export default function ProductDetailPage() {
 
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
+  const { toast } = useToast(); // Initialize useToast
 
   useEffect(() => {
     async function fetchData() {
@@ -38,7 +40,6 @@ export default function ProductDetailPage() {
       try {
         const fetchedProduct = await getProductById(productId);
         if (!fetchedProduct) {
-          // Instead of calling notFound() directly in client component, handle appropriately
           setProduct(null); 
         } else {
           setProduct(fetchedProduct);
@@ -50,7 +51,7 @@ export default function ProductDetailPage() {
         }
       } catch (error) {
         console.error("Failed to fetch product data:", error);
-        setProduct(null); // Or set an error state
+        setProduct(null); 
       } finally {
         setLoading(false);
       }
@@ -82,8 +83,6 @@ export default function ProductDetailPage() {
   }
 
   if (!product) {
-    // This will be caught by Next.js error handling or a custom not-found UI can be shown
-    // For client components, you might redirect or show a specific message
     return (
         <div className="text-center py-10">
             <h2 className="text-2xl font-semibold">Product Not Found</h2>
@@ -98,12 +97,36 @@ export default function ProductDetailPage() {
   const isProductInWishlist = isInWishlist(product.id);
 
   const handleAddToCart = () => {
+    const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
+    if (!isLoggedIn) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to add items to your cart.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (product.stock > 0) {
       addToCart(product, quantity);
+    } else {
+       toast({
+        title: "Out of Stock",
+        description: `${product.name} is currently out of stock.`,
+        variant: "destructive",
+      });
     }
   };
   
   const handleToggleWishlist = () => {
+    const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
+    if (!isLoggedIn) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to manage your wishlist.",
+        variant: "destructive",
+      });
+      return;
+    }
     toggleWishlist(product);
   };
 
@@ -190,7 +213,7 @@ export default function ProductDetailPage() {
                 <Button 
                   size="lg" 
                   className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-70" 
-                  disabled={product.stock === 0}
+                  disabled={product.stock === 0 && localStorage.getItem("isLoggedInPrototype") === "true"}
                   onClick={handleAddToCart}
                 >
                   <ShoppingCart className="mr-2 h-5 w-5" /> {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
 interface ProductCardProps {
   product: Product;
@@ -19,21 +20,46 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
+  const { toast } = useToast(); // Initialize useToast
 
   const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent link navigation if card is wrapped in Link
+    e.preventDefault(); 
     e.stopPropagation();
+
+    const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
+    if (!isLoggedIn) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to add items to your cart.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (product.stock > 0) {
       addToCart(product);
     } else {
-      // Optionally show a toast that product is out of stock
-      console.warn("Product is out of stock");
+      toast({
+        title: "Out of Stock",
+        description: `${product.name} is currently out of stock.`,
+        variant: "destructive",
+      });
     }
   };
 
   const handleToggleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
+    if (!isLoggedIn) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to manage your wishlist.",
+        variant: "destructive",
+      });
+      return;
+    }
     toggleWishlist(product);
   };
 
@@ -101,7 +127,7 @@ export function ProductCard({ product }: ProductCardProps) {
           variant="outline" 
           className="hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
           onClick={handleAddToCart}
-          disabled={product.stock === 0}
+          disabled={product.stock === 0 && localStorage.getItem("isLoggedInPrototype") === "true"} // Disable if out of stock AND logged in
         >
           <ShoppingCart className="mr-2 h-4 w-4" />
           {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
