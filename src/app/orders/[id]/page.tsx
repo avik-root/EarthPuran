@@ -95,8 +95,8 @@ export default function OrderDetailPage() {
   if (!order) {
     return (
       <div className="space-y-6 text-center">
-         <Button variant="outline" onClick={() => router.push('/profile')} className="mb-6 mr-auto">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Profile
+         <Button variant="outline" onClick={() => router.push('/profile?tab=orders')} className="mb-6 mr-auto">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Orders
         </Button>
         <PackageSearch className="mx-auto h-16 w-16 text-muted-foreground/50" />
         <h2 className="mt-6 text-2xl font-semibold text-foreground">Order Not Found</h2>
@@ -109,8 +109,8 @@ export default function OrderDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Button variant="outline" onClick={() => router.push('/profile')} className="mb-2">
-        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Profile
+      <Button variant="outline" onClick={() => router.push('/profile?tab=orders')} className="mb-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Orders
       </Button>
 
       <Card>

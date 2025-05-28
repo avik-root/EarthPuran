@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Lock, MapPin, ListOrdered, Heart, PackageSearch, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from 'next/navigation'; // Import useSearchParams
 
 // Form components
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
@@ -16,7 +17,7 @@ import { UserProfileDisplay } from "@/components/profile/UserProfileDisplay";
 import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/hooks/useWishlist";
 import { ProductCard } from "@/components/ProductCard";
-import type { Order } from "@/types/order"; // OrderItem not needed directly here anymore
+import type { Order } from "@/types/order"; 
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,8 +29,16 @@ export default function ProfilePage() {
   const { wishlistItems, clearWishlist: clearWishlistHook } = useWishlist();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
-  
-  const { toast } = useToast(); // Already imported, good
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState('edit-profile');
+
+  useEffect(() => {
+    const tabQueryParam = searchParams.get('tab');
+    if (tabQueryParam && ['edit-profile', 'addresses', 'orders', 'wishlist'].includes(tabQueryParam)) {
+      setActiveTab(tabQueryParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     try {
@@ -66,7 +75,7 @@ export default function ProfilePage() {
 
       <UserProfileDisplay /> 
 
-      <Tabs defaultValue="edit-profile" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2 h-auto">
           <TabsTrigger value="edit-profile" className="flex flex-col sm:flex-row items-center gap-2 py-2 px-3 text-xs sm:text-sm">
             <Lock className="h-4 w-4" /> Edit Profile
