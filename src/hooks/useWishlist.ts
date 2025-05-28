@@ -4,27 +4,61 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Product } from '@/types/product';
 import { useToast } from './use-toast';
-
-const WISHLIST_STORAGE_KEY = 'earthPuranWishlist';
+import { getUserData, updateUserWishlist } from '@/app/actions/userActions';
 
 export function useWishlist() {
   const [wishlistItems, setWishlistItems] = useState<Product[]>([]);
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Load wishlist from localStorage on initial client-side render
-    try {
-      const storedWishlist = localStorage.getItem(WISHLIST_STORAGE_KEY);
-      if (storedWishlist) {
-        setWishlistItems(JSON.parse(storedWishlist));
-      }
-    } catch (error) {
-      console.error("Failed to load wishlist from localStorage", error);
-      setWishlistItems([]); // Reset to empty on error
+ useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const email = localStorage.getItem('currentUserEmail');
+      setCurrentUserEmail(email);
     }
   }, []);
 
-  const toggleWishlist = useCallback((product: Product) => {
+  const loadWishlistData = useCallback(async () => {
+    if (!currentUserEmail) {
+      setWishlistItems([]);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const userData = await getUserData(currentUserEmail);
+      setWishlistItems(userData?.wishlist || []);
+    } catch (error) {
+      console.error("Failed to load wishlist data:", error);
+      setWishlistItems([]);
+      toast({ title: "Error", description: "Could not load your wishlist.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUserEmail, toast]);
+  
+  useEffect(() => {
+    loadWishlistData();
+  }, [loadWishlistData]);
+
+
+  const persistWishlist = async (updatedWishlistItems: Product[]) => {
+    if (currentUserEmail) {
+       try {
+        await updateUserWishlist(currentUserEmail, updatedWishlistItems);
+      } catch (error) {
+        console.error("Failed to persist wishlist:", error);
+        toast({ title: "Sync Error", description: "Could not save wishlist changes to server.", variant: "destructive" });
+      }
+    }
+  };
+
+  const toggleWishlist = useCallback(async (product: Product) => {
+    if (!currentUserEmail) {
+        toast({title: "Login Required", description: "Please log in to manage your wishlist.", variant: "destructive"});
+        return;
+    }
     const wasInWishlist = wishlistItems.some(item => item.id === product.id);
     let newItemsState: Product[];
 
@@ -34,12 +68,8 @@ export function useWishlist() {
       newItemsState = [...wishlistItems, product];
     }
 
-    try {
-      localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(newItemsState));
-    } catch (error) {
-      console.error("Failed to save wishlist to localStorage immediately in toggleWishlist", error);
-    }
-    setWishlistItems(newItemsState);
+    setWishlistItems(newItemsState); 
+    await persistWishlist(newItemsState);
 
     setTimeout(() => {
       if (wasInWishlist) {
@@ -54,21 +84,18 @@ export function useWishlist() {
           description: `${product.name} has been added to your wishlist.`,
         });
       }
-    }, 0);
-  }, [wishlistItems, toast]);
+    },0);
+  }, [wishlistItems, toast, currentUserEmail]);
 
   const isInWishlist = useCallback((productId: string): boolean => {
     return wishlistItems.some(item => item.id === productId);
   }, [wishlistItems]);
   
-  const clearWishlist = useCallback(() => {
+  const clearWishlist = useCallback(async () => {
+    if (!currentUserEmail) return;
     const newItemsState: Product[] = [];
-    try {
-      localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(newItemsState));
-    } catch (error) {
-      console.error("Failed to save wishlist to localStorage immediately in clearWishlist", error);
-    }
     setWishlistItems(newItemsState);
+    await persistWishlist(newItemsState);
     
     setTimeout(() => {
      toast({
@@ -76,12 +103,14 @@ export function useWishlist() {
       description: "All items have been removed from your wishlist.",
     });
     }, 0);
-  }, [toast]);
+  }, [toast, currentUserEmail]);
 
   return {
     wishlistItems,
     toggleWishlist,
     isInWishlist,
     clearWishlist,
+    isLoadingWishlist: isLoading,
+    refreshWishlist: loadWishlistData,
   };
 }

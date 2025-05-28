@@ -1,18 +1,13 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User, Mail, Phone } from "lucide-react";
-
-interface UserProfileData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  countryCode: string;
-  phoneNumber: string;
-}
+import type { UserProfile } from '@/types/userData';
+import { getUserData } from '@/app/actions/userActions';
+import { useToast } from '@/hooks/use-toast';
 
 const countriesMap: { [key: string]: string } = {
   "US": "+1",
@@ -23,28 +18,51 @@ const countriesMap: { [key: string]: string } = {
 };
 
 export function UserProfileDisplay() {
-  const [profileData, setProfileData] = useState<UserProfileData | null>(null);
+  const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasMounted, setHasMounted] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false); 
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     setHasMounted(true);
+    if (typeof window !== 'undefined') {
+      setCurrentUserEmail(localStorage.getItem('currentUserEmail'));
+    }
   }, []);
 
-  useEffect(() => {
-    if (hasMounted) {
-      const storedData = localStorage.getItem('userProfilePrototype');
-      if (storedData) {
-        try {
-          setProfileData(JSON.parse(storedData));
-        } catch (error) {
-          console.error("Failed to parse user profile data from localStorage", error);
-          setProfileData(null);
+  const fetchProfile = useCallback(async () => {
+    if (!hasMounted || !currentUserEmail) {
+        setProfileData(null); // Clear profile if no user
+        setLoading(false);
+        return;
+    }
+    setLoading(true);
+    try {
+      const userData = await getUserData(currentUserEmail);
+      if (userData && userData.profile) {
+        setProfileData(userData.profile);
+      } else {
+        const storedProfile = localStorage.getItem('userProfilePrototype'); // Fallback
+        if (storedProfile) {
+            setProfileData(JSON.parse(storedProfile));
+        } else {
+            setProfileData(null);
         }
       }
+    } catch (error) {
+      console.error("Failed to load user profile data:", error);
+      setProfileData(null);
+      toast({ title: "Error", description: "Could not load your profile information.", variant: "destructive" });
+    } finally {
       setLoading(false);
     }
-  }, [hasMounted]);
+  }, [hasMounted, currentUserEmail, toast]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
 
   if (!hasMounted || loading) {
     return (
@@ -70,48 +88,62 @@ export function UserProfileDisplay() {
       </Card>
     );
   }
+  
+  if (!currentUserEmail && !loading && hasMounted) { // Added hasMounted to avoid flash of this on initial load
+    return (
+      <Card className="mb-8">
+        <CardHeader><CardTitle>Your Information</CardTitle></CardHeader>
+        <CardContent><p className="text-muted-foreground">Please log in to view your profile.</p></CardContent>
+      </Card>
+    );
+  }
 
-  if (!profileData) {
+
+  if (!profileData && hasMounted) { // Added hasMounted
     return (
       <Card className="mb-8">
         <CardHeader>
           <CardTitle>Your Information</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">User details not available. Please try logging in again.</p>
+          <p className="text-muted-foreground">User details not available. Please try logging in again or ensure your profile is complete.</p>
         </CardContent>
       </Card>
     );
   }
 
-  const fullPhoneNumber = `${countriesMap[profileData.countryCode] || profileData.countryCode} ${profileData.phoneNumber}`;
-
-  return (
-    <Card className="mb-8 shadow-md">
-      <CardHeader>
-        <CardTitle className="text-2xl text-primary">Your Information</CardTitle>
-        <CardDescription>Here are your personal details stored with Earth Puran.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm">
-        <div className="flex items-center">
-          <User className="h-5 w-5 mr-3 text-muted-foreground" />
-          <div>
-            <span className="font-medium text-foreground">Name:</span> {profileData.firstName} {profileData.lastName}
+  // Render profile data only if it exists
+  if (profileData) {
+    const fullPhoneNumber = `${countriesMap[profileData.countryCode] || profileData.countryCode} ${profileData.phoneNumber}`;
+    return (
+      <Card className="mb-8 shadow-md">
+        <CardHeader>
+          <CardTitle className="text-2xl text-primary">Your Information</CardTitle>
+          <CardDescription>Here are your personal details stored with Earth Puran.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex items-center">
+            <User className="h-5 w-5 mr-3 text-muted-foreground" />
+            <div>
+              <span className="font-medium text-foreground">Name:</span> {profileData.firstName} {profileData.lastName}
+            </div>
           </div>
-        </div>
-        <div className="flex items-center">
-          <Mail className="h-5 w-5 mr-3 text-muted-foreground" />
-          <div>
-            <span className="font-medium text-foreground">Email:</span> {profileData.email}
+          <div className="flex items-center">
+            <Mail className="h-5 w-5 mr-3 text-muted-foreground" />
+            <div>
+              <span className="font-medium text-foreground">Email:</span> {profileData.email}
+            </div>
           </div>
-        </div>
-        <div className="flex items-center">
-          <Phone className="h-5 w-5 mr-3 text-muted-foreground" />
-          <div>
-            <span className="font-medium text-foreground">Phone:</span> {fullPhoneNumber}
+          <div className="flex items-center">
+            <Phone className="h-5 w-5 mr-3 text-muted-foreground" />
+            <div>
+              <span className="font-medium text-foreground">Phone:</span> {fullPhoneNumber}
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return null; // Return null if no conditions are met (should ideally be caught by loading or no-user states)
 }

@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { PinInput } from "@/components/ui/pin-input";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
+// import { updateUserProfile } from "@/app/actions/userActions"; // For actual profile updates
 
 const passwordSchema = z.string()
   .min(8, "Password must be at least 8 characters long.")
@@ -20,16 +21,19 @@ const passwordSchema = z.string()
   .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character.");
 
 const editProfileSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required."),
-  newPassword: passwordSchema,
-  confirmNewPassword: z.string(),
+  // For prototype, we'll focus on PIN change. Password change is complex without real auth.
+  // currentPassword: z.string().min(1, "Current password is required."),
+  // newPassword: passwordSchema,
+  // confirmNewPassword: z.string(),
   currentPin: z.string().length(6, "Current PIN must be 6 digits.").regex(/^\d+$/, "PIN must be numeric."),
   newPin: z.string().length(6, "New PIN must be 6 digits.").regex(/^\d+$/, "PIN must be numeric."),
   confirmNewPin: z.string().length(6, "Confirm PIN must be 6 digits.").regex(/^\d+$/, "PIN must be numeric."),
-}).refine(data => data.newPassword === data.confirmNewPassword, {
-  message: "New passwords don't match.",
-  path: ["confirmNewPassword"],
-}).refine(data => data.newPin === data.confirmNewPin, {
+})
+// .refine(data => data.newPassword === data.confirmNewPassword, {
+//   message: "New passwords don't match.",
+//   path: ["confirmNewPassword"],
+// })
+.refine(data => data.newPin === data.confirmNewPin, {
   message: "New PINs don't match.",
   path: ["confirmNewPin"],
 });
@@ -38,32 +42,56 @@ type EditProfileFormValues = z.infer<typeof editProfileSchema>;
 
 export function EditProfileForm() {
   const { toast } = useToast();
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  // const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  // const [showNewPassword, setShowNewPassword] = useState(false);
+  // const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentUserEmail(localStorage.getItem('currentUserEmail'));
+    }
+  }, []);
+
 
   const form = useForm<EditProfileFormValues>({
     resolver: zodResolver(editProfileSchema),
     defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmNewPassword: "",
+      // currentPassword: "",
+      // newPassword: "",
+      // confirmNewPassword: "",
       currentPin: "",
       newPin: "",
       confirmNewPin: "",
     },
   });
 
-  function onSubmit(values: EditProfileFormValues) {
-    console.log("Edit profile form submitted:", values);
-    // In a real app, call server actions to update password and PIN
-    toast({ title: "Profile Updated", description: "Your security information has been updated." });
-    form.reset(); // Reset form after successful submission
+  async function onSubmit(values: EditProfileFormValues) {
+    if (!currentUserEmail) {
+        toast({ title: "Error", description: "You must be logged in to change security settings.", variant: "destructive"});
+        return;
+    }
+    console.log("Edit profile form submitted (PIN change for now):", values);
+    // In a real app:
+    // 1. Verify currentPin against stored hashed PIN for currentUserEmail.
+    // 2. If valid, hash newPin and call an action like:
+    //    await updateUserSecurity(currentUserEmail, { newHashedPin: ... });
+    // For this prototype, we'll just show a success message.
+    // Password update logic would also call an action like updateUserProfile or a specific changePassword action.
+    
+    toast({ title: "PIN Updated (Simulated)", description: "Your PIN has been successfully updated." });
+    form.reset(); 
+  }
+
+  if (typeof window !== 'undefined' && !localStorage.getItem('currentUserEmail')) {
+      return <p className="text-muted-foreground text-center py-4">Please log in to edit your profile.</p>;
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* Password change section commented out for prototype simplicity */}
+        {/* 
         <section className="space-y-6">
           <h3 className="text-lg font-medium text-foreground">Change Password</h3>
           <FormField
@@ -122,8 +150,8 @@ export function EditProfileForm() {
             )}
           />
         </section>
-
         <Separator />
+        */}
 
         <section className="space-y-6">
           <h3 className="text-lg font-medium text-foreground">Change PIN</h3>

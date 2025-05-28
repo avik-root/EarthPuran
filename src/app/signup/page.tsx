@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { PinInput } from "@/components/ui/pin-input";
 import { useToast } from "@/hooks/use-toast";
+import { initializeUserAccount } from "@/app/actions/userActions";
+import type { UserProfile } from "@/types/userData";
 
 const countries = [
   { code: "US", name: "United States", flag: "🇺🇸", phoneCode: "+1" },
@@ -54,7 +56,7 @@ export default function SignupPage() {
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showPin, setShowPin] = useState(true); // Initially show PIN
+  const [showPin, setShowPin] = useState(true); 
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -62,7 +64,7 @@ export default function SignupPage() {
       firstName: "",
       lastName: "",
       email: "",
-      countryCode: "IN", // Default country to India
+      countryCode: "IN", 
       phoneNumber: "",
       password: "",
       confirmPassword: "",
@@ -81,23 +83,29 @@ export default function SignupPage() {
     setPasswordStrength(strength);
   }, [currentPassword]);
 
-  function onSubmit(values: SignupFormValues) {
+  async function onSubmit(values: SignupFormValues) {
     console.log("Signup form submitted:", values);
-    // Simulate successful signup
-    localStorage.setItem("isLoggedInPrototype", "true");
     
-    // Store user profile data
-    const userProfile = {
+    const userProfileData: UserProfile = {
       firstName: values.firstName,
       lastName: values.lastName,
       email: values.email,
       countryCode: values.countryCode,
       phoneNumber: values.phoneNumber,
     };
-    localStorage.setItem('userProfilePrototype', JSON.stringify(userProfile));
 
-    toast({ title: "Account Created!", description: "Welcome to Earth Puran." });
-    router.push("/");
+    try {
+      await initializeUserAccount(userProfileData);
+      localStorage.setItem("isLoggedInPrototype", "true");
+      localStorage.setItem('userProfilePrototype', JSON.stringify(userProfileData)); // Still useful for immediate client-side display
+      localStorage.setItem('currentUserEmail', values.email); // Key for userActions
+
+      toast({ title: "Account Created!", description: "Welcome to Earth Puran." });
+      router.push("/");
+    } catch (error) {
+      console.error("Signup failed:", error);
+      toast({ title: "Signup Failed", description: "Could not create your account. Please try again.", variant: "destructive" });
+    }
   }
 
   return (

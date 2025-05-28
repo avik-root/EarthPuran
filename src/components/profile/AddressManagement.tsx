@@ -2,29 +2,20 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trash2, PlusCircle, Edit3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
-import { Separator } from "@/components/ui/separator";
+import { useState, useEffect, useCallback } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-
-// Placeholder for actual address data type
-interface Address {
-  id: string;
-  street: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-  isDefault: boolean;
-}
+import type { UserAddress } from "@/types/userData";
+import { getUserData, updateUserAddresses } from "@/app/actions/userActions";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const addressSchema = z.object({
   street: z.string().min(1, "Street address is required."),
@@ -37,38 +28,43 @@ const addressSchema = z.object({
 
 type AddressFormValues = z.infer<typeof addressSchema>;
 
-const ADDRESS_STORAGE_KEY = 'earthPuranUserAddresses';
-
 export function AddressManagement() {
   const { toast } = useToast();
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+  const [addresses, setAddresses] = useState<UserAddress[]>([]);
+  const [editingAddress, setEditingAddress] = useState<UserAddress | null>(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
-  const form = useForm<AddressFormValues>({
-    resolver: zodResolver(addressSchema),
-    defaultValues: {
-      street: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      country: "India", // Default country
-      isDefault: false,
-    },
-  });
-
-  // Load addresses from localStorage on mount
   useEffect(() => {
-    try {
-      const storedAddresses = localStorage.getItem(ADDRESS_STORAGE_KEY);
-      if (storedAddresses) {
-        setAddresses(JSON.parse(storedAddresses));
-      }
-    } catch (error) {
-        console.error("Failed to parse addresses from localStorage", error);
-        setAddresses([]);
+    if (typeof window !== 'undefined') {
+      setCurrentUserEmail(localStorage.getItem('currentUserEmail'));
     }
   }, []);
+
+  const fetchAddresses = useCallback(async () => {
+    if (!currentUserEmail) {
+        setAddresses([]);
+        setIsLoading(false);
+        return;
+    };
+    setIsLoading(true);
+    try {
+      const userData = await getUserData(currentUserEmail);
+      setAddresses(userData?.addresses || []);
+    } catch (error) {
+      console.error("Failed to load addresses:", error);
+      setAddresses([]);
+      toast({ title: "Error", description: "Could not load addresses.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUserEmail, toast]);
+
+  useEffect(() => {
+    fetchAddresses();
+  }, [fetchAddresses]);
+
 
   useEffect(() => {
     if (editingAddress) {
@@ -79,72 +75,104 @@ export function AddressManagement() {
     }
   }, [editingAddress, form]);
 
-  function onSubmit(values: AddressFormValues) {
-    let updatedAddresses: Address[];
+  const form = useForm<AddressFormValues>({
+    resolver: zodResolver(addressSchema),
+    defaultValues: {
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "India",
+      isDefault: false,
+    },
+  });
+
+  async function onSubmit(values: AddressFormValues) {
+    if (!currentUserEmail) {
+        toast({ title: "Error", description: "You must be logged in to manage addresses.", variant: "destructive" });
+        return;
+    }
+
+    let updatedAddresses: UserAddress[];
 
     if (editingAddress) {
       updatedAddresses = addresses.map(addr =>
         addr.id === editingAddress.id ? { ...addr, ...values, isDefault: values.isDefault || false } :
         (values.isDefault ? { ...addr, isDefault: false } : addr)
       );
-      toast({ title: "Address Updated", description: "Your address has been successfully updated." });
     } else {
       const newAddress = { ...values, id: Date.now().toString(), isDefault: values.isDefault || false };
       if (values.isDefault) {
         updatedAddresses = [...addresses.map(a => ({ ...a, isDefault: false })), newAddress];
       } else {
-         // If adding a non-default address and no default exists, make this new one default
         const hasDefault = addresses.some(addr => addr.isDefault);
-        if (!hasDefault && addresses.length === 0) { // Make first address default if no default exists
+        if (!hasDefault && addresses.length === 0) {
              newAddress.isDefault = true;
         }
         updatedAddresses = [...addresses, newAddress];
       }
-      toast({ title: "Address Added", description: "New address has been successfully added." });
     }
 
     try {
-        localStorage.setItem(ADDRESS_STORAGE_KEY, JSON.stringify(updatedAddresses));
+        await updateUserAddresses(currentUserEmail, updatedAddresses);
+        setAddresses(updatedAddresses); 
+        toast({ title: editingAddress ? "Address Updated" : "Address Added", description: `Your address has been successfully ${editingAddress ? "updated" : "added"}.` });
     } catch (error) {
-        console.error("Failed to save addresses to localStorage", error);
-        // Optionally: inform user that changes might not be saved
+        console.error("Failed to save addresses:", error);
+        toast({ title: "Save Error", description: "Could not save address changes.", variant: "destructive" });
     }
-    setAddresses(updatedAddresses);
+    
     setEditingAddress(null);
     setIsFormVisible(false);
     form.reset();
   }
 
-  const handleDeleteAddress = (id: string) => {
-    const newAddresses = addresses.filter(addr => addr.id !== id);
-    // If the deleted address was default, and there are other addresses, make the first one default
+  const handleDeleteAddress = async (id: string) => {
+    if (!currentUserEmail) return;
+    let newAddresses = addresses.filter(addr => addr.id !== id);
     const deletedAddressWasDefault = addresses.find(addr => addr.id === id)?.isDefault;
-    if (deletedAddressWasDefault && newAddresses.length > 0) {
+    if (deletedAddressWasDefault && newAddresses.length > 0 && !newAddresses.some(a => a.isDefault)) {
       newAddresses[0].isDefault = true;
     }
 
     try {
-        localStorage.setItem(ADDRESS_STORAGE_KEY, JSON.stringify(newAddresses));
+        await updateUserAddresses(currentUserEmail, newAddresses);
+        setAddresses(newAddresses);
+        toast({ title: "Address Deleted", description: "The address has been removed." });
     } catch (error) {
-        console.error("Failed to save addresses to localStorage", error);
+        console.error("Failed to delete address:", error);
+        toast({ title: "Delete Error", description: "Could not delete address.", variant: "destructive" });
     }
-    setAddresses(newAddresses);
-    toast({ title: "Address Deleted", description: "The address has been removed." });
   };
   
-  const handleSetDefault = (id: string) => {
+  const handleSetDefault = async (id: string) => {
+    if (!currentUserEmail) return;
     const newAddresses = addresses.map(addr => ({
       ...addr,
       isDefault: addr.id === id
     }));
     try {
-        localStorage.setItem(ADDRESS_STORAGE_KEY, JSON.stringify(newAddresses));
+        await updateUserAddresses(currentUserEmail, newAddresses);
+        setAddresses(newAddresses);
+        toast({ title: "Default Address Set", description: "Primary shipping address updated." });
     } catch (error) {
-        console.error("Failed to save addresses to localStorage", error);
+        console.error("Failed to set default address:", error);
+        toast({ title: "Update Error", description: "Could not set default address.", variant: "destructive" });
     }
-    setAddresses(newAddresses);
-    toast({ title: "Default Address Set", description: "Primary shipping address updated." });
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+        <Skeleton className="h-10 w-1/3" />
+      </div>
+    )
+  }
+
+  if (!currentUserEmail && !isLoading) {
+     return <p className="text-muted-foreground text-center py-4">Please log in to manage your addresses.</p>;
+  }
 
   return (
     <div className="space-y-6">
@@ -258,16 +286,14 @@ export function AddressManagement() {
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
-                            disabled={editingAddress?.isDefault && addresses.filter(a => a.id !== editingAddress.id).every(a => !a.isDefault) && addresses.length === 1} // Disable unchecking if it's the only address and default
+                            // Disable unchecking if it's the only address and default
+                            disabled={!!editingAddress && editingAddress.isDefault && addresses.length === 1}
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel>
                             Set as default shipping address
                           </FormLabel>
-                           <FormDescription>
-                            Your primary address for deliveries.
-                          </FormDescription>
                         </div>
                       </FormItem>
                     )}

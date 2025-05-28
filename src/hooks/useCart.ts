@@ -3,108 +3,130 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Product } from '@/types/product';
+import type { FullCartItem } from '@/types/userData';
 import { useToast } from './use-toast';
-
-export interface CartItem {
-  product: Product;
-  quantity: number;
-}
-
-const CART_STORAGE_KEY = 'earthPuranCart';
+import { getUserData, updateUserCart } from '@/app/actions/userActions';
 
 export function useCart() {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<FullCartItem[]>([]);
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load cart from localStorage on initial client-side render
-    try {
-      const storedCart = localStorage.getItem(CART_STORAGE_KEY);
-      if (storedCart) {
-        setCartItems(JSON.parse(storedCart));
-      }
-    } catch (error) {
-      console.error("Failed to load cart from localStorage", error);
-      setCartItems([]); // Reset to empty on error
+    if (typeof window !== 'undefined') {
+      const email = localStorage.getItem('currentUserEmail');
+      setCurrentUserEmail(email);
     }
   }, []);
 
-  const addToCart = useCallback((product: Product, quantity: number = 1) => {
-    let newItemsState: CartItem[];
-    const existingItem = cartItems.find(item => item.product.id === product.id);
-    if (existingItem) {
-      newItemsState = cartItems.map(item =>
-        item.product.id === product.id
-          ? { ...item, quantity: Math.min(item.quantity + quantity, product.stock) } // Respect stock
+
+  const loadCartData = useCallback(async () => {
+    if (!currentUserEmail) {
+      setCartItems([]); // No user, clear cart
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const userData = await getUserData(currentUserEmail);
+      setCartItems(userData?.cart || []);
+    } catch (error) {
+      console.error("Failed to load cart data:", error);
+      setCartItems([]);
+      toast({ title: "Error", description: "Could not load your cart.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUserEmail, toast]);
+
+  useEffect(() => {
+    loadCartData();
+  }, [loadCartData]);
+
+  const persistCart = async (updatedCartItems: FullCartItem[]) => {
+    if (currentUserEmail) {
+      try {
+        await updateUserCart(currentUserEmail, updatedCartItems);
+      } catch (error) {
+        console.error("Failed to persist cart:", error);
+        toast({ title: "Sync Error", description: "Could not save cart changes to server.", variant: "destructive" });
+        // Optionally, revert optimistic update or try again later
+      }
+    }
+  };
+
+  const addToCart = useCallback(async (product: Product, quantity: number = 1) => {
+    if (!currentUserEmail) {
+        toast({title: "Login Required", description: "Please log in to add items to your cart.", variant: "destructive"});
+        // Consider redirecting to login: router.push('/login?redirect=...');
+        return;
+    }
+    let newItemsState: FullCartItem[];
+    const existingItemIndex = cartItems.findIndex(item => item.product.id === product.id);
+
+    if (existingItemIndex > -1) {
+      newItemsState = cartItems.map((item, index) =>
+        index === existingItemIndex
+          ? { ...item, quantity: Math.min(item.quantity + quantity, product.stock) }
           : item
       );
     } else {
       newItemsState = [...cartItems, { product, quantity: Math.min(quantity, product.stock) }];
     }
+    
+    setCartItems(newItemsState); 
+    await persistCart(newItemsState);
 
-    try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItemsState));
-    } catch (error) {
-      console.error("Failed to save cart to localStorage immediately in addToCart", error);
-    }
-    setCartItems(newItemsState);
+    setTimeout(() => { 
+        toast({
+            title: "Added to Cart",
+            description: `${product.name} has been added to your cart.`,
+        });
+    },0);
+  }, [cartItems, toast, currentUserEmail]);
 
-    setTimeout(() => {
-      toast({
-        title: "Added to Cart",
-        description: `${product.name} has been added to your cart.`,
-      });
-    }, 0);
-  }, [cartItems, toast]);
+  const removeFromCart = useCallback(async (productId: string) => {
+    if (!currentUserEmail) return; // Should not happen if cart has items for a user
 
-  const removeFromCart = useCallback((productId: string) => {
     const productToRemove = cartItems.find(item => item.product.id === productId)?.product;
     const newItemsState = cartItems.filter(item => item.product.id !== productId);
-
-    try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItemsState));
-    } catch (error) {
-      console.error("Failed to save cart to localStorage immediately in removeFromCart", error);
-    }
+    
     setCartItems(newItemsState);
+    await persistCart(newItemsState);
 
     if (productToRemove) {
       setTimeout(() => {
         toast({
-          title: "Item Removed",
-          description: `${productToRemove.name} has been removed from your cart.`,
-          variant: "destructive"
+            title: "Item Removed",
+            description: `${productToRemove.name} has been removed from your cart.`,
+            variant: "destructive"
         });
       }, 0);
     }
-  }, [cartItems, toast]);
+  }, [cartItems, toast, currentUserEmail]);
 
-  const updateQuantity = useCallback((productId: string, newQuantity: number) => {
+  const updateQuantity = useCallback(async (productId: string, newQuantity: number) => {
+    if (!currentUserEmail) return;
+
     const newItemsState = cartItems.map(item => {
       if (item.product.id === productId) {
-        // Ensure quantity is at least 1 and not more than stock
         const validatedQuantity = Math.max(1, Math.min(newQuantity, item.product.stock));
         return { ...item, quantity: validatedQuantity };
       }
       return item;
     });
 
-    try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItemsState));
-    } catch (error) {
-      console.error("Failed to save cart to localStorage immediately in updateQuantity", error);
-    }
     setCartItems(newItemsState);
-  }, [cartItems]);
+    await persistCart(newItemsState);
+  }, [cartItems, currentUserEmail]);
 
-  const clearCart = useCallback(() => {
-    const newItemsState: CartItem[] = [];
-    try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItemsState));
-    } catch (error) {
-      console.error("Failed to save cart to localStorage immediately in clearCart", error);
-    }
+  const clearCart = useCallback(async () => {
+    if (!currentUserEmail) return;
+
+    const newItemsState: FullCartItem[] = [];
     setCartItems(newItemsState);
+    await persistCart(newItemsState);
 
     setTimeout(() => {
       toast({
@@ -112,7 +134,7 @@ export function useCart() {
         description: "All items have been removed from your cart.",
       });
     }, 0);
-  }, [toast]);
+  }, [toast, currentUserEmail]);
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -125,5 +147,7 @@ export function useCart() {
     clearCart,
     subtotal,
     totalItems,
+    isLoadingCart: isLoading,
+    refreshCart: loadCartData, // Expose a way to manually refresh cart
   };
 }

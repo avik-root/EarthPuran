@@ -12,22 +12,26 @@ import { Input } from "@/components/ui/input";
 import { PinInput } from "@/components/ui/pin-input";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation"; // Added useSearchParams
 import { useToast } from "@/hooks/use-toast";
+import { getUserData, initializeUserAccount } from "@/app/actions/userActions"; // To fetch profile data if needed
+import type { UserProfile } from "@/types/userData";
+
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }).refine(val => val.endsWith('@gmail.com'), { message: "Only Gmail addresses are allowed." }),
-  password: z.string().min(1, { message: "Password is required." }),
-  pin: z.string().length(6, { message: "PIN must be 6 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }),
+  password: z.string().min(1, { message: "Password is required." }), // In real app, compare with hashed password
+  pin: z.string().length(6, { message: "PIN must be 6 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }), // In real app, compare with hashed PIN
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
-  const [showPin, setShowPin] = useState(true); // Initially show PIN
+  const [showPin, setShowPin] = useState(true); 
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -38,28 +42,42 @@ export default function LoginPage() {
     },
   });
 
-  function onSubmit(values: LoginFormValues) {
+  async function onSubmit(values: LoginFormValues) {
     console.log("Login form submitted:", values);
 
-    localStorage.setItem("isLoggedInPrototype", "true");
+    // Prototype login logic:
+    // For this prototype, we'll assume any valid email format with any password/pin is a successful login.
+    // In a real app, you'd verify password and PIN against hashed stored values.
+    
+    let userProfileData: UserProfile | null = await getUserData(values.email);
 
-    // Store mock user profile data
-    let userProfile = {
-      firstName: "Test",
-      lastName: "User",
-      email: values.email,
-      countryCode: "IN", // Default mock country
-      phoneNumber: "9876543210", // Default mock phone
-    };
-
-    if (values.email === "anu@gmail.com") { // Example specific user
-        userProfile.firstName = "Anu";
-        userProfile.lastName = "Puran";
+    if (!userProfileData) {
+      // If user data doesn't exist in users.json, create a basic profile.
+      // This might happen if they signed up before users.json was implemented,
+      // or it's a new "guest" login being converted.
+      const newProfile: UserProfile = {
+        firstName: values.email.split('@')[0] || "User", // Basic first name from email
+        lastName: "",
+        email: values.email,
+        countryCode: "IN", // Default country
+        phoneNumber: "0000000000", // Placeholder phone
+      };
+      try {
+        userProfileData = await initializeUserAccount(newProfile); // Save to users.json
+      } catch (error) {
+        console.error("Failed to initialize user account on login:", error);
+        toast({ title: "Login Error", description: "Could not retrieve or create user profile.", variant: "destructive" });
+        return;
+      }
     }
-    localStorage.setItem('userProfilePrototype', JSON.stringify(userProfile));
+    
+    localStorage.setItem("isLoggedInPrototype", "true");
+    localStorage.setItem('userProfilePrototype', JSON.stringify(userProfileData)); // Store fetched or created profile
+    localStorage.setItem('currentUserEmail', values.email); // Important for userActions
 
     toast({ title: "Login Successful", description: "Welcome back!" });
-    router.push("/");
+    const redirectUrl = searchParams.get('redirect') || "/";
+    router.push(redirectUrl);
   }
 
   return (

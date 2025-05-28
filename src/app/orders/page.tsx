@@ -1,32 +1,58 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { ListOrdered, PackageSearch, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import type { Order } from "@/types/order";
 import { cn } from "@/lib/utils";
-
-const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
+import { getUserData } from "@/app/actions/userActions";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 
 export default function OrdersListPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
-    try {
-      const storedOrders = localStorage.getItem(ORDER_HISTORY_STORAGE_KEY);
-      if (storedOrders) {
-        setOrders(JSON.parse(storedOrders));
+    if (typeof window !== 'undefined') {
+      const email = localStorage.getItem('currentUserEmail');
+      setCurrentUserEmail(email);
+      if (!email) { // If not logged in, redirect
+          // toast({title: "Login Required", description: "Please log in to view orders.", variant:"destructive"});
+          // router.push("/login?redirect=/orders"); // Optional: redirect from here too
       }
-    } catch (error) {
-      console.error("Failed to load orders from localStorage", error);
-      setOrders([]);
     }
-    setLoading(false);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
+
+  const fetchOrders = useCallback(async () => {
+    if (!currentUserEmail) {
+        setLoading(false); 
+        return;
+    }
+    setLoading(true);
+    try {
+      const userData = await getUserData(currentUserEmail);
+      setOrders(userData?.orders?.sort((a,b) => parseInt(b.id) - parseInt(a.id)) || []);
+    } catch (error) {
+      console.error("Failed to load orders:", error);
+      setOrders([]);
+      toast({ title: "Error", description: "Could not load your order history.", variant: "destructive"});
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUserEmail, toast]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
   
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -48,9 +74,20 @@ export default function OrdersListPage() {
                     <p className="text-muted-foreground">Loading your purchase history...</p>
                 </div>
             </div>
-            <Card><CardContent className="p-6 text-center text-muted-foreground">Loading orders...</CardContent></Card>
+            <Card><CardContent className="p-6"><Skeleton className="h-20 w-full" /></CardContent></Card>
         </div>
     );
+  }
+
+  if (!currentUserEmail && !loading) {
+    return (
+         <div className="space-y-8 text-center">
+            <ListOrdered className="mx-auto h-10 w-10 text-primary" />
+            <h1 className="text-3xl font-bold tracking-tight text-primary">Order History</h1>
+            <p className="text-muted-foreground">Please log in to view your order history.</p>
+            <Button asChild className="mt-4"><Link href="/login?redirect=/orders">Login</Link></Button>
+        </div>
+    )
   }
 
   return (
@@ -76,7 +113,7 @@ export default function OrdersListPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {orders.sort((a,b) => parseInt(b.id) - parseInt(a.id)).map((order) => (
+          {orders.map((order) => (
             <Link key={order.id} href={`/orders/${order.id}`} className="block hover:shadow-lg transition-shadow rounded-lg">
               <Card>
                 <CardContent className="p-4 flex items-center justify-between">

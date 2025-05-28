@@ -1,19 +1,17 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { useEffect, useState, useCallback } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Lock, MapPin, ListOrdered, Heart, PackageSearch, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from 'next/navigation'; // Import useSearchParams
+import { useSearchParams, useRouter } from 'next/navigation';
 
-// Form components
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { AddressManagement } from "@/components/profile/AddressManagement";
 import { UserProfileDisplay } from "@/components/profile/UserProfileDisplay"; 
 
-// Imports for Wishlist content
 import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/hooks/useWishlist";
 import { ProductCard } from "@/components/ProductCard";
@@ -21,17 +19,33 @@ import type { Order } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-
-const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
+import { getUserData } from "@/app/actions/userActions";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProfilePage() {
-  const { wishlistItems, clearWishlist: clearWishlistHook } = useWishlist();
+  const { wishlistItems, clearWishlist, isLoadingWishlist, refreshWishlist } = useWishlist();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('edit-profile');
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+ useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const email = localStorage.getItem('currentUserEmail');
+      const loggedInStatus = localStorage.getItem('isLoggedInPrototype') === 'true';
+      setCurrentUserEmail(email);
+      setIsLoggedIn(loggedInStatus);
+      if (!loggedInStatus) {
+        // toast({title: "Login Required", description: "Please log in to view your profile.", variant:"destructive"});
+        // router.push("/login?redirect=/profile"); // Redirect if not logged in
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
 
   useEffect(() => {
     const tabQueryParam = searchParams.get('tab');
@@ -40,18 +54,34 @@ export default function ProfilePage() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    try {
-      const storedOrders = localStorage.getItem(ORDER_HISTORY_STORAGE_KEY);
-      if (storedOrders) {
-        setOrders(JSON.parse(storedOrders));
-      }
-    } catch (error) {
-      console.error("Failed to load orders from localStorage", error);
-      setOrders([]);
+  const fetchOrders = useCallback(async () => {
+    if (!currentUserEmail || !isLoggedIn) {
+        setOrders([]);
+        setLoadingOrders(false);
+        return;
     }
-    setLoadingOrders(false);
-  }, []);
+    setLoadingOrders(true);
+    try {
+      const userData = await getUserData(currentUserEmail);
+      setOrders(userData?.orders?.sort((a,b) => parseInt(b.id) - parseInt(a.id)) || []);
+    } catch (error) {
+      console.error("Failed to load orders for profile:", error);
+      setOrders([]);
+      toast({ title: "Error", description: "Could not load your order history.", variant: "destructive"});
+    } finally {
+      setLoadingOrders(false);
+    }
+  }, [currentUserEmail, toast, isLoggedIn]);
+
+  useEffect(() => {
+    if (activeTab === 'orders' && isLoggedIn) { // Fetch orders only if logged in and tab is active
+        fetchOrders();
+    }
+    if (activeTab === 'wishlist' && isLoggedIn) { // Refresh wishlist if tab is active
+        refreshWishlist();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, fetchOrders, isLoggedIn]); // refreshWishlist can be added if stable
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -62,6 +92,21 @@ export default function ProfilePage() {
       default: return 'text-muted-foreground';
     }
   };
+  
+  if (typeof window !== 'undefined' && !isLoggedIn && !currentUserEmail) {
+     // This part will only run on client after initial mount if not logged in.
+     // It's better to handle this with a redirect in the first useEffect or a wrapper component.
+     // For now, just showing a message.
+      return (
+        <div className="space-y-8 text-center">
+            <User className="mx-auto h-10 w-10 text-primary" />
+            <h1 className="text-3xl font-bold tracking-tight text-primary">My Profile</h1>
+            <p className="text-muted-foreground">Please log in to view your profile.</p>
+            <Button asChild className="mt-4"><Link href="/login?redirect=/profile">Login</Link></Button>
+        </div>
+    );
+  }
+
 
   return (
     <div className="space-y-8">
@@ -122,8 +167,10 @@ export default function ProfilePage() {
                 <CardDescription>View summaries of your past purchases. Click an order to see details.</CardDescription>
             </CardHeader>
             <CardContent>
-                {loadingOrders ? (
-                     <p className="text-muted-foreground text-center py-4">Loading orders...</p>
+              {loadingOrders ? (
+                     <Skeleton className="h-24 w-full" />
+                ) : !isLoggedIn ? (
+                    <p className="text-muted-foreground text-center py-4">Please log in to view your order history.</p>
                 ) : orders.length === 0 ? (
                     <div className="text-center py-12 border border-dashed rounded-lg">
                         <PackageSearch className="mx-auto h-12 w-12 text-muted-foreground/50" />
@@ -137,7 +184,7 @@ export default function ProfilePage() {
                     </div>
                 ) : (
                     <div className="space-y-3">
-                    {orders.sort((a,b) => parseInt(b.id) - parseInt(a.id)).map((order) => (
+                    {orders.map((order) => (
                        <Link key={order.id} href={`/orders/${order.id}`} className="block hover:shadow-md transition-shadow rounded-lg">
                         <Card>
                           <CardContent className="p-3 flex items-center justify-between">
@@ -167,14 +214,18 @@ export default function ProfilePage() {
                     <CardTitle className="text-xl font-semibold">My Wishlist</CardTitle>
                     <CardDescription>Your saved favorite products.</CardDescription>
                 </div>
-                {wishlistItems.length > 0 && (
-                    <Button variant="outline" size="sm" onClick={clearWishlistHook} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                {wishlistItems.length > 0 && isLoggedIn && (
+                    <Button variant="outline" size="sm" onClick={clearWishlist} className="text-destructive hover:text-destructive hover:bg-destructive/10">
                         <Trash2 className="mr-2 h-3 w-3" /> Clear Wishlist
                     </Button>
                 )}
             </CardHeader>
             <CardContent>
-                {wishlistItems.length === 0 ? (
+              {isLoadingWishlist ? (
+                    <Skeleton className="h-64 w-full" />
+                ) : !isLoggedIn ? (
+                    <p className="text-muted-foreground text-center py-4">Please log in to manage your wishlist.</p>
+                ) : wishlistItems.length === 0 ? (
                     <div className="text-center py-12 border border-dashed rounded-lg">
                     <Heart className="mx-auto h-12 w-12 text-muted-foreground/50" />
                     <h2 className="mt-4 text-xl font-semibold text-foreground">Your Wishlist is Empty</h2>

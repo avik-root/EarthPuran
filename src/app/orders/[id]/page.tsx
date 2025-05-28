@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -13,8 +13,7 @@ import type { Order, OrderItem } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
+import { getUserData, updateUserOrders } from "@/app/actions/userActions";
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -22,40 +21,70 @@ export default function OrderDetailPage() {
   const orderId = params.id as string;
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [allOrders, setAllOrders] = useState<Order[]>([]); // To update localStorage
   const [loading, setLoading] = useState(true);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!orderId) return;
-    try {
-      const storedOrders = localStorage.getItem(ORDER_HISTORY_STORAGE_KEY);
-      if (storedOrders) {
-        const parsedOrders: Order[] = JSON.parse(storedOrders);
-        setAllOrders(parsedOrders);
-        const currentOrder = parsedOrders.find(o => o.id === orderId);
-        setOrder(currentOrder || null);
+    if (typeof window !== 'undefined') {
+      const email = localStorage.getItem('currentUserEmail');
+      setCurrentUserEmail(email);
+       if (!email) { // If not logged in, redirect
+          // toast({title: "Login Required", description: "Please log in to view order details.", variant:"destructive"});
+          // router.push(`/login?redirect=/orders/${orderId}`); // Optional
       }
-    } catch (error) {
-      console.error("Failed to load order from localStorage", error);
-      setOrder(null);
     }
-    setLoading(false);
-  }, [orderId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleCancelOrder = () => {
-    if (!order || order.status !== 'Processing') {
+  const fetchOrderDetails = useCallback(async () => {
+    if (!orderId || !currentUserEmail) {
+        setOrder(null);
+        setLoading(false);
+        return;
+    }
+    setLoading(true);
+    try {
+      const userData = await getUserData(currentUserEmail);
+      const currentOrder = userData?.orders?.find(o => o.id === orderId);
+      setOrder(currentOrder || null);
+    } catch (error) {
+      console.error("Failed to load order details:", error);
+      setOrder(null);
+      toast({ title: "Error", description: "Could not load order details.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [orderId, currentUserEmail, toast]);
+
+  useEffect(() => {
+    fetchOrderDetails();
+  }, [fetchOrderDetails]);
+
+  const handleCancelOrder = async () => {
+    if (!order || order.status !== 'Processing' || !currentUserEmail) {
       toast({ title: "Cancellation Failed", description: "Order cannot be cancelled or was not found.", variant: "destructive" });
       return;
     }
 
-    const updatedOrder = { ...order, status: 'Cancelled' as const };
-    const updatedAllOrders = allOrders.map(o => (o.id === orderId ? updatedOrder : o));
-    
-    setOrder(updatedOrder);
-    setAllOrders(updatedAllOrders);
-    localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify(updatedAllOrders));
-    toast({ title: "Order Cancelled", description: `Order #${orderId} has been cancelled.` });
+    try {
+        const userData = await getUserData(currentUserEmail);
+        if (!userData || !userData.orders) {
+            toast({ title: "Error", description: "Could not retrieve user orders to process cancellation.", variant: "destructive" });
+            return;
+        }
+        const updatedOrderForDisplay = { ...order, status: 'Cancelled' as const };
+        const updatedAllUserOrders = userData.orders.map(o => (o.id === orderId ? updatedOrderForDisplay : o));
+        
+        const success = await updateUserOrders(currentUserEmail, updatedAllUserOrders);
+        if (!success) throw new Error("Failed to update orders via action.");
+
+        setOrder(updatedOrderForDisplay); // Update local state
+        toast({ title: "Order Cancelled", description: `Order #${orderId} has been cancelled.` });
+    } catch (error) {
+        console.error("Failed to cancel order:", error);
+        toast({ title: "Cancellation Error", description: "Could not cancel the order.", variant: "destructive" });
+    }
   };
 
   const handleTrackPackage = () => {
@@ -75,24 +104,32 @@ export default function OrderDetailPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-8" />
-          <Skeleton className="h-8 w-48" />
-        </div>
+        <Skeleton className="h-10 w-36 mb-2" />
         <Card>
-          <CardHeader><Skeleton className="h-6 w-1/2" /></CardHeader>
+          <CardHeader><Skeleton className="h-12 w-3/4" /></CardHeader>
           <CardContent className="space-y-4">
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
           </CardContent>
-          <CardFooter><Skeleton className="h-10 w-24 ml-auto" /></CardFooter>
+          <CardFooter><Skeleton className="h-10 w-28 ml-auto" /></CardFooter>
         </Card>
       </div>
     );
   }
 
-  if (!order) {
+  if (!currentUserEmail && !loading) {
+    return (
+         <div className="space-y-6 text-center">
+            <PackageSearch className="mx-auto h-16 w-16 text-muted-foreground/50" />
+            <h2 className="mt-6 text-2xl font-semibold text-foreground">Access Denied</h2>
+            <p className="mt-2 text-muted-foreground">Please log in to view order details.</p>
+            <Button asChild className="mt-4"><Link href={`/login?redirect=/orders/${orderId}`}>Login</Link></Button>
+        </div>
+    )
+  }
+
+  if (!order && !loading) {
     return (
       <div className="space-y-6 text-center">
          <Button variant="outline" onClick={() => router.push('/profile?tab=orders')} className="mb-6 mr-auto">

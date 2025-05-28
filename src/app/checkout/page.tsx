@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,32 +13,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { useCart } from "@/hooks/useCart"; // Removed CartItem type import as OrderItem will be used
+import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Order, OrderItem, ShippingDetails } from "@/types/order"; // Import centralized types
-
-interface UserProfileData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  countryCode: string; // e.g., "IN"
-  phoneNumber: string;
-}
-
-interface UserAddress {
-  id: string;
-  street: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-  isDefault: boolean;
-}
-
-const ADDRESS_STORAGE_KEY = 'earthPuranUserAddresses';
-const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
+import type { Order, ShippingDetails as OrderShippingDetails } from "@/types/order";
+import type { UserProfile, UserAddress } from "@/types/userData";
+import { getUserData, addOrder } from "@/app/actions/userActions";
 
 const countries: { code: string; name: string; phoneCode: string }[] = [
   { code: "US", name: "United States", phoneCode: "+1" },
@@ -48,7 +29,6 @@ const countries: { code: string; name: string; phoneCode: string }[] = [
   { code: "IN", name: "India", phoneCode: "+91" },
 ];
 
-// This schema and type remain local to checkout for form validation
 const shippingSchema = z.object({
   firstName: z.string().min(1, "First name is required."),
   lastName: z.string().min(1, "Last name is required."),
@@ -63,14 +43,13 @@ const shippingSchema = z.object({
 
 export type ShippingFormValues = z.infer<typeof shippingSchema>;
 
-
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartItems, subtotal, clearCart } = useCart();
+  const { cartItems, subtotal, clearCart, isLoadingCart, refreshCart } = useCart();
   const { toast } = useToast();
-  const [profileData, setProfileData] = useState<UserProfileData | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [shippingDetailsSaved, setShippingDetailsSaved] = useState<ShippingFormValues | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
   const shippingCost = cartItems.length > 0 ? 50.00 : 0;
   const totalAmount = subtotal + shippingCost;
@@ -91,45 +70,67 @@ export default function CheckoutPage() {
   });
 
   useEffect(() => {
-    let parsedProfile: UserProfileData | null = null;
-    let defaultAddress: UserAddress | null = null;
-
-    const storedProfile = localStorage.getItem('userProfilePrototype');
-    if (storedProfile) {
-      try {
-        parsedProfile = JSON.parse(storedProfile) as UserProfileData;
-        setProfileData(parsedProfile);
-      } catch (error) {
-        console.error("Failed to parse user profile for checkout", error);
+    if (typeof window !== 'undefined') {
+      const email = localStorage.getItem('currentUserEmail');
+      setCurrentUserEmail(email);
+      if (!email) { // If not logged in, redirect
+        toast({title: "Login Required", description: "Please log in to proceed to checkout.", variant:"destructive"});
+        router.push("/login?redirect=/checkout");
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, toast]); // router and toast are stable
 
-    const storedAddresses = localStorage.getItem(ADDRESS_STORAGE_KEY);
-    if (storedAddresses) {
-      try {
-        const allAddresses = JSON.parse(storedAddresses) as UserAddress[];
-        defaultAddress = allAddresses.find(addr => addr.isDefault) || (allAddresses.length > 0 ? allAddresses[0] : null);
-      } catch (error) {
-        console.error("Failed to parse user addresses for checkout", error);
-      }
+  const loadInitialData = useCallback(async () => {
+    if (!currentUserEmail) {
+        setLoadingProfile(false);
+        return;
     }
+    setLoadingProfile(true);
+    try {
+        const userData = await getUserData(currentUserEmail);
+        let profileToUse: UserProfile | null = null;
+        let defaultAddressToUse: UserAddress | null = null;
 
-    const countryInfo = countries.find(c => c.code === parsedProfile?.countryCode);
+        if (userData) {
+            profileToUse = userData.profile;
+            if (userData.addresses && userData.addresses.length > 0) {
+                defaultAddressToUse = userData.addresses.find(addr => addr.isDefault) || userData.addresses[0];
+            }
+        } else {
+            const storedProfile = localStorage.getItem('userProfilePrototype'); // Fallback if users.json is slow/empty
+            if (storedProfile) profileToUse = JSON.parse(storedProfile) as UserProfile;
+        }
 
-    form.reset({
-      firstName: parsedProfile?.firstName || "",
-      lastName: parsedProfile?.lastName || "",
-      phoneNumber: parsedProfile?.phoneNumber || "",
-      phoneCountryCode: countryInfo?.phoneCode || "+91",
-      country: defaultAddress?.country || countryInfo?.name || "India",
-      address: defaultAddress?.street || "",
-      city: defaultAddress?.city || "",
-      state: defaultAddress?.state || "",
-      pincode: defaultAddress?.zipCode || "",
-    });
+        const countryInfo = countries.find(c => c.code === profileToUse?.countryCode);
 
-    setLoadingProfile(false);
-  }, [form]);
+        form.reset({
+            firstName: profileToUse?.firstName || "",
+            lastName: profileToUse?.lastName || "",
+            phoneNumber: profileToUse?.phoneNumber || "",
+            phoneCountryCode: countryInfo?.phoneCode || "+91",
+            country: defaultAddressToUse?.country || countryInfo?.name || "India",
+            address: defaultAddressToUse?.street || "",
+            city: defaultAddressToUse?.city || "",
+            state: defaultAddressToUse?.state || "",
+            pincode: defaultAddressToUse?.zipCode || "",
+        });
+    } catch (error) {
+        console.error("Failed to load user data for checkout:", error);
+        toast({title: "Error", description: "Could not load your profile data.", variant: "destructive"})
+    } finally {
+        setLoadingProfile(false);
+    }
+  }, [currentUserEmail, form, toast]);
+
+  useEffect(() => {
+    if(currentUserEmail){ // Only load if user is identified
+        loadInitialData();
+        refreshCart(); // Refresh cart from server source
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserEmail, loadInitialData]); // refreshCart can be added if stable
+
 
   const onShippingSubmit = (values: ShippingFormValues) => {
     console.log("Shipping details saved:", values);
@@ -137,7 +138,12 @@ export default function CheckoutPage() {
     toast({ title: "Shipping Address Saved", description: "You can now proceed to place your order." });
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
+    if (!currentUserEmail) {
+        toast({ title: "Login Required", description: "Please log in to place an order.", variant: "destructive" });
+        router.push("/login?redirect=/checkout");
+        return;
+    }
     if (!shippingDetailsSaved || cartItems.length === 0) {
       toast({
         title: "Cannot Place Order",
@@ -147,8 +153,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Ensure shippingDetailsSaved matches the ShippingDetails type for the Order
-    const orderShippingDetails: ShippingDetails = {
+    const orderShippingDetails: OrderShippingDetails = {
         firstName: shippingDetailsSaved.firstName,
         lastName: shippingDetailsSaved.lastName,
         address: shippingDetailsSaved.address,
@@ -162,8 +167,8 @@ export default function CheckoutPage() {
 
     const newOrder: Order = {
       id: Date.now().toString(),
-      date: new Date().toLocaleDateString('en-GB'), // DD/MM/YYYY format
-      items: cartItems.map(item => ({ // cartItem from useCart hook
+      date: new Date().toLocaleDateString('en-GB'),
+      items: cartItems.map(item => ({
         productId: item.product.id,
         name: item.product.name,
         quantity: item.quantity,
@@ -172,31 +177,28 @@ export default function CheckoutPage() {
         imageHint: item.product.imageHint,
       })),
       totalAmount: totalAmount,
-      shippingDetails: orderShippingDetails, // Use the mapped details
+      shippingDetails: orderShippingDetails,
       status: 'Processing',
     };
 
     try {
-      const existingOrdersJSON = localStorage.getItem(ORDER_HISTORY_STORAGE_KEY);
-      const existingOrders: Order[] = existingOrdersJSON ? JSON.parse(existingOrdersJSON) : [];
-      localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify([...existingOrders, newOrder]));
+      const success = await addOrder(currentUserEmail, newOrder);
+      if (!success) throw new Error("Failed to add order via action.");
+      await clearCart(); // This will also update users.json for the cart
+
+      toast({
+        title: "Order Placed Successfully!",
+        description: "Your Earth Puran order (COD) has been confirmed. Thank you for shopping!",
+      });
+      router.push("/");
     } catch (error) {
-      console.error("Failed to save order to localStorage", error);
+      console.error("Failed to save order:", error);
       toast({
         title: "Order Placement Issue",
         description: "There was an issue saving your order. Please try again.",
         variant: "destructive",
       });
-      return;
     }
-
-    console.log("Placing order with COD:", newOrder);
-    clearCart();
-    toast({
-      title: "Order Placed Successfully!",
-      description: "Your Earth Puran order (COD) has been confirmed. Thank you for shopping!",
-    });
-    router.push("/");
   };
 
 
@@ -319,7 +321,9 @@ export default function CheckoutPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {cartItems.length === 0 ? (
+              {isLoadingCart ? (
+                <Skeleton className="h-24 w-full" />
+              ) : cartItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">Your cart is empty.</p>
               ) : (
                 <>
@@ -349,7 +353,7 @@ export default function CheckoutPage() {
                 size="lg"
                 className="w-full"
                 onClick={handlePlaceOrder}
-                disabled={!shippingDetailsSaved || cartItems.length === 0 || loadingProfile}
+                disabled={!shippingDetailsSaved || cartItems.length === 0 || loadingProfile || isLoadingCart}
               >
                 Place Order (COD)
               </Button>
