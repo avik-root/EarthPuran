@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, User, Heart, Search, Menu, UserCircle, LogOut, Settings, ListOrdered } from "lucide-react";
+import { ShoppingBag, User, Heart, Search, Menu, UserCircle, LogOut, Settings, ListOrdered, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
@@ -40,7 +40,7 @@ export function Header() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | undefined>(undefined); // Initialize as undefined
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | undefined>(undefined);
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -64,7 +64,7 @@ export function Header() {
       router.push(`/products?q=${encodeURIComponent(mobileSearchTerm.trim())}`);
       setMobileSearchTerm("");
       setMobileSearchOpen(false);
-      setMobileMenuOpen(false); // Close main mobile menu if search is submitted from there
+      setMobileMenuOpen(false); 
     }
   };
 
@@ -95,6 +95,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center space-x-1 sm:space-x-3">
+          {/* Mobile Search Sheet Trigger */}
           <div className="sm:hidden">
             <Sheet open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
               <SheetTrigger asChild>
@@ -123,58 +124,77 @@ export function Header() {
             </Sheet>
           </div>
 
+          {/* Desktop Search Button (Placeholder functionality) */}
           <Button variant="ghost" size="icon" aria-label="Search" className="hidden sm:inline-flex">
             <Search className="h-5 w-5" />
           </Button>
 
+          {/* Wishlist Button */}
           <Link href="/wishlist" passHref>
             <Button variant="ghost" size="icon" aria-label="Wishlist">
               <Heart className="h-5 w-5" />
             </Button>
           </Link>
+          {/* Cart Button */}
           <Link href="/cart" passHref>
             <Button variant="ghost" size="icon" aria-label="Shopping Bag">
               <ShoppingBag className="h-5 w-5" />
             </Button>
           </Link>
 
-          {hasMounted && isLoggedIn !== undefined ? (
-            isLoggedIn ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="User Account">
-                    <UserCircle className="h-5 w-5" />
+          {/* Dynamic Auth UI and Theme Toggle - Rendered only after client mount */}
+          {hasMounted ? (
+            <>
+              {isLoggedIn !== undefined ? (
+                isLoggedIn ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" aria-label="User Account">
+                        <UserCircle className="h-5 w-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/orders"><ListOrdered className="mr-2 h-4 w-4" />Order History</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/dashboard"><Settings className="mr-2 h-4 w-4" />Admin Dashboard</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />Log Out
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/login">Login</Link>
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/orders"><ListOrdered className="mr-2 h-4 w-4" />Order History</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin/dashboard"><Settings className="mr-2 h-4 w-4" />Admin Dashboard</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />Log Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-               <Button asChild variant="outline" size="sm">
-                  <Link href="/login">Login</Link>
-               </Button>
-            )
+                )
+              ) : (
+                // Placeholder while isLoggedIn is being determined (after mount)
+                <Button variant="outline" size="sm" disabled style={{ visibility: 'hidden' }} aria-hidden="true">
+                  Login
+                </Button>
+              )}
+              <ThemeToggle />
+            </>
           ) : (
-             null // Render nothing on server and initial client render for this slot
+            // Static placeholders for SSR and initial client render
+            // to match the structure and avoid hydration errors.
+            // One placeholder for the auth button/menu area, one for ThemeToggle.
+            <>
+              <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" /> {/* Approx space for Login button */}
+              <div style={{ width: '40px', height: '40px' }} aria-hidden="true" /> {/* Approx space for ThemeToggle icon button */}
+            </>
           )}
 
-
-          <ThemeToggle />
+          {/* Mobile Menu Trigger */}
           <div className="md:hidden">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -225,7 +245,8 @@ export function Header() {
                            </Button>
                         )
                     ) : (
-                        null // Render nothing on server and initial client render for this mobile slot
+                       // Placeholder for mobile menu auth section before mount
+                       <div className="h-10 mt-4" aria-hidden="true" />
                     )}
                     </nav>
                 </div>
@@ -237,4 +258,3 @@ export function Header() {
     </header>
   );
 }
-
