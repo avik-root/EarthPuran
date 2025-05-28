@@ -23,11 +23,6 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// Admin credentials (for prototype - normally this check is server-side with hashed values)
-const ADMIN_EMAIL = "anu@gmail.com";
-const ADMIN_PASSWORD = "Agtg@2005";
-const ADMIN_PIN = "092011";
-
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -46,24 +41,12 @@ export default function LoginPage() {
   function onSubmit(values: LoginFormValues) {
     console.log("Login form submitted:", values);
 
-    if (
-      values.email === ADMIN_EMAIL &&
-      values.password === ADMIN_PASSWORD &&
-      values.pin === ADMIN_PIN
-    ) {
-      // Admin login
-      localStorage.setItem("isLoggedInPrototype", "true");
-      localStorage.setItem("isAdminPrototype", "true");
-      toast({ title: "Admin Login Successful", description: "Welcome, Admin!" });
-      router.push("/admin/dashboard");
-    } else {
-      // Generic "successful" login for prototype purposes
-      // In a real app, you'd validate against a user database
-      localStorage.setItem("isLoggedInPrototype", "true");
-      localStorage.removeItem("isAdminPrototype"); // Ensure admin flag is cleared
-      toast({ title: "Login Successful", description: "Welcome back!" });
-      router.push("/");
-    }
+    // For prototype purposes, any valid submission (passes Zod schema) is a "successful" login
+    // In a real app, you'd validate against a user database
+    localStorage.setItem("isLoggedInPrototype", "true");
+    localStorage.removeItem("isAdminPrototype"); // Ensure admin flag is cleared just in case
+    toast({ title: "Login Successful", description: "Welcome back!" });
+    router.push("/");
   }
 
   return (

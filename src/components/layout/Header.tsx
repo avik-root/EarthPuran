@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, User, Heart, Search, Menu, UserCircle, LogOut, Settings, ListOrdered } from "lucide-react";
+import { ShoppingBag, User, Heart, Search, Menu, UserCircle, LogOut, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { useRouter, usePathname } from "next/navigation"; // Import usePathname
+import { useRouter, usePathname } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
@@ -38,21 +38,17 @@ export function Header() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileSearchTerm, setMobileSearchTerm] = useState("");
   const router = useRouter();
-  const pathname = usePathname(); // Get current pathname
+  const pathname = usePathname();
   const { toast } = useToast();
   
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
-    // This effect runs on mount and whenever the pathname changes
     const storedLoginStatus = localStorage.getItem("isLoggedInPrototype") === "true";
-    const storedAdminStatus = localStorage.getItem("isAdminPrototype") === "true";
     setIsLoggedIn(storedLoginStatus);
-    setIsAdmin(storedLoginStatus && storedAdminStatus);
     setHasMounted(true);
-  }, [pathname]); // Add pathname as a dependency
+  }, [pathname]);
 
 
   const handleMobileSearchSubmit = (e?: React.FormEvent) => {
@@ -67,14 +63,11 @@ export function Header() {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    setIsAdmin(false);
     localStorage.removeItem("isLoggedInPrototype");
-    localStorage.removeItem("isAdminPrototype");
+    localStorage.removeItem("isAdminPrototype"); // Keep this for good measure if it was ever set
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
     setMobileMenuOpen(false); 
     router.push("/"); 
-    // Optionally, to ensure the header definitely re-reads after state update from localStorage
-    // router.refresh(); // or force a more explicit state update if pathname doesn't change
   };
 
   return (
@@ -144,7 +137,6 @@ export function Header() {
             </Button>
           </Link>
 
-          {/* Dynamic Auth UI and Theme Toggle - Rendered only after client mount */}
           {hasMounted ? (
             <>
               {isLoggedIn ? (
@@ -163,11 +155,6 @@ export function Header() {
                     <DropdownMenuItem asChild>
                       <Link href="/orders"><ListOrdered className="mr-2 h-4 w-4" />Order History</Link>
                     </DropdownMenuItem>
-                    {isAdmin && ( 
-                      <DropdownMenuItem asChild>
-                        <Link href="/admin/dashboard"><Settings className="mr-2 h-4 w-4" />Admin Dashboard</Link>
-                      </DropdownMenuItem>
-                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />Log Out
@@ -182,8 +169,6 @@ export function Header() {
               <ThemeToggle />
             </>
           ) : (
-            // Static placeholders for SSR and initial client render.
-            // These MUST be identical on server and client's first pass.
             <>
               <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" /> {/* Approx space for Login button / UserMenu trigger */}
               <div style={{ width: '40px', height: '40px' }} aria-hidden="true" /> {/* Approx space for ThemeToggle icon button */}
@@ -224,15 +209,6 @@ export function Header() {
                               <Link href="/orders" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
                                  <ListOrdered className="mr-2 h-4 w-4" /> Order History
                               </Link>
-                              {isAdmin && ( 
-                                <Link
-                                  href="/admin/dashboard"
-                                  className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center"
-                                  onClick={() => setMobileMenuOpen(false)}
-                                >
-                                  <Settings className="mr-2 h-4 w-4" /> Admin Dashboard
-                                </Link>
-                              )}
                               <Button variant="outline" onClick={handleLogout} className="mt-4 flex items-center justify-center">
                                   <LogOut className="mr-2 h-4 w-4" /> Log Out
                               </Button>
