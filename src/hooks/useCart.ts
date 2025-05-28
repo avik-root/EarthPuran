@@ -6,7 +6,7 @@ import type { Product } from '@/types/product';
 import type { FullCartItem } from '@/types/userData';
 import { useToast } from './use-toast';
 import { getUserData, updateUserCart } from '@/app/actions/userActions';
-import { useRouter } from 'next/navigation'; // Added for potential redirect
+import { useRouter } from 'next/navigation';
 
 export function useCart() {
   const [cartItems, setCartItems] = useState<FullCartItem[]>([]);
@@ -63,7 +63,7 @@ export function useCart() {
       setTimeout(() => {
           toast({ title: "Sync Error", description: "Could not save cart changes to server.", variant: "destructive" });
       }, 0);
-      throw error; // Re-throw
+      throw error; 
     }
   }, [currentUserEmail, toast]);
 
@@ -76,8 +76,10 @@ export function useCart() {
     const originalCartItems = [...cartItems];
     const existingItemIndex = originalCartItems.findIndex(item => item.product.id === product.id);
     let nextCartItems: FullCartItem[];
+    const itemWasAlreadyInCart = existingItemIndex > -1;
+    const oldQuantityOfItemInCart = itemWasAlreadyInCart ? originalCartItems[existingItemIndex].quantity : 0;
 
-    if (existingItemIndex > -1) {
+    if (itemWasAlreadyInCart) {
       nextCartItems = originalCartItems.map((item, index) =>
         index === existingItemIndex
           ? { ...item, quantity: Math.min(item.quantity + quantity, product.stock) }
@@ -91,16 +93,31 @@ export function useCart() {
 
     try {
       await persistCart(nextCartItems);
+      
+      const finalQuantityInCart = nextCartItems.find(ci => ci.product.id === product.id)?.quantity || 0;
+      let toastDescription = "";
+
+      if (itemWasAlreadyInCart) {
+        toastDescription = `${product.name} quantity updated to ${finalQuantityInCart}.`;
+      } else {
+        toastDescription = `${finalQuantityInCart} x ${product.name} added to cart.`;
+      }
+      
+      const quantityActuallyAdded = finalQuantityInCart - oldQuantityOfItemInCart;
+      if (quantity > quantityActuallyAdded && finalQuantityInCart === product.stock) {
+         toastDescription += ` (Limited by stock: ${product.stock} available). Requested ${quantity}, added ${quantityActuallyAdded}.`;
+      }
+
+
       setTimeout(() => { 
           toast({
-              title: "Added to Cart",
-              description: `${product.name} has been added to your cart.`,
+              title: "Cart Updated",
+              description: toastDescription,
           });
       },0);
     } catch (error) {
       console.error("Add to cart persistence failed, reverting local state.");
       setCartItems(originalCartItems);
-      // Error toast handled by persistCart
     }
   }, [currentUserEmail, cartItems, persistCart, toast, router]);
 
@@ -129,10 +146,9 @@ export function useCart() {
       } catch (error) {
         console.error("Remove from cart persistence failed, reverting local state.");
         setCartItems(originalCartItems);
-        // Error toast handled by persistCart
       }
     }
-  }, [cartItems, currentUserEmail, persistCart, toast, router]);
+  }, [currentUserEmail, cartItems, persistCart, toast, router]);
 
   const updateQuantity = useCallback(async (productId: string, newQuantity: number) => {
     if (!currentUserEmail) {
@@ -147,19 +163,17 @@ export function useCart() {
             return { ...item, quantity: validatedQuantity };
         }
         return item;
-    }).filter(item => item.quantity > 0); // Ensure no zero quantity items remain unless intended.
+    }).filter(item => item.quantity > 0); 
 
     setCartItems(nextCartItems);
 
     try {
       await persistCart(nextCartItems);
-      // Optionally, add a success toast for quantity update if desired
     } catch (error) {
       console.error("Update quantity persistence failed, reverting local state.");
       setCartItems(originalCartItems);
-      // Error toast handled by persistCart
     }
-  }, [currentUserEmail, cartItems, persistCart, toast, router]);
+  }, [currentUserEmail, cartItems, persistCart, router]);
 
   const clearCart = useCallback(async () => {
     if (!currentUserEmail) {
@@ -183,9 +197,8 @@ export function useCart() {
     } catch (error) {
       console.error("Clear cart persistence failed, reverting local state.");
       setCartItems(originalCartItems);
-      // Error toast handled by persistCart
     }
-  }, [currentUserEmail, persistCart, toast, router, cartItems]);
+  }, [currentUserEmail, cartItems, persistCart, toast, router]);
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);

@@ -182,29 +182,7 @@
         "status": "Processing"
       }
     ],
-    "wishlist": [
-      {
-        "id": "3",
-        "name": "Midnight Sparkle Eyeshadow Palette",
-        "category": "Eyes",
-        "brand": "Earth Puran",
-        "price": 55,
-        "description": "Unleash your inner artist with this versatile eyeshadow palette. Features 12 highly pigmented shades in matte, shimmer, and glitter finishes. Perfect for creating day-to-night looks. Part of the Earth Puran collection.",
-        "imageUrl": "https://placehold.co/600x600.png",
-        "imageHint": "eyeshadow palette",
-        "paletteName": "Midnight Sparkle",
-        "rating": 4.7,
-        "reviews": 180,
-        "stock": 40,
-        "tags": [
-          "eyeshadow",
-          "palette",
-          "sparkle",
-          "pigmented",
-          "natural-minerals"
-        ]
-      }
-    ],
+    "wishlist": [],
     "cart": []
   }
 }
