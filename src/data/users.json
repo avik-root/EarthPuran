@@ -182,62 +182,7 @@
         "status": "Processing"
       }
     ],
-    "wishlist": [
-      {
-        "id": "2",
-        "name": "Radiant Glow Foundation",
-        "category": "Face",
-        "brand": "Earth Puran",
-        "price": 45,
-        "description": "Achieve a flawless, radiant complexion with this lightweight foundation. Provides buildable coverage and a natural, dewy finish. Enriched with hyaluronic acid for all-day hydration. Discover Earth Puran's commitment to quality.",
-        "imageUrl": "https://placehold.co/600x600.png",
-        "imageHint": "foundation makeup",
-        "shades": [
-          "Porcelain",
-          "Ivory",
-          "Sand",
-          "Beige",
-          "Tan",
-          "Mocha"
-        ],
-        "rating": 4.8,
-        "reviews": 250,
-        "stock": 30,
-        "tags": [
-          "foundation",
-          "radiant",
-          "dewy",
-          "hydrating",
-          "organic"
-        ]
-      },
-      {
-        "id": "1",
-        "name": "Velvet Matte Lipstick",
-        "category": "Lips",
-        "brand": "Earth Puran",
-        "price": 28,
-        "description": "A luxurious, long-wearing matte lipstick with a velvety finish. Infused with nourishing oils for comfortable wear. Experience intense color payoff and a smooth, non-drying feel. Exclusively from Earth Puran.",
-        "imageUrl": "https://placehold.co/600x600.png",
-        "imageHint": "lipstick beauty",
-        "colors": [
-          "Ruby Red",
-          "Dusty Rose",
-          "Nude Beige",
-          "Deep Plum"
-        ],
-        "rating": 4.5,
-        "reviews": 120,
-        "stock": 50,
-        "tags": [
-          "matte",
-          "long-wearing",
-          "lipstick",
-          "velvet",
-          "natural"
-        ]
-      }
-    ],
+    "wishlist": [],
     "cart": []
   }
 }
