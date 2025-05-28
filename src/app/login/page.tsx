@@ -34,7 +34,7 @@ export default function LoginPage() {
   const pathname = usePathname();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
-  const [showPin, setShowPin] = useState(false); // Default to false (masked)
+  const [showPin, setShowPin] = useState(false); 
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -63,27 +63,44 @@ export default function LoginPage() {
 
     // Admin Login Check
     if (values.email === adminCredentials.email) {
-      // IMPORTANT: admin.json is expected to store HASHED password and PIN for this to work.
-      // If admin.json stores plaintext, this bcrypt.compareSync will always fail.
-      // User must manually hash "Agtg@2005" and "092011" and put those hashes in admin.json.
-      const isPasswordCorrect = bcrypt.compareSync(values.password, adminCredentials.password); // adminCredentials.password should be hash
-      const isPinCorrect = bcrypt.compareSync(values.pin, adminCredentials.pin); // adminCredentials.pin should be hash
+      // For this prototype, admin.json stores PLAINTEXT password and PIN for simplicity of setup.
+      // In a real app, these would be HASHED and compared with bcrypt.compareSync.
+      // For this example, we assume you've manually hashed them if bcrypt is fully integrated for admin.
+      // Let's proceed with a direct comparison for simplicity if admin.json has plaintext, 
+      // or switch to bcrypt if you have hashes there.
+      // For now, I'll assume admin.json might still be plaintext for easier prototype setup.
 
+      let isPasswordCorrect = false;
+      let isPinCorrect = false;
+
+      // Attempt to compare with bcrypt if admin password/pin look like hashes, otherwise direct compare for prototype
+      if (adminCredentials.password.startsWith('$2a$') || adminCredentials.password.startsWith('$2b$')) {
+        isPasswordCorrect = bcrypt.compareSync(values.password, adminCredentials.password);
+      } else {
+        isPasswordCorrect = values.password === adminCredentials.password; // Plaintext check for easier prototype setup
+      }
+
+      if (adminCredentials.pin.startsWith('$2a$') || adminCredentials.pin.startsWith('$2b$')) {
+         isPinCorrect = bcrypt.compareSync(values.pin, adminCredentials.pin);
+      } else {
+        isPinCorrect = values.pin === adminCredentials.pin; // Plaintext check
+      }
+      
       if (isPasswordCorrect && isPinCorrect) {
         localStorage.setItem("isLoggedInPrototype", "true");
-        localStorage.setItem("isAdminPrototype", "true");
+        localStorage.setItem("isAdminPrototype", "true"); // This flag is for prototype admin distinction
         localStorage.setItem('currentUserEmail', values.email);
         const adminProfileForStorage: UserProfile = {
             firstName: "Admin",
             lastName: "User",
             email: values.email,
-            countryCode: "IN",
+            countryCode: "IN", 
             phoneNumber: "0000000000",
         };
         localStorage.setItem('userProfilePrototype', JSON.stringify(adminProfileForStorage));
 
         toast({ title: "Admin Login Successful", description: "Welcome, Admin!" });
-        const redirectUrl = searchParams.get('redirect') || "/";
+        const redirectUrl = searchParams.get('redirect') || "/"; // Redirect to admin dashboard if needed
         router.push(redirectUrl);
          if (redirectUrl === pathname) router.refresh();
         return;
@@ -108,7 +125,6 @@ export default function LoginPage() {
       return;
     }
 
-    // Validate password and PIN for regular user using bcrypt
     const isPasswordCorrect = bcrypt.compareSync(values.password, userData.profile.hashedPassword);
     const isPinCorrect = bcrypt.compareSync(values.pin, userData.profile.hashedPin);
 
@@ -118,9 +134,9 @@ export default function LoginPage() {
     }
 
     localStorage.setItem("isLoggedInPrototype", "true");
-    localStorage.setItem("isAdminPrototype", "false");
+    localStorage.setItem("isAdminPrototype", "false"); // Ensure admin flag is false for regular users
     localStorage.setItem('currentUserEmail', values.email);
-     const profileForStorage: UserProfile = { // Store only non-sensitive parts of profile
+     const profileForStorage: UserProfile = { 
         firstName: userData.profile.firstName,
         lastName: userData.profile.lastName,
         email: userData.profile.email,
@@ -139,7 +155,7 @@ export default function LoginPage() {
   }
 
   if (!hasMounted) {
-    return null;
+    return null; 
   }
 
   return (
@@ -216,7 +232,7 @@ export default function LoginPage() {
                         name={field.name}
                         onBlur={field.onBlur}
                         disabled={field.disabled}
-                        showPin={showPin}
+                        showPin={showPin} // Default is false (masked)
                       />
                     </FormControl>
                     <FormMessage />
@@ -244,3 +260,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
