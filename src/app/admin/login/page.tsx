@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,35 +21,16 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PinInput } from "@/components/ui/pin-input";
-import { Progress } from "@/components/ui/progress";
-import { Eye, EyeOff, ArrowLeft, ShieldCheck, UserPlus } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, ShieldCheck } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import bcrypt from 'bcryptjs';
-import { cn } from "@/lib/utils";
-import type { UserProfile } from "@/types/userData"; 
-
-
-const passwordStrengthSchema = z.string()
-  .min(8, "Password must be at least 8 characters long.")
-  .regex(/[A-Z]/, "Password must contain at least one uppercase letter.")
-  .regex(/[0-9]/, "Password must contain at least one number.")
-  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character.");
-
-const createAdminSchema = z.object({
-  adminEmail: z.string().email({ message: "Invalid email address." }),
-  adminPassword: passwordStrengthSchema,
-  confirmAdminPassword: z.string(),
-  adminLoginPin: z.string().length(6, { message: "PIN must be 6 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }),
-}).refine(data => data.adminPassword === data.confirmAdminPassword, {
-  message: "Passwords don't match.",
-  path: ["confirmAdminPassword"],
-});
+import type { UserProfile } from "@/types/userData";
+import adminCredentials from '@/data/admin.json';
 
 const adminLoginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -57,10 +38,7 @@ const adminLoginSchema = z.object({
   loginPin: z.string().length(6, { message: "PIN must be 6 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }),
 });
 
-type CreateAdminFormValues = z.infer<typeof createAdminSchema>;
 type AdminLoginFormValues = z.infer<typeof adminLoginSchema>;
-
-const SALT_ROUNDS = 10;
 
 export default function AdminAuthPage() {
   const router = useRouter();
@@ -68,11 +46,7 @@ export default function AdminAuthPage() {
   const { toast } = useToast();
   
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showLoginPin, setShowLoginPin] = useState(true);
-  const [passwordStrength, setPasswordStrength] = useState(0);
-  
-  const [needsAccountCreation, setNeedsAccountCreation] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [hasMounted, setHasMounted] = useState(false);
 
@@ -84,68 +58,20 @@ export default function AdminAuthPage() {
           toast({ title: "Gate Access Required", description: "Please verify master access PIN first.", variant: "destructive" });
         }, 0);
         router.push('/admin/access-gate');
-      } else {
-        const configured = localStorage.getItem("adminCredentialsConfigured") === "true";
-        setNeedsAccountCreation(!configured);
       }
     }
     setLoadingConfig(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]); // router is stable, toast is not needed as a dep here
-
-  const createAdminForm = useForm<CreateAdminFormValues>({
-    resolver: zodResolver(createAdminSchema),
-    defaultValues: {
-      adminEmail: "",
-      adminPassword: "",
-      confirmAdminPassword: "",
-      adminLoginPin: "",
-    },
-  });
+  }, [router]); 
 
   const adminLoginForm = useForm<AdminLoginFormValues>({
     resolver: zodResolver(adminLoginSchema),
     defaultValues: {
-      email: "",
+      email: adminCredentials?.email || "", // Pre-fill if admin.json is loaded
       password: "",
       loginPin: "",
     },
   });
-
-  const watchedAdminPassword = createAdminForm.watch("adminPassword");
-  useEffect(() => {
-    let strength = 0;
-    if (watchedAdminPassword) {
-      if (watchedAdminPassword.length >= 8) strength += 25;
-      if (/[A-Z]/.test(watchedAdminPassword)) strength += 25;
-      if (/[0-9]/.test(watchedAdminPassword)) strength += 25;
-      if (/[^A-Za-z0-9]/.test(watchedAdminPassword)) strength += 25;
-    }
-    setPasswordStrength(strength);
-  }, [watchedAdminPassword]);
-  
-  async function onCreateAdminSubmit(values: CreateAdminFormValues) {
-    try {
-      const hashedPassword = bcrypt.hashSync(values.adminPassword, SALT_ROUNDS);
-      const hashedLoginPin = bcrypt.hashSync(values.adminLoginPin, SALT_ROUNDS);
-
-      localStorage.setItem("adminEmailPrototype", values.adminEmail);
-      localStorage.setItem("adminPasswordHashPrototype", hashedPassword);
-      localStorage.setItem("adminLoginPinHashPrototype", hashedLoginPin);
-      localStorage.setItem("adminCredentialsConfigured", "true");
-
-      setTimeout(() => {
-        toast({ title: "Admin Account Created", description: "Please log in with your new admin credentials." });
-      }, 0);
-      setNeedsAccountCreation(false); 
-      adminLoginForm.setValue("email", values.adminEmail); 
-    } catch (error) {
-      console.error("Admin creation error:", error);
-      setTimeout(() => {
-        toast({ title: "Creation Failed", description: "Could not create admin account.", variant: "destructive" });
-      }, 0);
-    }
-  }
   
   async function onAdminLoginSubmit(values: AdminLoginFormValues) {
     if (localStorage.getItem("adminAccessGranted") !== "true") {
@@ -156,27 +82,34 @@ export default function AdminAuthPage() {
       return;
     }
 
-    const expectedEmail = localStorage.getItem("adminEmailPrototype");
-    const expectedPasswordHash = localStorage.getItem("adminPasswordHashPrototype");
-    const expectedLoginPinHash = localStorage.getItem("adminLoginPinHashPrototype");
-
-    if (!expectedEmail || !expectedPasswordHash || !expectedLoginPinHash) {
+    if (!adminCredentials || !adminCredentials.email || !adminCredentials.passwordHash || !adminCredentials.pinHash) {
       setTimeout(() => {
-        toast({ title: "Configuration Error", description: "Admin credentials not found. Please create admin account.", variant: "destructive" });
-      }, 0);
-      setNeedsAccountCreation(true); 
+        toast({ title: "Configuration Error", description: "admin.json is missing or not configured correctly.", variant: "destructive", duration: 10000 });
+      },0);
       return;
     }
     
-    if (values.email !== expectedEmail) {
+    if (values.email !== adminCredentials.email) {
       setTimeout(() => {
         toast({ title: "Admin Login Failed", description: "Invalid email for admin.", variant: "destructive" });
       }, 0);
       return;
     }
+    
+    if (adminCredentials.passwordHash.startsWith("REPLACE_WITH_BCRYPT_HASH") || adminCredentials.pinHash.startsWith("REPLACE_WITH_BCRYPT_HASH")) {
+      setTimeout(() => {
+        toast({
+          title: "Admin Configuration Incomplete",
+          description: "Admin credentials in admin.json use placeholder hashes. Please generate and update them with actual bcrypt hashes.",
+          variant: "destructive",
+          duration: 15000, 
+        });
+      }, 0);
+      return;
+    }
 
-    const isPasswordCorrect = bcrypt.compareSync(values.password, expectedPasswordHash);
-    const isPinCorrect = bcrypt.compareSync(values.loginPin, expectedLoginPinHash);
+    const isPasswordCorrect = bcrypt.compareSync(values.password, adminCredentials.passwordHash);
+    const isPinCorrect = bcrypt.compareSync(values.loginPin, adminCredentials.pinHash);
     
     if (isPasswordCorrect && isPinCorrect) {
       localStorage.setItem("isLoggedInPrototype", "true");
@@ -217,7 +150,7 @@ export default function AdminAuthPage() {
         <div className="flex h-screen items-center justify-center bg-background">
             <div className="flex flex-col items-center space-y-4">
                 <ShieldCheck className="h-12 w-12 text-primary animate-pulse" />
-                <p className="text-muted-foreground">Loading Admin Configuration...</p>
+                <p className="text-muted-foreground">Loading Admin Login...</p>
             </div>
         </div>
     );
@@ -230,90 +163,6 @@ export default function AdminAuthPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-12 bg-background">
-      {needsAccountCreation ? (
-        <Card className="w-full max-w-md shadow-xl">
-          <CardHeader className="text-center">
-            <UserPlus className="mx-auto h-12 w-12 text-primary mb-2" />
-            <CardTitle className="text-3xl font-bold text-primary">Create Admin Account</CardTitle>
-            <CardDescription>Set up your administrator credentials. This is a one-time setup.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...createAdminForm}>
-              <form onSubmit={createAdminForm.handleSubmit(onCreateAdminSubmit)} className="space-y-6">
-                <FormField
-                  control={createAdminForm.control}
-                  name="adminEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Admin Email Address</FormLabel>
-                      <FormControl><Input placeholder="admin@example.com" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createAdminForm.control}
-                  name="adminPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Admin Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input type={showPassword ? "text" : "password"} placeholder="Create a strong password" {...field} />
-                          <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <Progress value={passwordStrength} className="h-2 mt-1" indicatorClassName={cn({'bg-red-500': passwordStrength < 50, 'bg-yellow-500': passwordStrength >= 50 && passwordStrength < 75, 'bg-green-500': passwordStrength >= 75})} />
-                      <FormDescription className="text-xs">Min 8 chars, 1 uppercase, 1 number, 1 special char.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createAdminForm.control}
-                  name="confirmAdminPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm Admin Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input type={showConfirmPassword ? "text" : "password"} placeholder="Confirm your password" {...field} />
-                          <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}>
-                            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createAdminForm.control}
-                  name="adminLoginPin"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex items-center justify-between">
-                        <FormLabel>Admin 6-Digit Login PIN</FormLabel>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowLoginPin(!showLoginPin)} aria-label={showLoginPin ? "Hide PIN" : "Show PIN"}>
-                          {showLoginPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                      <FormControl><PinInput length={6} {...field} showPin={showLoginPin} /></FormControl>
-                      <FormDescription className="text-xs">This PIN will be used for admin login.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" size="lg">
-                  Create Admin Account
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      ) : (
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="text-center">
             <ShieldCheck className="mx-auto h-12 w-12 text-primary mb-2" />
@@ -382,7 +231,6 @@ export default function AdminAuthPage() {
             </Button>
           </CardFooter>
         </Card>
-      )}
     </div>
   );
 }
