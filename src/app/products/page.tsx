@@ -1,3 +1,4 @@
+
 import { getProducts } from "@/app/actions/productActions";
 import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -46,11 +47,6 @@ export default async function ProductsPage() {
               <li><Button variant="link" className="p-0 h-auto text-muted-foreground hover:text-primary">Skincare</Button></li>
               <li><Button variant="link" className="p-0 h-auto text-muted-foreground hover:text-primary">Fragrance</Button></li>
             </ul>
-          </div>
-           <div>
-            <h3 className="text-sm font-medium mb-2">Brand</h3>
-            {/* Brand filters here */}
-             <p className="text-xs text-muted-foreground">LuxeBeau, Aura, etc.</p>
           </div>
           <div>
             <h3 className="text-sm font-medium mb-2">Price Range</h3>
