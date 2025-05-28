@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils"; // Added import
+import { cn } from "@/lib/utils";
 
 // Placeholder for actual address data type
 interface Address {
@@ -37,16 +37,9 @@ const addressSchema = z.object({
 
 type AddressFormValues = z.infer<typeof addressSchema>;
 
-// Sample addresses - in a real app, this would come from user data
-const sampleAddresses: Address[] = [
-  { id: "1", street: "123 Blossom Lane", city: "Springfield", state: "IL", zipCode: "62704", country: "USA", isDefault: true },
-  { id: "2", street: "456 Oak Avenue", city: "Metropolis", state: "NY", zipCode: "10001", country: "USA", isDefault: false },
-];
-
-
 export function AddressManagement() {
   const { toast } = useToast();
-  const [addresses, setAddresses] = useState<Address[]>(sampleAddresses);
+  const [addresses, setAddresses] = useState<Address[]>([]); // Initialize with empty array
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
 
@@ -136,7 +129,7 @@ export function AddressManagement() {
       ))}
 
       {addresses.length === 0 && !isFormVisible && (
-         <p className="text-muted-foreground text-center py-4">You haven't added any addresses yet.</p>
+         <p className="text-muted-foreground text-center py-4">You haven&apos;t added any addresses yet.</p>
       )}
 
       <Button variant="outline" onClick={() => { setEditingAddress(null); setIsFormVisible(!isFormVisible); form.reset(); }} className="w-full sm:w-auto">

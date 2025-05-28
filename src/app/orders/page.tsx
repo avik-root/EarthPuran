@@ -5,27 +5,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Sample order data - replace with actual data fetching
-const sampleOrders = [
-  {
-    id: "ORD12345",
-    date: "2023-10-15",
-    status: "Delivered",
-    total: 56.00,
-    items: [
-      { name: "Velvet Matte Lipstick", quantity: 1, price: 28.00 },
-      { name: "Silk Finish Primer", quantity: 1, price: 28.00 }, // Assuming primer price for example
-    ]
-  },
-  {
-    id: "ORD67890",
-    date: "2023-11-01",
-    status: "Shipped",
-    total: 45.00,
-    items: [
-      { name: "Radiant Glow Foundation", quantity: 1, price: 45.00 },
-    ]
-  }
-];
+const sampleOrders: any[] = []; // In a real app, fetch user's orders. Removed mock data.
 
 export default function OrdersPage() {
   const orders = sampleOrders; // In a real app, fetch user's orders
@@ -65,7 +45,7 @@ export default function OrdersPage() {
               <CardContent>
                 <h4 className="font-medium mb-2 text-sm">Items:</h4>
                 <ul className="space-y-1 text-sm text-muted-foreground">
-                  {order.items.map((item, index) => (
+                  {order.items.map((item: any, index: number) => ( // Added type for item
                     <li key={index} className="flex justify-between">
                       <span>{item.name} (x{item.quantity})</span>
                       <span>${(item.price * item.quantity).toFixed(2)}</span>
