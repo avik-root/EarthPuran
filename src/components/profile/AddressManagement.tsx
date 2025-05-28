@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils"; // Added import
 
 // Placeholder for actual address data type
 interface Address {
