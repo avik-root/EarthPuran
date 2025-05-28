@@ -3,24 +3,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { ListOrdered, PackageSearch, XCircle, Truck } from "lucide-react"; // Removed RotateCcw
+import { ListOrdered, PackageSearch, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import type { Order, OrderItem } from "@/types/order";
-import { useCart } from "@/hooks/useCart";
-import { useToast } from "@/hooks/use-toast";
-import type { Product } from "@/types/product";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Order } from "@/types/order";
 import { cn } from "@/lib/utils";
 
 const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
 
-export default function OrdersPage() {
+export default function OrdersListPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const { addToCart } = useCart(); // Still needed if other cart interactions exist, but not for reorder
-  const { toast } = useToast();
 
   useEffect(() => {
     try {
@@ -34,28 +27,6 @@ export default function OrdersPage() {
     }
     setLoading(false);
   }, []);
-
-  const handleCancelOrder = (orderId: string) => {
-    const updatedOrders = orders.map(order =>
-      order.id === orderId && order.status === 'Processing'
-        ? { ...order, status: 'Cancelled' as const }
-        : order
-    );
-    if (updatedOrders.find(o => o.id === orderId)?.status === 'Cancelled') {
-      setOrders(updatedOrders);
-      localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify(updatedOrders));
-      toast({ title: "Order Cancelled", description: `Order #${orderId} has been cancelled.` });
-    } else {
-      toast({ title: "Cancellation Failed", description: "Order cannot be cancelled or was not found.", variant: "destructive" });
-    }
-  };
-
-  // Reorder logic removed
-  // const handleReorder = (orderToReorder: Order) => { ... };
-
-  const handleTrackPackage = (orderId: string) => {
-    toast({ title: "Tracking Not Available", description: `Package tracking for order #${orderId} is not yet implemented.` });
-  };
   
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -67,7 +38,6 @@ export default function OrdersPage() {
     }
   };
 
-
   if (loading) {
     return (
         <div className="space-y-8">
@@ -78,8 +48,7 @@ export default function OrdersPage() {
                     <p className="text-muted-foreground">Loading your purchase history...</p>
                 </div>
             </div>
-            {/* Skeleton loaders for orders can be added here */}
-            <div className="text-center py-12"><p className="text-muted-foreground">Loading orders...</p></div>
+            <Card><CardContent className="p-6 text-center text-muted-foreground">Loading orders...</CardContent></Card>
         </div>
     );
   }
@@ -90,7 +59,7 @@ export default function OrdersPage() {
         <ListOrdered className="h-10 w-10 text-primary" />
         <div>
             <h1 className="text-3xl font-bold tracking-tight text-primary">Order History</h1>
-            <p className="text-muted-foreground">View details of your past purchases with Earth Puran.</p>
+            <p className="text-muted-foreground">View summaries of your past purchases. Click an order to see details.</p>
         </div>
       </div>
 
@@ -106,57 +75,23 @@ export default function OrdersPage() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {orders.sort((a,b) => parseInt(b.id) - parseInt(a.id)).map((order) => (
-            <Card key={order.id}>
-              <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                <div>
-                  <CardTitle className="text-lg">Order #{order.id}</CardTitle>
-                  <CardDescription>
-                    Date: {order.date} | Status: <span className={cn("font-medium", getStatusColor(order.status))}>{order.status}</span>
-                  </CardDescription>
-                </div>
-                <p className="text-xl font-semibold text-primary self-start sm:self-center">₹{order.totalAmount.toFixed(2)}</p>
-              </CardHeader>
-              <CardContent>
-                <h4 className="font-medium mb-2 text-sm">Items:</h4>
-                <ul className="space-y-3 text-sm text-muted-foreground mb-4">
-                  {order.items.map((item: OrderItem, index: number) => ( 
-                    <li key={`${order.id}-item-${index}`} className="flex items-center justify-between gap-2 border-b pb-2 last:border-b-0 last:pb-0">
-                       <div className="flex items-center gap-3">
-                        <Image src={item.imageUrl} alt={item.name} width={60} height={60} className="rounded-md object-cover aspect-square border" data-ai-hint={item.imageHint || "product order"} />
-                        <div>
-                            <p className="font-medium text-foreground">{item.name}</p>
-                            <p>Qty: {item.quantity}</p>
-                            <p>Price: ₹{item.price.toFixed(2)}</p>
-                        </div>
-                       </div>
-                      <p className="font-semibold text-foreground">₹{(item.price * item.quantity).toFixed(2)}</p>
-                    </li>
-                  ))}
-                </ul>
-                <Separator className="my-4" />
-                <h4 className="font-medium mb-2 text-sm">Shipping To:</h4>
-                <div className="text-sm text-muted-foreground">
-                    <p>{order.shippingDetails.firstName} {order.shippingDetails.lastName}</p>
-                    <p>{order.shippingDetails.address}</p>
-                    <p>{order.shippingDetails.city}, {order.shippingDetails.state} - {order.shippingDetails.pincode}</p>
-                    <p>{order.shippingDetails.country}</p>
-                    <p>Phone: {order.shippingDetails.phoneCountryCode}{order.shippingDetails.phoneNumber}</p>
-                </div>
-              </CardContent>
-              <CardFooter className="flex flex-wrap gap-2 justify-end pt-4">
-                {order.status === 'Processing' && (
-                  <Button variant="destructive" size="sm" onClick={() => handleCancelOrder(order.id)}>
-                    <XCircle className="mr-2 h-4 w-4" /> Cancel Order
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={() => handleTrackPackage(order.id)}>
-                    <Truck className="mr-2 h-4 w-4" /> Track Package
-                </Button>
-                {/* Reorder Items button removed from here */}
-              </CardFooter>
-            </Card>
+            <Link key={order.id} href={`/orders/${order.id}`} className="block hover:shadow-lg transition-shadow rounded-lg">
+              <Card>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-primary">Order #{order.id}</h3>
+                    <p className="text-xs text-muted-foreground">Date: {order.date}</p>
+                    <p className={cn("text-xs font-medium mt-1", getStatusColor(order.status))}>Status: {order.status}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-base font-semibold">₹{order.totalAmount.toFixed(2)}</p>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground inline-block ml-2" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

@@ -4,24 +4,21 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Lock, MapPin, ListOrdered, Heart, PackageSearch, Trash2, XCircle, Truck } from "lucide-react"; // Removed RotateCcw
+import { User, Lock, MapPin, ListOrdered, Heart, PackageSearch, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 
 // Form components
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { AddressManagement } from "@/components/profile/AddressManagement";
 import { UserProfileDisplay } from "@/components/profile/UserProfileDisplay"; 
 
-// Imports for inlined Order History and Wishlist content
+// Imports for Wishlist content
 import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/hooks/useWishlist";
 import { ProductCard } from "@/components/ProductCard";
-import type { Order, OrderItem } from "@/types/order";
-import { useCart } from "@/hooks/useCart";
+import type { Order } from "@/types/order"; // OrderItem not needed directly here anymore
 import { useToast } from "@/hooks/use-toast";
-import type { Product } from "@/types/product";
-import { Separator } from "@/components/ui/separator";
+import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 
@@ -32,8 +29,7 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   
-  const { addToCart } = useCart();
-  const { toast } = useToast();
+  const { toast } = useToast(); // Already imported, good
 
   useEffect(() => {
     try {
@@ -47,28 +43,6 @@ export default function ProfilePage() {
     }
     setLoadingOrders(false);
   }, []);
-
-  const handleCancelOrderInProfile = (orderId: string) => {
-    const updatedOrders = orders.map(order =>
-      order.id === orderId && order.status === 'Processing'
-        ? { ...order, status: 'Cancelled' as const }
-        : order
-    );
-     if (updatedOrders.find(o => o.id === orderId)?.status === 'Cancelled') {
-      setOrders(updatedOrders);
-      localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify(updatedOrders));
-      toast({ title: "Order Cancelled", description: `Order #${orderId} has been cancelled.` });
-    } else {
-      toast({ title: "Cancellation Failed", description: "Order cannot be cancelled or was not found.", variant: "destructive" });
-    }
-  };
-
-  // Reorder logic removed
-  // const handleReorderInProfile = (orderToReorder: Order) => { ... };
-
-  const handleTrackPackageInProfile = (orderId: string) => {
-    toast({ title: "Tracking Not Available", description: `Package tracking for order #${orderId} is not yet implemented.` });
-  };
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -136,7 +110,7 @@ export default function ProfilePage() {
           <Card>
             <CardHeader>
                 <CardTitle className="text-xl font-semibold">Order History</CardTitle>
-                <CardDescription>View details of your past purchases with Earth Puran.</CardDescription>
+                <CardDescription>View summaries of your past purchases. Click an order to see details.</CardDescription>
             </CardHeader>
             <CardContent>
                 {loadingOrders ? (
@@ -153,57 +127,23 @@ export default function ProfilePage() {
                         </Button>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                     {orders.sort((a,b) => parseInt(b.id) - parseInt(a.id)).map((order) => (
-                        <Card key={order.id}>
-                            <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                                <div>
-                                <CardTitle className="text-base">Order #{order.id}</CardTitle>
-                                <CardDescription className="text-xs">
-                                    Date: {order.date} | Status: <span className={cn("font-medium", getStatusColor(order.status))}>{order.status}</span>
-                                </CardDescription>
-                                </div>
-                                <p className="text-lg font-semibold text-primary self-start sm:self-center">₹{order.totalAmount.toFixed(2)}</p>
-                            </CardHeader>
-                            <CardContent>
-                                <h4 className="font-medium mb-2 text-sm">Items:</h4>
-                                <ul className="space-y-3 text-sm text-muted-foreground mb-4">
-                                {order.items.map((item: OrderItem, index: number) => ( 
-                                    <li key={`${order.id}-item-${index}`} className="flex items-center justify-between gap-2 border-b pb-2 last:border-b-0 last:pb-0">
-                                    <div className="flex items-center gap-2">
-                                        <Image src={item.imageUrl} alt={item.name} width={50} height={50} className="rounded object-cover aspect-square border" data-ai-hint={item.imageHint || "product order"} />
-                                        <div>
-                                            <p className="font-medium text-foreground">{item.name}</p>
-                                            <p>Qty: {item.quantity}</p>
-                                            <p>Price: ₹{item.price.toFixed(2)}</p>
-                                        </div>
-                                    </div>
-                                    <p className="font-semibold text-foreground">₹{(item.price * item.quantity).toFixed(2)}</p>
-                                    </li>
-                                ))}
-                                </ul>
-                                <Separator className="my-3" />
-                                <h4 className="font-medium mb-2 text-sm">Shipping To:</h4>
-                                <div className="text-xs text-muted-foreground">
-                                    <p>{order.shippingDetails.firstName} {order.shippingDetails.lastName}</p>
-                                    <p>{order.shippingDetails.address}</p>
-                                    <p>{order.shippingDetails.city}, {order.shippingDetails.state} - {order.shippingDetails.pincode}</p>
-                                    <p>{order.shippingDetails.country}</p>
-                                    <p>Phone: {order.shippingDetails.phoneCountryCode}{order.shippingDetails.phoneNumber}</p>
-                                </div>
-                            </CardContent>
-                             <CardFooter className="flex flex-wrap gap-2 justify-end pt-4">
-                                {order.status === 'Processing' && (
-                                <Button variant="destructive" size="sm" onClick={() => handleCancelOrderInProfile(order.id)}>
-                                    <XCircle className="mr-2 h-4 w-4" /> Cancel Order
-                                </Button>
-                                )}
-                                <Button variant="outline" size="sm" onClick={() => handleTrackPackageInProfile(order.id)}>
-                                    <Truck className="mr-2 h-4 w-4" /> Track Package
-                                </Button>
-                                {/* Reorder Items button removed from here */}
-                            </CardFooter>
+                       <Link key={order.id} href={`/orders/${order.id}`} className="block hover:shadow-md transition-shadow rounded-lg">
+                        <Card>
+                          <CardContent className="p-3 flex items-center justify-between">
+                            <div>
+                              <h3 className="text-sm font-semibold text-primary">Order #{order.id}</h3>
+                              <p className="text-xs text-muted-foreground">Date: {order.date}</p>
+                              <p className={cn("text-xs font-medium mt-0.5", getStatusColor(order.status))}>Status: {order.status}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold">₹{order.totalAmount.toFixed(2)}</p>
+                              <ChevronRight className="h-4 w-4 text-muted-foreground inline-block ml-1" />
+                            </div>
+                          </CardContent>
                         </Card>
+                      </Link>
                     ))}
                     </div>
                 )}
