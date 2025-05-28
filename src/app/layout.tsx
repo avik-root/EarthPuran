@@ -6,6 +6,7 @@ import { Providers } from '@/components/Providers';
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { ProductChatbot } from '@/components/ProductChatbot'; // Import the chatbot
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -36,6 +37,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          <ProductChatbot /> {/* Add the chatbot component here */}
           <Toaster />
         </Providers>
       </body>

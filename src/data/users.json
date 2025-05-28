@@ -93,6 +93,49 @@
     ],
     "orders": [
       {
+        "id": "1748459162729",
+        "date": "29/05/2025",
+        "items": [
+          {
+            "productId": "2",
+            "name": "Radiant Glow Foundation",
+            "quantity": 2,
+            "price": 45,
+            "imageUrl": "https://placehold.co/600x600.png",
+            "imageHint": "foundation makeup"
+          },
+          {
+            "productId": "3",
+            "name": "Midnight Sparkle Eyeshadow Palette",
+            "quantity": 2,
+            "price": 55,
+            "imageUrl": "https://placehold.co/600x600.png",
+            "imageHint": "eyeshadow palette"
+          },
+          {
+            "productId": "4",
+            "name": "Silk Finish Primer",
+            "quantity": 2,
+            "price": 32,
+            "imageUrl": "https://placehold.co/600x600.png",
+            "imageHint": "makeup primer"
+          }
+        ],
+        "totalAmount": 314,
+        "shippingDetails": {
+          "firstName": "Boss",
+          "lastName": "Lite",
+          "address": "Biswa Bangla Sarangi ",
+          "city": "Newtown ",
+          "state": "West Bengal ",
+          "pincode": "700012",
+          "country": "India",
+          "phoneNumber": "9898989898",
+          "phoneCountryCode": "+91"
+        },
+        "status": "Processing"
+      },
+      {
         "id": "1748454091350",
         "date": "28/05/2025",
         "items": [
@@ -152,7 +195,7 @@
           "phoneNumber": "9898989898",
           "phoneCountryCode": "+91"
         },
-        "status": "Processing"
+        "status": "Cancelled"
       },
       {
         "id": "1748450764972",
@@ -179,10 +222,80 @@
           "phoneNumber": "9898989898",
           "phoneCountryCode": "+91"
         },
-        "status": "Processing"
+        "status": "Cancelled"
       }
     ],
-    "wishlist": [],
+    "wishlist": [
+      {
+        "id": "2",
+        "name": "Radiant Glow Foundation",
+        "category": "Face",
+        "brand": "Earth Puran",
+        "price": 45,
+        "description": "Achieve a flawless, radiant complexion with this lightweight foundation. Provides buildable coverage and a natural, dewy finish. Enriched with hyaluronic acid for all-day hydration. Discover Earth Puran's commitment to quality.",
+        "imageUrl": "https://placehold.co/600x600.png",
+        "imageHint": "foundation makeup",
+        "shades": [
+          "Porcelain",
+          "Ivory",
+          "Sand",
+          "Beige",
+          "Tan",
+          "Mocha"
+        ],
+        "rating": 4.8,
+        "reviews": 250,
+        "stock": 30,
+        "tags": [
+          "foundation",
+          "radiant",
+          "dewy",
+          "hydrating",
+          "organic"
+        ]
+      },
+      {
+        "id": "3",
+        "name": "Midnight Sparkle Eyeshadow Palette",
+        "category": "Eyes",
+        "brand": "Earth Puran",
+        "price": 55,
+        "description": "Unleash your inner artist with this versatile eyeshadow palette. Features 12 highly pigmented shades in matte, shimmer, and glitter finishes. Perfect for creating day-to-night looks. Part of the Earth Puran collection.",
+        "imageUrl": "https://placehold.co/600x600.png",
+        "imageHint": "eyeshadow palette",
+        "paletteName": "Midnight Sparkle",
+        "rating": 4.7,
+        "reviews": 180,
+        "stock": 40,
+        "tags": [
+          "eyeshadow",
+          "palette",
+          "sparkle",
+          "pigmented",
+          "natural-minerals"
+        ]
+      },
+      {
+        "id": "4",
+        "name": "Silk Finish Primer",
+        "category": "Face",
+        "brand": "Earth Puran",
+        "price": 32,
+        "description": "Create a smooth canvas for makeup application with this silk-finish primer. Minimizes pores, blurs imperfections, and extends makeup wear. Lightweight and non-greasy formula. Experience the Earth Puran difference.",
+        "imageUrl": "https://placehold.co/600x600.png",
+        "imageHint": "makeup primer",
+        "rating": 4.6,
+        "reviews": 95,
+        "stock": 60,
+        "tags": [
+          "primer",
+          "face",
+          "smoothing",
+          "pore-minimizing",
+          "organic-extracts"
+        ]
+      }
+    ],
     "cart": []
   }
 }
