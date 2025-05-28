@@ -30,7 +30,7 @@ import bcrypt from 'bcryptjs';
 import Link from "next/link";
 
 // This is the bcrypt hash of the 8-digit master PIN (e.g., "12345678")
-const MASTER_ADMIN_GATE_PIN_HASH = "$2a$20$KuFzQzevqXrkru82XJB61et1l/xcrTAh0hzP9aYYn9K4mJRN8E4ja"; // Keep this secure
+const MASTER_ADMIN_GATE_PIN_HASH = "$2a$20$BMfVfXJBPrHtoGLOqbJaDuNp0Q/58XXnXruaHTt.CwdErplfqMR/u"; // Updated Hash
 
 const accessGateSchema = z.object({
   gatePin: z.string().length(8, { message: "PIN must be 8 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }),
@@ -52,11 +52,12 @@ export default function AdminAccessGatePage() {
     // If user somehow gets here but already passed the gate AND is logged in as admin, redirect to dashboard
     if (hasMounted && 
         localStorage.getItem("adminAccessGranted") === "true" &&
-        localStorage.getItem("isAdminPrototype") === "true" && // Using isAdminPrototype from general login
+        localStorage.getItem("adminCredentialsConfigured") === "true" && // Added this check
+        localStorage.getItem("isAdminPrototype") === "true" && 
         localStorage.getItem("isLoggedInPrototype") === "true") {
       router.push("/admin/dashboard");
     } else if (hasMounted && localStorage.getItem("adminAccessGranted") === "true") {
-      // If gate passed but other conditions not met (e.g. not logged in yet), go to login page
+      // If gate passed but other conditions not met (e.g. not logged in yet or credentials not configured), go to admin login/setup page
       router.push("/admin/login");
     }
   }, [hasMounted, router]);
@@ -73,7 +74,7 @@ export default function AdminAccessGatePage() {
     
     if (isPinCorrect) {
       localStorage.setItem("adminAccessGranted", "true");
-      toast({ title: "Access Granted", description: "Proceed to Admin Login." });
+      toast({ title: "Access Granted", description: "Proceed to Admin Setup or Login." });
       router.push("/admin/login"); 
     } else {
       toast({ title: "Access Denied", description: "Incorrect master access PIN.", variant: "destructive" });
