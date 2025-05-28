@@ -13,18 +13,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { useCart, type CartItem } from "@/hooks/useCart";
+import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area"; // Added import
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface UserProfileData {
   firstName: string;
   lastName: string;
   email: string;
-  countryCode: string;
+  countryCode: string; // e.g., "IN"
   phoneNumber: string;
 }
+
+// Minimal Address interface matching what's stored by AddressManagement.tsx
+interface UserAddress {
+  id: string;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string; // Note: AddressManagement.tsx uses zipCode
+  country: string;
+  isDefault: boolean;
+}
+
+const ADDRESS_STORAGE_KEY = 'earthPuranUserAddresses';
 
 const countries: { code: string; name: string; phoneCode: string }[] = [
   { code: "US", name: "United States", phoneCode: "+1" },
@@ -75,27 +88,43 @@ export default function CheckoutPage() {
   });
 
   useEffect(() => {
+    let parsedProfile: UserProfileData | null = null;
+    let defaultAddress: UserAddress | null = null;
+
     const storedProfile = localStorage.getItem('userProfilePrototype');
     if (storedProfile) {
       try {
-        const parsedProfile: UserProfileData = JSON.parse(storedProfile);
+        parsedProfile = JSON.parse(storedProfile) as UserProfileData;
         setProfileData(parsedProfile);
-        const countryInfo = countries.find(c => c.code === parsedProfile.countryCode);
-        form.reset({
-          firstName: parsedProfile.firstName || "",
-          lastName: parsedProfile.lastName || "",
-          phoneNumber: parsedProfile.phoneNumber || "",
-          phoneCountryCode: countryInfo?.phoneCode || "+91",
-          country: countryInfo?.name || "India",
-          address: "", // User needs to fill this
-          city: "",
-          state: "",
-          pincode: "",
-        });
       } catch (error) {
         console.error("Failed to parse user profile for checkout", error);
       }
     }
+
+    const storedAddresses = localStorage.getItem(ADDRESS_STORAGE_KEY);
+    if (storedAddresses) {
+      try {
+        const allAddresses = JSON.parse(storedAddresses) as UserAddress[];
+        defaultAddress = allAddresses.find(addr => addr.isDefault) || null;
+      } catch (error) {
+        console.error("Failed to parse user addresses for checkout", error);
+      }
+    }
+    
+    const countryInfo = countries.find(c => c.code === parsedProfile?.countryCode);
+
+    form.reset({
+      firstName: parsedProfile?.firstName || "",
+      lastName: parsedProfile?.lastName || "",
+      phoneNumber: parsedProfile?.phoneNumber || "",
+      phoneCountryCode: countryInfo?.phoneCode || "+91",
+      country: countryInfo?.name || "India",
+      address: defaultAddress?.street || "",
+      city: defaultAddress?.city || "",
+      state: defaultAddress?.state || "",
+      pincode: defaultAddress?.zipCode || "", // map zipCode to pincode
+    });
+
     setLoadingProfile(false);
   }, [form]);
 
@@ -215,8 +244,8 @@ export default function CheckoutPage() {
                             <FormControl><Input type="tel" placeholder="9876543210" {...field} maxLength={10} readOnly={!!profileData?.phoneNumber} /></FormControl>
                         )}/>
                       </div>
-                      <FormMessage /> 
-                       {/* Display general form message for phoneNumber here if needed from form.formState.errors.phoneNumber */}
+                      {/* Display general form message for phoneNumber here if needed from form.formState.errors.phoneNumber */}
+                       <FormMessage>{form.formState.errors.phoneNumber?.message}</FormMessage>
                     </FormItem>
                     <Button type="submit" className="w-full md:w-auto">Save Shipping Address</Button>
                   </form>
@@ -289,3 +318,4 @@ export default function CheckoutPage() {
   );
 }
 
+    
