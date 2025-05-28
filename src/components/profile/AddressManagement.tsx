@@ -36,6 +36,19 @@ export function AddressManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
+  // Declare form before useEffect that depends on it
+  const form = useForm<AddressFormValues>({
+    resolver: zodResolver(addressSchema),
+    defaultValues: {
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "India",
+      isDefault: false,
+    },
+  });
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setCurrentUserEmail(localStorage.getItem('currentUserEmail'));
@@ -75,17 +88,6 @@ export function AddressManagement() {
     }
   }, [editingAddress, form]);
 
-  const form = useForm<AddressFormValues>({
-    resolver: zodResolver(addressSchema),
-    defaultValues: {
-      street: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      country: "India",
-      isDefault: false,
-    },
-  });
 
   async function onSubmit(values: AddressFormValues) {
     if (!currentUserEmail) {
