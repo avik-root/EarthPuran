@@ -7,9 +7,149 @@
       "countryCode": "IN",
       "phoneNumber": "0000000000"
     },
-    "addresses": [],
-    "orders": [],
-    "wishlist": [],
+    "addresses": [
+      {
+        "street": "Bot tala",
+        "city": "chetla",
+        "state": "West Bengal",
+        "zipCode": "700011",
+        "country": "India",
+        "isDefault": true,
+        "id": "1748451754466"
+      }
+    ],
+    "orders": [
+      {
+        "id": "1748451881414",
+        "date": "28/05/2025",
+        "items": [
+          {
+            "productId": "5",
+            "name": "Volumizing Lash Mascara",
+            "quantity": 2,
+            "price": 24,
+            "imageUrl": "https://placehold.co/600x600.png",
+            "imageHint": "mascara product"
+          }
+        ],
+        "totalAmount": 98,
+        "shippingDetails": {
+          "firstName": "agtg",
+          "lastName": "hm",
+          "address": "Bot tala",
+          "city": "chetla",
+          "state": "West Bengal",
+          "pincode": "700011",
+          "country": "India",
+          "phoneNumber": "9798979897",
+          "phoneCountryCode": "+91"
+        },
+        "status": "Processing"
+      }
+    ],
+    "wishlist": [
+      {
+        "id": "5",
+        "name": "Volumizing Lash Mascara",
+        "category": "Eyes",
+        "brand": "Earth Puran",
+        "price": 24,
+        "description": "Get dramatic, voluminous lashes with this intense black mascara. The specially designed brush coats every lash for maximum impact. Smudge-proof and long-lasting. A signature product from Earth Puran.",
+        "imageUrl": "https://placehold.co/600x600.png",
+        "imageHint": "mascara product",
+        "color": "Intense Black",
+        "rating": 4.4,
+        "reviews": 150,
+        "stock": 70,
+        "tags": [
+          "mascara",
+          "volumizing",
+          "lashes",
+          "smudge-proof",
+          "natural-waxes"
+        ]
+      }
+    ],
+    "cart": []
+  },
+  "boss@gmail.com": {
+    "profile": {
+      "firstName": "Boss",
+      "lastName": "Lite",
+      "email": "boss@gmail.com",
+      "countryCode": "IN",
+      "phoneNumber": "9898989898"
+    },
+    "addresses": [
+      {
+        "street": "Biswa Bangla Sarangi ",
+        "city": "Newtown ",
+        "state": "West Bengal ",
+        "zipCode": "700012",
+        "country": "India",
+        "isDefault": true,
+        "id": "1748450730498"
+      }
+    ],
+    "orders": [
+      {
+        "id": "1748450764972",
+        "date": "28/05/2025",
+        "items": [
+          {
+            "productId": "2",
+            "name": "Radiant Glow Foundation",
+            "quantity": 3,
+            "price": 45,
+            "imageUrl": "https://placehold.co/600x600.png",
+            "imageHint": "foundation makeup"
+          }
+        ],
+        "totalAmount": 185,
+        "shippingDetails": {
+          "firstName": "Boss",
+          "lastName": "Lite",
+          "address": "Biswa Bangla Sarangi ",
+          "city": "Newtown ",
+          "state": "West Bengal ",
+          "pincode": "700012",
+          "country": "India",
+          "phoneNumber": "9898989898",
+          "phoneCountryCode": "+91"
+        },
+        "status": "Processing"
+      }
+    ],
+    "wishlist": [
+      {
+        "id": "2",
+        "name": "Radiant Glow Foundation",
+        "category": "Face",
+        "brand": "Earth Puran",
+        "price": 45,
+        "description": "Achieve a flawless, radiant complexion with this lightweight foundation. Provides buildable coverage and a natural, dewy finish. Enriched with hyaluronic acid for all-day hydration. Discover Earth Puran's commitment to quality.",
+        "imageUrl": "https://placehold.co/600x600.png",
+        "imageHint": "foundation makeup",
+        "shades": [
+          "Porcelain",
+          "Ivory",
+          "Sand",
+          "Beige",
+          "Tan",
+          "Mocha"
+        ],
+        "rating": 4.8,
+        "reviews": 250,
+        "stock": 30,
+        "tags": [
+          "foundation",
+          "radiant",
+          "dewy",
+          "hydrating",
+          "organic"
+        ]
+      }
+    ],
     "cart": []
   }
 }

@@ -29,8 +29,8 @@ const navItems = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
   { href: "/blog", label: "Beauty Blog" },
-  { href: "/about", label: "About Us" },
-  { href: "/contact", label: "Contact" },
+  // { href: "/about", label: "About Us" }, // Placeholder, can be added later
+  // { href: "/contact", label: "Contact" }, // Placeholder
 ];
 
 export function Header() {
@@ -61,17 +61,19 @@ export function Header() {
       router.push(`/products?q=${encodeURIComponent(mobileSearchTerm.trim())}`);
       setMobileSearchTerm("");
       setMobileSearchOpen(false);
-      setMobileMenuOpen(false); 
+      setMobileMenuOpen(false); // Close main menu if search is submitted from there
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedInPrototype");
-    localStorage.removeItem("userProfilePrototype"); // Also clear profile
-    // No need to setIsLoggedIn(false) here; useEffect will handle it after navigation
+    localStorage.removeItem("currentUserEmail");
+    // localStorage.removeItem('userProfilePrototype'); // This was for older mock data, userActions now handle real data
+    // The useEffect listening to pathname will update isLoggedIn after navigation
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
     setMobileMenuOpen(false); 
     router.push("/"); 
+    // No need to setIsLoggedIn(false) here; useEffect will handle it
   };
 
   return (
@@ -123,7 +125,7 @@ export function Header() {
             </Sheet>
           </div>
 
-          <Button variant="ghost" size="icon" aria-label="Search" className="hidden sm:inline-flex">
+           <Button variant="ghost" size="icon" aria-label="Search" className="hidden sm:inline-flex" onClick={() => router.push('/products')}>
             <Search className="h-5 w-5" />
           </Button>
 
@@ -170,9 +172,11 @@ export function Header() {
               <ThemeToggle />
             </>
           ) : (
+            // Static placeholders for server and initial client render to avoid hydration mismatch
+            // Sized to approximate the space the actual components will take.
             <>
-              <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" />
-              <div style={{ width: '40px', height: '40px' }} aria-hidden="true" />
+              <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" /> {/* Approx space for Login button or UserCircle icon */}
+              <div style={{ width: '40px', height: '40px' }} aria-hidden="true" /> {/* Approx space for ThemeToggle icon button */}
             </>
           )}
 
@@ -183,12 +187,16 @@ export function Header() {
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+              <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0">
+                 <SheetHeader className="p-4 border-b">
+                    <SheetTitle className="text-left flex items-center gap-2">
+                         <Link href="/" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
+                            <Package className="h-6 w-6 text-primary" />
+                            <span className="text-xl font-bold tracking-tight text-primary">Earth Puran</span>
+                        </Link>
+                    </SheetTitle>
+                  </SheetHeader>
                  <div className="p-4">
-                    <Link href="/" className="flex items-center gap-2 mb-6" onClick={() => setMobileMenuOpen(false)}>
-                        <Package className="h-6 w-6 text-primary" />
-                        <span className="text-xl font-bold tracking-tight text-primary">Earth Puran</span>
-                    </Link>
                     <nav className="flex flex-col space-y-3">
                     {navItems.map((item) => (
                         <Link
@@ -220,7 +228,7 @@ export function Header() {
                            </Button>
                         )
                     ) : (
-                       <div className="h-10 mt-4" aria-hidden="true" />
+                       <div className="h-10 mt-4" aria-hidden="true" /> // Placeholder for auth buttons
                     )}
                     </nav>
                 </div>
