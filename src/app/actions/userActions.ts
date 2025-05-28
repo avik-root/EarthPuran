@@ -14,17 +14,29 @@ async function readUsersFile(): Promise<AllUsersData> {
   try {
     const jsonData = await fs.readFile(dataFilePath, 'utf-8');
     if (!jsonData.trim()) {
+      console.log("users.json is empty, initializing with {}.");
       await fs.writeFile(dataFilePath, JSON.stringify({}, null, 2), 'utf-8');
       return {};
     }
-    return JSON.parse(jsonData) as AllUsersData;
+    try {
+      return JSON.parse(jsonData) as AllUsersData;
+    } catch (parseError) {
+      console.error("Failed to parse users.json. File content may be corrupted. Content snippet (first 500 chars):", jsonData.substring(0, 500), "Error:", parseError);
+      console.warn("Returning empty data due to users.json parse error. Please check the file content. Consider backing up and deleting/re-initializing users.json if the issue persists.");
+      return {}; // Or throw new Error("Failed to parse user data."); for stricter error handling
+    }
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      await fs.writeFile(dataFilePath, JSON.stringify({}, null, 2), 'utf-8'); 
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code === 'ENOENT') {
+      console.log("users.json not found, creating it with {}.");
+      await fs.writeFile(dataFilePath, JSON.stringify({}, null, 2), 'utf-8');
       return {};
     }
-    console.error("Failed to read or parse users.json:", error);
-    return {};
+    console.error("Failed to read users.json:", nodeError);
+    // Depending on the desired behavior, you might want to throw an error here
+    // or return a state that indicates failure to the calling action.
+    // Returning an empty object can mask issues if the caller isn't prepared for it.
+    return {}; // Fallback for other read errors
   }
 }
 
@@ -37,14 +49,13 @@ async function writeUsersFile(data: AllUsersData): Promise<void> {
   }
 }
 
-// Profile now expects plaintext password and pin for hashing during initialization
 function getDefaultUserData(profile: UserProfile, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string): UserData {
     const hashedPassword = bcrypt.hashSync(plaintextPassword_prototype_only, saltRounds);
     const hashedPin = bcrypt.hashSync(plaintextPin_prototype_only, saltRounds);
     
     return {
         profile: {
-            ...profile, // original profile data like name, email, phone
+            ...profile,
             hashedPassword,
             hashedPin,
         },
@@ -64,7 +75,6 @@ export async function getUserData(email: string): Promise<UserData | null> {
   return allUsers[email] || null;
 }
 
-// Accepts plaintext password and pin for hashing
 export async function initializeUserAccount(profile: UserProfile, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string): Promise<UserData> {
     const allUsers = await readUsersFile();
     if (allUsers[profile.email]) {
@@ -75,8 +85,6 @@ export async function initializeUserAccount(profile: UserProfile, plaintextPassw
     return allUsers[profile.email];
 }
 
-// updateUserProfile is primarily for non-credential profile data like name, phone from user's perspective.
-// Password/PIN changes should use dedicated actions.
 export async function updateUserProfile(email: string, profileData: Partial<Pick<UserProfile, 'firstName' | 'lastName' | 'countryCode' | 'phoneNumber'>>): Promise<boolean> {
     if (!email) return false;
     const allUsers = await readUsersFile();
@@ -85,7 +93,6 @@ export async function updateUserProfile(email: string, profileData: Partial<Pick
       return false;
     }
     
-    // Merge only the allowed fields, preserve existing credentials
     allUsers[email].profile = { 
         ...allUsers[email].profile, 
         ...profileData,
@@ -256,7 +263,7 @@ export async function updateUserItemQuantityInCartAction(email: string, productI
   const itemIndex = allUsers[email].cart.findIndex(item => item.product.id === productId);
   if (itemIndex > -1) {
     if (newQuantity <= 0) {
-      allUsers[email].cart.splice(itemIndex, 1);
+      allUsers[email].cart.splice(itemIndex, 1); // Remove item if quantity is 0 or less
     } else {
       allUsers[email].cart[itemIndex].quantity = Math.min(newQuantity, allUsers[email].cart[itemIndex].product.stock);
     }
@@ -276,3 +283,4 @@ export async function clearUserCartAction(email: string): Promise<{ success: boo
   await writeUsersFile(allUsers);
   return { success: true, cart: allUsers[email].cart };
 }
+
