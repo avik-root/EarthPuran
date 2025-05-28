@@ -1,4 +1,6 @@
 
+'use client';
+
 import Link from "next/link";
 import {
   Sidebar,
@@ -13,16 +15,75 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar";
-import { Home, Package, Users, Settings, LayoutDashboard } from "lucide-react";
+import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Skeleton } from "@/components/ui/skeleton"; // For loading state
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // This effect runs only on the client
+    const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
+    const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
+
+    if (!isLoggedIn) {
+        router.push('/login?redirect=/admin/dashboard'); // Redirect to login if not logged in at all
+    } else if (!isAdmin) {
+      // Logged in but not admin
+      router.push('/'); // Redirect to homepage
+    } else {
+      setIsAuthorized(true);
+    }
+    setLoading(false);
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center space-y-4">
+            <Package className="h-12 w-12 text-primary animate-pulse" />
+            <p className="text-muted-foreground">Loading Admin Area...</p>
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    // This part is mainly a fallback or if the redirect is slow.
+    // The router.push should handle navigation.
+    return (
+        <div className="flex h-screen items-center justify-center bg-background p-4">
+            <Card className="w-full max-w-md text-center">
+                <CardHeader>
+                    <CardTitle className="text-2xl text-destructive flex items-center justify-center gap-2">
+                        <ShieldAlert className="h-8 w-8" /> Access Denied
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground mb-6">You do not have permission to view this page.</p>
+                    <Button asChild>
+                        <Link href="/">Go to Homepage</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+        </div>
+    );
+  }
+
   return (
     <SidebarProvider defaultOpen>
       <Sidebar>

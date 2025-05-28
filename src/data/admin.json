@@ -1,0 +1,7 @@
+{
+  "email": "anu@gmail.com",
+  "password": "Agtg@2005",
+  "pin": "092011"
+}
+// IMPORTANT: In a real application, passwords and PINs MUST be securely hashed.
+// This plaintext storage is for prototype demonstration purposes ONLY.

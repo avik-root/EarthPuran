@@ -40,13 +40,16 @@ export function Header() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false); // Initialize to false
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false); // New state for admin
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
     // This effect runs only on the client, after initial render
     const storedLoginStatus = localStorage.getItem("isLoggedInPrototype") === "true";
+    const storedAdminStatus = localStorage.getItem("isAdminPrototype") === "true";
     setIsLoggedIn(storedLoginStatus);
+    setIsAdmin(storedLoginStatus && storedAdminStatus); // Admin only if also logged in
     setHasMounted(true); // Set hasMounted to true after login state is determined
   }, []);
 
@@ -63,7 +66,9 @@ export function Header() {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    localStorage.setItem("isLoggedInPrototype", "false"); // Update localStorage on logout
+    setIsAdmin(false); // Clear admin status on logout
+    localStorage.removeItem("isLoggedInPrototype");
+    localStorage.removeItem("isAdminPrototype"); // Clear admin flag from storage
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
     setMobileMenuOpen(false); 
     router.push("/"); 
@@ -155,9 +160,11 @@ export function Header() {
                     <DropdownMenuItem asChild>
                       <Link href="/orders"><ListOrdered className="mr-2 h-4 w-4" />Order History</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin/dashboard"><Settings className="mr-2 h-4 w-4" />Admin Dashboard</Link>
-                    </DropdownMenuItem>
+                    {isAdmin && ( // Conditionally render Admin Dashboard link
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/dashboard"><Settings className="mr-2 h-4 w-4" />Admin Dashboard</Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />Log Out
@@ -214,13 +221,15 @@ export function Header() {
                               <Link href="/orders" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
                                  <ListOrdered className="mr-2 h-4 w-4" /> Order History
                               </Link>
-                              <Link
-                                href="/admin/dashboard"
-                                className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center"
-                                onClick={() => setMobileMenuOpen(false)}
-                              >
-                                <Settings className="mr-2 h-4 w-4" /> Admin Dashboard
-                              </Link>
+                              {isAdmin && ( // Conditionally render Admin Dashboard link in mobile
+                                <Link
+                                  href="/admin/dashboard"
+                                  className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center"
+                                  onClick={() => setMobileMenuOpen(false)}
+                                >
+                                  <Settings className="mr-2 h-4 w-4" /> Admin Dashboard
+                                </Link>
+                              )}
                               <Button variant="outline" onClick={handleLogout} className="mt-4 flex items-center justify-center">
                                   <LogOut className="mr-2 h-4 w-4" /> Log Out
                               </Button>
