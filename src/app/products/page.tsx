@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Filter, ListFilter, Search, ChevronDown } from "lucide-react";
+import { Filter, Search, ChevronDown } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -59,7 +59,7 @@ export default function ProductsPage() {
 
   const FilterOptions = () => (
     <div className="space-y-6 p-4">
-        <h2 className="text-lg font-semibold text-foreground">Filters</h2>
+        {/* <h2 className="text-lg font-semibold text-foreground">Filters</h2> */}
         <div>
           <h3 className="text-sm font-medium mb-2">Category</h3>
           <ul className="space-y-1 text-sm">
@@ -78,7 +78,7 @@ export default function ProductsPage() {
               <Slider
                 min={minPrice}
                 max={maxPrice}
-                step={100} 
+                step={100}
                 value={priceRange}
                 onValueChange={handlePriceChange}
                 className="my-4"
@@ -104,8 +104,8 @@ export default function ProductsPage() {
         <div className="flex flex-col sm:flex-row items-center gap-2 md:gap-4 p-3 md:p-4 rounded-lg border bg-card shadow-sm mb-6">
           <div className="relative flex-grow w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search products by name..." 
+            <Input
+              placeholder="Search products by name..."
               className="pl-10 pr-4 py-2 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -136,7 +136,10 @@ export default function ProductsPage() {
                 </Button>
               </SheetTrigger>
               <SheetContent className="w-[300px] sm:w-[400px] p-0">
-                <ScrollArea className="h-full">
+                <SheetHeader className="p-4 border-b">
+                  <SheetTitle>Filter Options</SheetTitle>
+                </SheetHeader>
+                <ScrollArea className="h-[calc(100%-4rem)]"> {/* Adjust height if footer is added */}
                    <FilterOptions />
                 </ScrollArea>
               </SheetContent>
@@ -148,6 +151,7 @@ export default function ProductsPage() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         {/* Filters Sidebar (Desktop) */}
         <aside className="hidden md:block md:col-span-3 lg:col-span-2 space-y-6 p-4 border rounded-lg bg-card h-fit sticky top-24">
+           <h2 className="text-lg font-semibold text-foreground">Filters</h2>
           <FilterOptions />
         </aside>
 
