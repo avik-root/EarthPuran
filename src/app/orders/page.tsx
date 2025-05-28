@@ -1,14 +1,74 @@
 
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { ListOrdered, PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-// Sample order data - replace with actual data fetching
-const sampleOrders: any[] = []; // In a real app, fetch user's orders. Removed mock data.
+// Define Order types directly or import if moved to a types file
+interface OrderItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  price: number;
+  imageUrl: string;
+  imageHint?: string;
+}
+
+interface Order {
+  id: string;
+  date: string;
+  items: OrderItem[];
+  totalAmount: number;
+  shippingDetails: { // Simplified for display
+    firstName: string;
+    lastName: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
+  status: 'Processing' | 'Shipped' | 'Delivered';
+}
+
+const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
 
 export default function OrdersPage() {
-  const orders = sampleOrders; // In a real app, fetch user's orders
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    try {
+      const storedOrders = localStorage.getItem(ORDER_HISTORY_STORAGE_KEY);
+      if (storedOrders) {
+        setOrders(JSON.parse(storedOrders));
+      }
+    } catch (error) {
+      console.error("Failed to load orders from localStorage", error);
+      setOrders([]);
+    }
+    setLoading(false);
+  }, []);
+
+  if (loading) {
+    return (
+        <div className="space-y-8">
+            <div className="flex items-center space-x-3">
+                <ListOrdered className="h-10 w-10 text-primary" />
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-primary">Order History</h1>
+                    <p className="text-muted-foreground">Loading your purchase history...</p>
+                </div>
+            </div>
+            <div className="text-center py-12">
+                <p className="text-muted-foreground">Loading...</p>
+            </div>
+        </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -33,28 +93,36 @@ export default function OrdersPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {orders.map((order) => (
+          {orders.sort((a,b) => parseInt(b.id) - parseInt(a.id)).map((order) => ( // Sort by newest first
             <Card key={order.id}>
-              <CardHeader className="flex flex-row justify-between items-start">
+              <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div>
-                  <CardTitle>Order #{order.id}</CardTitle>
-                  <CardDescription>Date: {order.date} | Status: <span className={`font-medium ${order.status === 'Delivered' ? 'text-green-600' : order.status === 'Shipped' ? 'text-blue-600' : 'text-yellow-600'}`}>{order.status}</span></CardDescription>
+                  <CardTitle className="text-lg">Order #{order.id}</CardTitle>
+                  <CardDescription>
+                    Date: {order.date} | Status: <span className={`font-medium ${order.status === 'Delivered' ? 'text-green-600' : order.status === 'Shipped' ? 'text-blue-600' : 'text-yellow-600'}`}>{order.status}</span>
+                  </CardDescription>
                 </div>
-                <p className="text-xl font-semibold text-primary">₹{order.total.toFixed(2)}</p>
+                <p className="text-xl font-semibold text-primary self-start sm:self-center">₹{order.totalAmount.toFixed(2)}</p>
               </CardHeader>
               <CardContent>
                 <h4 className="font-medium mb-2 text-sm">Items:</h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  {order.items.map((item: any, index: number) => ( 
-                    <li key={index} className="flex justify-between">
-                      <span>{item.name} (x{item.quantity})</span>
-                      <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {order.items.map((item: OrderItem, index: number) => ( 
+                    <li key={`${order.id}-item-${index}`} className="flex items-center justify-between gap-2">
+                       <div className="flex items-center gap-3">
+                        <Image src={item.imageUrl} alt={item.name} width={50} height={50} className="rounded-md object-cover aspect-square" data-ai-hint={item.imageHint || "product order"} />
+                        <div>
+                            <p className="font-medium text-foreground">{item.name}</p>
+                            <p>Quantity: {item.quantity}</p>
+                        </div>
+                       </div>
+                      <p className="text-foreground">₹{(item.price * item.quantity).toFixed(2)}</p>
                     </li>
                   ))}
                 </ul>
-                <div className="mt-4 flex justify-end">
-                    <Button variant="outline" size="sm">View Details (Not Implemented)</Button>
-                </div>
+                {/* <div className="mt-4 flex justify-end">
+                    <Button variant="outline" size="sm">View Order Details (Not Implemented)</Button>
+                </div> */}
               </CardContent>
             </Card>
           ))}
@@ -63,3 +131,5 @@ export default function OrdersPage() {
     </div>
   );
 }
+
+    

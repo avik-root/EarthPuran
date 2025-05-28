@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { useCart } from "@/hooks/useCart";
+import { useCart, type CartItem } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -26,18 +26,36 @@ interface UserProfileData {
   phoneNumber: string;
 }
 
-// Minimal Address interface matching what's stored by AddressManagement.tsx
 interface UserAddress {
   id: string;
   street: string;
   city: string;
   state: string;
-  zipCode: string; // Note: AddressManagement.tsx uses zipCode
+  zipCode: string;
   country: string;
   isDefault: boolean;
 }
 
+export interface OrderItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  price: number;
+  imageUrl: string;
+  imageHint?: string;
+}
+
+export interface Order {
+  id: string;
+  date: string;
+  items: OrderItem[];
+  totalAmount: number;
+  shippingDetails: ShippingFormValues;
+  status: 'Processing' | 'Shipped' | 'Delivered';
+}
+
 const ADDRESS_STORAGE_KEY = 'earthPuranUserAddresses';
+const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
 
 const countries: { code: string; name: string; phoneCode: string }[] = [
   { code: "US", name: "United States", phoneCode: "+1" },
@@ -59,7 +77,7 @@ const shippingSchema = z.object({
   phoneCountryCode: z.string().optional(),
 });
 
-type ShippingFormValues = z.infer<typeof shippingSchema>;
+export type ShippingFormValues = z.infer<typeof shippingSchema>;
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -69,7 +87,7 @@ export default function CheckoutPage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [shippingDetailsSaved, setShippingDetailsSaved] = useState<ShippingFormValues | null>(null);
 
-  const shippingCost = cartItems.length > 0 ? 50.00 : 0; // Example fixed shipping in INR
+  const shippingCost = cartItems.length > 0 ? 50.00 : 0; 
   const totalAmount = subtotal + shippingCost;
 
   const form = useForm<ShippingFormValues>({
@@ -81,9 +99,9 @@ export default function CheckoutPage() {
       city: "",
       state: "",
       pincode: "",
-      country: "India", // Default country
+      country: "India", 
       phoneNumber: "",
-      phoneCountryCode: "+91", // Default for India
+      phoneCountryCode: "+91", 
     },
   });
 
@@ -105,7 +123,7 @@ export default function CheckoutPage() {
     if (storedAddresses) {
       try {
         const allAddresses = JSON.parse(storedAddresses) as UserAddress[];
-        defaultAddress = allAddresses.find(addr => addr.isDefault) || null;
+        defaultAddress = allAddresses.find(addr => addr.isDefault) || (allAddresses.length > 0 ? allAddresses[0] : null);
       } catch (error) {
         console.error("Failed to parse user addresses for checkout", error);
       }
@@ -118,11 +136,11 @@ export default function CheckoutPage() {
       lastName: parsedProfile?.lastName || "",
       phoneNumber: parsedProfile?.phoneNumber || "",
       phoneCountryCode: countryInfo?.phoneCode || "+91",
-      country: countryInfo?.name || "India",
+      country: defaultAddress?.country || countryInfo?.name || "India",
       address: defaultAddress?.street || "",
       city: defaultAddress?.city || "",
       state: defaultAddress?.state || "",
-      pincode: defaultAddress?.zipCode || "", // map zipCode to pincode
+      pincode: defaultAddress?.zipCode || "",
     });
 
     setLoadingProfile(false);
@@ -143,14 +161,44 @@ export default function CheckoutPage() {
       });
       return;
     }
-    console.log("Placing order with COD:", { shippingDetails: shippingDetailsSaved, cartItems, totalAmount });
-    // Simulate order placement
+
+    const newOrder: Order = {
+      id: Date.now().toString(),
+      date: new Date().toLocaleDateString('en-GB'), // DD/MM/YYYY format
+      items: cartItems.map(item => ({
+        productId: item.product.id,
+        name: item.product.name,
+        quantity: item.quantity,
+        price: item.product.price,
+        imageUrl: item.product.imageUrl,
+        imageHint: item.product.imageHint,
+      })),
+      totalAmount: totalAmount,
+      shippingDetails: shippingDetailsSaved,
+      status: 'Processing',
+    };
+
+    try {
+      const existingOrdersJSON = localStorage.getItem(ORDER_HISTORY_STORAGE_KEY);
+      const existingOrders: Order[] = existingOrdersJSON ? JSON.parse(existingOrdersJSON) : [];
+      localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify([...existingOrders, newOrder]));
+    } catch (error) {
+      console.error("Failed to save order to localStorage", error);
+      toast({
+        title: "Order Placement Issue",
+        description: "There was an issue saving your order. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("Placing order with COD:", newOrder);
     clearCart();
     toast({
       title: "Order Placed Successfully!",
       description: "Your Earth Puran order (COD) has been confirmed. Thank you for shopping!",
     });
-    router.push("/"); // Redirect to homepage
+    router.push("/"); 
   };
 
   return (
@@ -228,7 +276,7 @@ export default function CheckoutPage() {
                      <FormField control={form.control} name="country" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Country</FormLabel>
-                          <FormControl><Input {...field} readOnly={!!profileData?.countryCode} /></FormControl>
+                          <FormControl><Input {...field} /></FormControl> {/* Removed readOnly based on profileData for wider usability */}
                           <FormMessage />
                         </FormItem>
                       )}/>
@@ -241,11 +289,10 @@ export default function CheckoutPage() {
                           className="w-20 bg-muted"
                         />
                         <FormField control={form.control} name="phoneNumber" render={({ field }) => (
-                            <FormControl><Input type="tel" placeholder="9876543210" {...field} maxLength={10} readOnly={!!profileData?.phoneNumber} /></FormControl>
+                            <FormControl><Input type="tel" placeholder="9876543210" {...field} maxLength={10} /></FormControl> {/* Removed readOnly based on profileData */}
                         )}/>
                       </div>
-                      {/* Display general form message for phoneNumber here if needed from form.formState.errors.phoneNumber */}
-                       <FormMessage>{form.formState.errors.phoneNumber?.message}</FormMessage>
+                       <FormMessage>{form.formState.errors.phoneNumber?.message || form.formState.errors.phoneCountryCode?.message}</FormMessage>
                     </FormItem>
                     <Button type="submit" className="w-full md:w-auto">Save Shipping Address</Button>
                   </form>
@@ -295,7 +342,6 @@ export default function CheckoutPage() {
                   <Separator />
                   <div className="flex justify-between text-sm"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
                   <div className="flex justify-between text-sm"><span>Shipping</span><span>₹{shippingCost.toFixed(2)}</span></div>
-                  {/* <div className="flex justify-between text-sm"><span>Taxes</span><span>₹0.00</span></div> Placeholder */}
                   <Separator />
                   <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>₹{totalAmount.toFixed(2)}</span></div>
                 </>
