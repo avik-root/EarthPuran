@@ -141,7 +141,7 @@ export default function SignupPage() {
                         </FormControl>
                         <SelectContent>
                           {countries.map(country => (
-                            <SelectItem key={country.code} value={country.phoneCode}>
+                            <SelectItem key={country.code} value={country.code}>
                               {country.flag} {country.name} ({country.phoneCode})
                             </SelectItem>
                           ))}
