@@ -14,9 +14,10 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation"; 
 import { useToast } from "@/hooks/use-toast";
-import { getUserData, initializeUserAccount } from "@/app/actions/userActions"; 
+import { getUserData } from "@/app/actions/userActions"; 
 import type { UserData, UserProfile } from "@/types/userData";
 import adminCredentials from '@/data/admin.json';
+import bcrypt from 'bcryptjs';
 
 
 const loginSchema = z.object({
@@ -62,23 +63,28 @@ export default function LoginPage() {
     
     // Admin Login Check
     if (values.email === adminCredentials.email) {
-      if (values.password === adminCredentials.password && values.pin === adminCredentials.pin) {
+      // IMPORTANT: admin.json is expected to store HASHED password and PIN for this to work.
+      // If admin.json stores plaintext, this bcrypt.compareSync will always fail.
+      // User must manually hash "Agtg@2005" and "092011" and put those hashes in admin.json.
+      const isPasswordCorrect = bcrypt.compareSync(values.password, adminCredentials.password); // adminCredentials.password should be hash
+      const isPinCorrect = bcrypt.compareSync(values.pin, adminCredentials.pin); // adminCredentials.pin should be hash
+
+      if (isPasswordCorrect && isPinCorrect) {
         localStorage.setItem("isLoggedInPrototype", "true");
-        localStorage.setItem("isAdminPrototype", "true");
+        localStorage.setItem("isAdminPrototype", "true"); // This flag is currently unused as admin panel was removed
         localStorage.setItem('currentUserEmail', values.email);
-        const adminProfileForStorage: UserProfile = { // Simplified profile for admin for localStorage
+        const adminProfileForStorage: UserProfile = { 
             firstName: "Admin", 
             lastName: "User", 
             email: values.email, 
             countryCode: "IN", 
             phoneNumber: "0000000000",
-            password_plaintext_prototype_only: adminCredentials.password, // For consistency if profile is ever fully displayed
-            pin_plaintext_prototype_only: adminCredentials.pin,
+            // No need to store hashed password/pin in localStorage for client-side display
         };
         localStorage.setItem('userProfilePrototype', JSON.stringify(adminProfileForStorage));
 
         toast({ title: "Admin Login Successful", description: "Welcome, Admin!" });
-        const redirectUrl = searchParams.get('redirect') || "/admin/dashboard";
+        const redirectUrl = searchParams.get('redirect') || "/"; // Redirect admin to home for now
         router.push(redirectUrl);
          if (redirectUrl === pathname) router.refresh();
         return;
@@ -98,15 +104,16 @@ export default function LoginPage() {
       return;
     }
 
-    if (!userData) {
-      toast({ title: "Login Failed", description: "User not found. Please sign up if you don't have an account.", variant: "destructive" });
+    if (!userData || !userData.profile.hashedPassword || !userData.profile.hashedPin) {
+      toast({ title: "Login Failed", description: "User not found or credentials not set up. Please sign up if you don't have an account.", variant: "destructive" });
       return;
     }
 
-    // Validate password and PIN for regular user
-    // IMPORTANT: This is comparing plaintext for prototype purposes. NEVER do this in production.
-    if (userData.profile.password_plaintext_prototype_only !== values.password || 
-        userData.profile.pin_plaintext_prototype_only !== values.pin) {
+    // Validate password and PIN for regular user using bcrypt
+    const isPasswordCorrect = bcrypt.compareSync(values.password, userData.profile.hashedPassword);
+    const isPinCorrect = bcrypt.compareSync(values.pin, userData.profile.hashedPin);
+    
+    if (!isPasswordCorrect || !isPinCorrect) {
       toast({ title: "Login Failed", description: "Invalid credentials. Please check your email, password, and PIN.", variant: "destructive" });
       return;
     }
@@ -114,7 +121,14 @@ export default function LoginPage() {
     localStorage.setItem("isLoggedInPrototype", "true");
     localStorage.setItem("isAdminPrototype", "false"); 
     localStorage.setItem('currentUserEmail', values.email);
-    localStorage.setItem('userProfilePrototype', JSON.stringify(userData.profile));
+     const profileForStorage: UserProfile = { // Store only non-sensitive parts of profile
+        firstName: userData.profile.firstName,
+        lastName: userData.profile.lastName,
+        email: userData.profile.email,
+        countryCode: userData.profile.countryCode,
+        phoneNumber: userData.profile.phoneNumber,
+    };
+    localStorage.setItem('userProfilePrototype', JSON.stringify(profileForStorage));
 
 
     toast({ title: "Login Successful", description: "Welcome back!" });

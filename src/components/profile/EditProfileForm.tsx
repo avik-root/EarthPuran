@@ -13,21 +13,20 @@ import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { updateUserPasswordAction, updateUserPinAction } from "@/app/actions/userActions";
 
-// Existing strong password schema
 const passwordStrengthSchema = z.string()
   .min(8, "Password must be at least 8 characters long.")
   .regex(/[A-Z]/, "Password must contain at least one uppercase letter.")
   .regex(/[0-9]/, "Password must contain at least one number.")
   .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character.");
 
-// Base schema for the form - all fields optional initially
 const baseEditProfileSchema = z.object({
   currentPassword: z.string().optional(),
-  newPassword: passwordStrengthSchema.optional(), // Keep strong validation for new password
+  newPassword: passwordStrengthSchema.optional().or(z.literal('')), // Allow empty string if not changing
   confirmNewPassword: z.string().optional(),
   currentPin: z.string().optional(),
-  newPin: z.string().optional(),
+  newPin: z.string().optional().or(z.literal('')), // Allow empty string
   confirmNewPin: z.string().optional(),
 });
 
@@ -36,7 +35,7 @@ type EditProfileFormValues = z.infer<typeof baseEditProfileSchema>;
 // Specific schema for password change validation
 const passwordChangeValidationSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required."),
-  newPassword: passwordStrengthSchema,
+  newPassword: passwordStrengthSchema, // New password must meet strength if provided
   confirmNewPassword: z.string().min(1, "Please confirm your new password."),
 }).refine(data => data.newPassword === data.confirmNewPassword, {
   message: "New passwords don't match.",
@@ -74,7 +73,7 @@ export function EditProfileForm() {
   }, []);
 
   const form = useForm<EditProfileFormValues>({
-    resolver: zodResolver(baseEditProfileSchema), // Use base schema for initial form structure
+    resolver: zodResolver(baseEditProfileSchema), 
     defaultValues: {
       currentPassword: "",
       newPassword: "",
@@ -103,32 +102,54 @@ export function EditProfileForm() {
       toast({ title: "Error", description: "You must be logged in to change security settings.", variant: "destructive"});
       return;
     }
-    form.clearErrors(); // Clear previous errors before new validation
+    form.clearErrors(); 
 
     if (visibleSection === 'password') {
-      const result = passwordChangeValidationSchema.safeParse(values);
+      const validationData = {
+        currentPassword: values.currentPassword || "",
+        newPassword: values.newPassword || "",
+        confirmNewPassword: values.confirmNewPassword || "",
+      };
+      const result = passwordChangeValidationSchema.safeParse(validationData);
       if (!result.success) {
         result.error.issues.forEach(issue => {
           form.setError(issue.path[0] as keyof EditProfileFormValues, { message: issue.message, type: 'manual' });
         });
         return;
       }
-      console.log("Password change data:", result.data);
-      toast({ title: "Password Changed (Simulated)", description: "Your password has been successfully updated." });
+      
+      const updateResult = await updateUserPasswordAction(currentUserEmail, result.data.currentPassword, result.data.newPassword);
+      if (updateResult.success) {
+        toast({ title: "Password Changed", description: updateResult.message });
+        setVisibleSection('none');
+        form.reset();
+      } else {
+        toast({ title: "Password Change Failed", description: updateResult.message, variant: "destructive" });
+      }
+
     } else if (visibleSection === 'pin') {
-      const result = pinChangeValidationSchema.safeParse(values);
+       const validationData = {
+        currentPin: values.currentPin || "",
+        newPin: values.newPin || "",
+        confirmNewPin: values.confirmNewPin || "",
+      };
+      const result = pinChangeValidationSchema.safeParse(validationData);
       if (!result.success) {
         result.error.issues.forEach(issue => {
           form.setError(issue.path[0] as keyof EditProfileFormValues, { message: issue.message, type: 'manual' });
         });
         return;
       }
-      console.log("PIN change data:", result.data);
-      toast({ title: "PIN Changed (Simulated)", description: "Your PIN has been successfully updated." });
+
+      const updateResult = await updateUserPinAction(currentUserEmail, result.data.currentPin, result.data.newPin);
+      if (updateResult.success) {
+        toast({ title: "PIN Changed", description: updateResult.message });
+        setVisibleSection('none');
+        form.reset();
+      } else {
+        toast({ title: "PIN Change Failed", description: updateResult.message, variant: "destructive" });
+      }
     }
-    
-    setVisibleSection('none');
-    form.reset(); 
   }
 
   const handleCancel = () => {

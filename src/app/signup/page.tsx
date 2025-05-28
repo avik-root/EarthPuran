@@ -86,30 +86,42 @@ export default function SignupPage() {
   async function onSubmit(values: SignupFormValues) {
     console.log("Signup form submitted:", values);
     
-    const userProfileData: UserProfile = {
+    // UserProfile now expects hashedPassword and hashedPin, but we pass plaintext
+    // to initializeUserAccount which will handle hashing.
+    const userProfileDataForAction: UserProfile = {
       firstName: values.firstName,
       lastName: values.lastName,
       email: values.email,
       countryCode: values.countryCode,
       phoneNumber: values.phoneNumber,
-      password_plaintext_prototype_only: values.password,
-      pin_plaintext_prototype_only: values.pin,
+      // Hashing will be done by the server action
     };
 
     try {
-      await initializeUserAccount(userProfileData);
+      // Pass plaintext password and PIN to be hashed by the server action
+      const createdUserData = await initializeUserAccount(userProfileDataForAction, values.password, values.pin);
+      
       localStorage.setItem("isLoggedInPrototype", "true");
       localStorage.setItem('currentUserEmail', values.email); 
-      // Storing profile in localStorage for immediate availability.
-      // In a real app, this might be managed by a session or context.
-      localStorage.setItem('userProfilePrototype', JSON.stringify(userProfileData));
+      // Store the profile returned by the server action (which includes hashed creds, though we don't use them client-side)
+      // Or store a simplified profile for display purposes
+      const profileForStorage: UserProfile = {
+        firstName: createdUserData.profile.firstName,
+        lastName: createdUserData.profile.lastName,
+        email: createdUserData.profile.email,
+        countryCode: createdUserData.profile.countryCode,
+        phoneNumber: createdUserData.profile.phoneNumber,
+        // No need to store hashed password/pin in localStorage for client-side display
+      };
+      localStorage.setItem('userProfilePrototype', JSON.stringify(profileForStorage));
 
 
       toast({ title: "Account Created!", description: "Welcome to Earth Puran." });
       router.push("/");
     } catch (error) {
       console.error("Signup failed:", error);
-      toast({ title: "Signup Failed", description: "Could not create your account. It's possible this email is already registered. Please try again or try logging in.", variant: "destructive" });
+      const errorMessage = error instanceof Error ? error.message : "Could not create your account. Please try again.";
+      toast({ title: "Signup Failed", description: errorMessage, variant: "destructive" });
     }
   }
 

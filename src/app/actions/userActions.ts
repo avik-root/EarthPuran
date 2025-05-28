@@ -3,23 +3,24 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import bcrypt from 'bcryptjs';
 import type { AllUsersData, UserData, UserProfile, UserAddress, Order, Product as WishlistProduct, FullCartItem } from '@/types/userData';
 import type { Product } from '@/types/product';
 
 const dataFilePath = path.join(process.cwd(), 'src', 'data', 'users.json');
+const saltRounds = 10;
 
 async function readUsersFile(): Promise<AllUsersData> {
   try {
     const jsonData = await fs.readFile(dataFilePath, 'utf-8');
     if (!jsonData.trim()) {
-      // If the file is empty, initialize with an empty object
       await fs.writeFile(dataFilePath, JSON.stringify({}, null, 2), 'utf-8');
       return {};
     }
     return JSON.parse(jsonData) as AllUsersData;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      await fs.writeFile(dataFilePath, JSON.stringify({}, null, 2), 'utf-8'); // Create file if not exists
+      await fs.writeFile(dataFilePath, JSON.stringify({}, null, 2), 'utf-8'); 
       return {};
     }
     console.error("Failed to read or parse users.json:", error);
@@ -36,9 +37,17 @@ async function writeUsersFile(data: AllUsersData): Promise<void> {
   }
 }
 
-function getDefaultUserData(profile: UserProfile): UserData {
+// Profile now expects plaintext password and pin for hashing during initialization
+function getDefaultUserData(profile: UserProfile, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string): UserData {
+    const hashedPassword = bcrypt.hashSync(plaintextPassword_prototype_only, saltRounds);
+    const hashedPin = bcrypt.hashSync(plaintextPin_prototype_only, saltRounds);
+    
     return {
-        profile, // Profile now includes plaintext password and pin for prototype
+        profile: {
+            ...profile, // original profile data like name, email, phone
+            hashedPassword,
+            hashedPin,
+        },
         addresses: [],
         orders: [],
         wishlist: [],
@@ -55,39 +64,74 @@ export async function getUserData(email: string): Promise<UserData | null> {
   return allUsers[email] || null;
 }
 
-export async function initializeUserAccount(profile: UserProfile): Promise<UserData> {
+// Accepts plaintext password and pin for hashing
+export async function initializeUserAccount(profile: UserProfile, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string): Promise<UserData> {
     const allUsers = await readUsersFile();
     if (allUsers[profile.email]) {
-        // Optionally, throw an error if user already exists, or just return existing data
-        // For now, let's throw an error to prevent accidental overwrites via signup
         throw new Error(`User with email ${profile.email} already exists.`);
     }
-    allUsers[profile.email] = getDefaultUserData(profile);
+    allUsers[profile.email] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only);
     await writeUsersFile(allUsers);
     return allUsers[profile.email];
 }
 
-export async function updateUserProfile(email: string, profileData: Partial<UserProfile>): Promise<boolean> {
+// updateUserProfile is primarily for non-credential profile data like name, phone from user's perspective.
+// Password/PIN changes should use dedicated actions.
+export async function updateUserProfile(email: string, profileData: Partial<Pick<UserProfile, 'firstName' | 'lastName' | 'countryCode' | 'phoneNumber'>>): Promise<boolean> {
     if (!email) return false;
     const allUsers = await readUsersFile();
     if (!allUsers[email]) {
       console.error(`Attempted to update profile for non-existent user: ${email}`);
       return false;
     }
-    // Ensure password and pin are not accidentally wiped if not provided in partial update
-    const existingPassword = allUsers[email].profile.password_plaintext_prototype_only;
-    const existingPin = allUsers[email].profile.pin_plaintext_prototype_only;
-
+    
+    // Merge only the allowed fields, preserve existing credentials
     allUsers[email].profile = { 
         ...allUsers[email].profile, 
         ...profileData,
-        // Preserve existing password/pin if not part of this specific update
-        password_plaintext_prototype_only: profileData.password_plaintext_prototype_only || existingPassword,
-        pin_plaintext_prototype_only: profileData.pin_plaintext_prototype_only || existingPin,
      };
     await writeUsersFile(allUsers);
     return true;
 }
+
+export async function updateUserPasswordAction(email: string, currentPlaintextPassword_prototype_only: string, newPlaintextPassword_prototype_only: string): Promise<{success: boolean, message: string}> {
+    if (!email) return {success: false, message: "Email not provided."};
+    const allUsers = await readUsersFile();
+    const userData = allUsers[email];
+
+    if (!userData || !userData.profile.hashedPassword) {
+      return {success: false, message: "User not found or no password set."};
+    }
+
+    const isCurrentPasswordValid = bcrypt.compareSync(currentPlaintextPassword_prototype_only, userData.profile.hashedPassword);
+    if (!isCurrentPasswordValid) {
+        return {success: false, message: "Current password does not match."};
+    }
+
+    userData.profile.hashedPassword = bcrypt.hashSync(newPlaintextPassword_prototype_only, saltRounds);
+    await writeUsersFile(allUsers);
+    return {success: true, message: "Password updated successfully."};
+}
+
+export async function updateUserPinAction(email: string, currentPlaintextPin_prototype_only: string, newPlaintextPin_prototype_only: string): Promise<{success: boolean, message: string}> {
+    if (!email) return {success: false, message: "Email not provided."};
+    const allUsers = await readUsersFile();
+    const userData = allUsers[email];
+
+    if (!userData || !userData.profile.hashedPin) {
+      return {success: false, message: "User not found or no PIN set."};
+    }
+
+    const isCurrentPinValid = bcrypt.compareSync(currentPlaintextPin_prototype_only, userData.profile.hashedPin);
+    if (!isCurrentPinValid) {
+        return {success: false, message: "Current PIN does not match."};
+    }
+    
+    userData.profile.hashedPin = bcrypt.hashSync(newPlaintextPin_prototype_only, saltRounds);
+    await writeUsersFile(allUsers);
+    return {success: true, message: "PIN updated successfully."};
+}
+
 
 export async function updateUserAddresses(email: string, addresses: UserAddress[]): Promise<boolean> {
     if (!email) return false;

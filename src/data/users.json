@@ -297,5 +297,20 @@
       }
     ],
     "cart": []
+  },
+  "devil@gmail.com": {
+    "profile": {
+      "firstName": "Devil",
+      "lastName": "Bae",
+      "email": "devil@gmail.com",
+      "countryCode": "IN",
+      "phoneNumber": "9798979897",
+      "password_plaintext_prototype_only": "Devil@2004",
+      "pin_plaintext_prototype_only": "111111"
+    },
+    "addresses": [],
+    "orders": [],
+    "wishlist": [],
+    "cart": []
   }
 }
