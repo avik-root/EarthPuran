@@ -44,39 +44,39 @@ export function useCart() {
     loadCartData();
   }, [loadCartData]);
 
-  const persistCart = async (updatedCartItems: FullCartItem[]) => {
+  const persistCart = useCallback(async (updatedCartItems: FullCartItem[]) => {
     if (currentUserEmail) {
       try {
         await updateUserCart(currentUserEmail, updatedCartItems);
       } catch (error) {
         console.error("Failed to persist cart:", error);
         toast({ title: "Sync Error", description: "Could not save cart changes to server.", variant: "destructive" });
-        // Optionally, revert optimistic update or try again later
       }
     }
-  };
+  }, [currentUserEmail, toast]);
 
   const addToCart = useCallback(async (product: Product, quantity: number = 1) => {
     if (!currentUserEmail) {
         toast({title: "Login Required", description: "Please log in to add items to your cart.", variant: "destructive"});
-        // Consider redirecting to login: router.push('/login?redirect=...');
         return;
     }
-    let newItemsState: FullCartItem[];
-    const existingItemIndex = cartItems.findIndex(item => item.product.id === product.id);
 
-    if (existingItemIndex > -1) {
-      newItemsState = cartItems.map((item, index) =>
-        index === existingItemIndex
-          ? { ...item, quantity: Math.min(item.quantity + quantity, product.stock) }
-          : item
-      );
-    } else {
-      newItemsState = [...cartItems, { product, quantity: Math.min(quantity, product.stock) }];
-    }
-    
-    setCartItems(newItemsState); 
-    await persistCart(newItemsState);
+    setCartItems(prevCartItems => {
+      const existingItemIndex = prevCartItems.findIndex(item => item.product.id === product.id);
+      let newComputedCart: FullCartItem[];
+
+      if (existingItemIndex > -1) {
+        newComputedCart = prevCartItems.map((item, index) =>
+          index === existingItemIndex
+            ? { ...item, quantity: Math.min(item.quantity + quantity, product.stock) }
+            : item
+        );
+      } else {
+        newComputedCart = [...prevCartItems, { product, quantity: Math.min(quantity, product.stock) }];
+      }
+      persistCart(newComputedCart); // Persist the newly computed state
+      return newComputedCart; // Update React state
+    });
 
     setTimeout(() => { 
         toast({
@@ -84,16 +84,18 @@ export function useCart() {
             description: `${product.name} has been added to your cart.`,
         });
     },0);
-  }, [cartItems, toast, currentUserEmail]);
+  }, [currentUserEmail, persistCart, toast]);
 
   const removeFromCart = useCallback(async (productId: string) => {
-    if (!currentUserEmail) return; // Should not happen if cart has items for a user
+    if (!currentUserEmail) return; 
 
     const productToRemove = cartItems.find(item => item.product.id === productId)?.product;
-    const newItemsState = cartItems.filter(item => item.product.id !== productId);
     
-    setCartItems(newItemsState);
-    await persistCart(newItemsState);
+    setCartItems(prevCartItems => {
+        const newComputedCart = prevCartItems.filter(item => item.product.id !== productId);
+        persistCart(newComputedCart);
+        return newComputedCart;
+    });
 
     if (productToRemove) {
       setTimeout(() => {
@@ -104,29 +106,32 @@ export function useCart() {
         });
       }, 0);
     }
-  }, [cartItems, toast, currentUserEmail]);
+  }, [cartItems, currentUserEmail, persistCart, toast]); // cartItems needed for finding productToRemove for toast
 
   const updateQuantity = useCallback(async (productId: string, newQuantity: number) => {
     if (!currentUserEmail) return;
 
-    const newItemsState = cartItems.map(item => {
-      if (item.product.id === productId) {
-        const validatedQuantity = Math.max(1, Math.min(newQuantity, item.product.stock));
-        return { ...item, quantity: validatedQuantity };
-      }
-      return item;
+    setCartItems(prevCartItems => {
+        const newComputedCart = prevCartItems.map(item => {
+            if (item.product.id === productId) {
+                const validatedQuantity = Math.max(1, Math.min(newQuantity, item.product.stock));
+                return { ...item, quantity: validatedQuantity };
+            }
+            return item;
+        });
+        persistCart(newComputedCart);
+        return newComputedCart;
     });
-
-    setCartItems(newItemsState);
-    await persistCart(newItemsState);
-  }, [cartItems, currentUserEmail]);
+  }, [currentUserEmail, persistCart]);
 
   const clearCart = useCallback(async () => {
     if (!currentUserEmail) return;
 
-    const newItemsState: FullCartItem[] = [];
-    setCartItems(newItemsState);
-    await persistCart(newItemsState);
+    setCartItems(prevCartItems => {
+        const newComputedCart: FullCartItem[] = [];
+        persistCart(newComputedCart);
+        return newComputedCart;
+    });
 
     setTimeout(() => {
       toast({
@@ -134,7 +139,7 @@ export function useCart() {
         description: "All items have been removed from your cart.",
       });
     }, 0);
-  }, [toast, currentUserEmail]);
+  }, [currentUserEmail, persistCart, toast]);
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -148,6 +153,6 @@ export function useCart() {
     subtotal,
     totalItems,
     isLoadingCart: isLoading,
-    refreshCart: loadCartData, // Expose a way to manually refresh cart
+    refreshCart: loadCartData,
   };
 }

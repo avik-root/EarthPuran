@@ -93,6 +93,68 @@
     ],
     "orders": [
       {
+        "id": "1748454091350",
+        "date": "28/05/2025",
+        "items": [
+          {
+            "productId": "3",
+            "name": "Midnight Sparkle Eyeshadow Palette",
+            "quantity": 3,
+            "price": 55,
+            "imageUrl": "https://placehold.co/600x600.png",
+            "imageHint": "eyeshadow palette"
+          }
+        ],
+        "totalAmount": 215,
+        "shippingDetails": {
+          "firstName": "Boss",
+          "lastName": "Lite",
+          "address": "Biswa Bangla Sarangi ",
+          "city": "Newtown ",
+          "state": "West Bengal ",
+          "pincode": "700012",
+          "country": "India",
+          "phoneNumber": "9898989898",
+          "phoneCountryCode": "+91"
+        },
+        "status": "Cancelled"
+      },
+      {
+        "id": "1748453290970",
+        "date": "28/05/2025",
+        "items": [
+          {
+            "productId": "5",
+            "name": "Volumizing Lash Mascara",
+            "quantity": 70,
+            "price": 24,
+            "imageUrl": "https://placehold.co/600x600.png",
+            "imageHint": "mascara product"
+          },
+          {
+            "productId": "1",
+            "name": "Velvet Matte Lipstick",
+            "quantity": 2,
+            "price": 28,
+            "imageUrl": "https://placehold.co/600x600.png",
+            "imageHint": "lipstick beauty"
+          }
+        ],
+        "totalAmount": 1786,
+        "shippingDetails": {
+          "firstName": "Boss",
+          "lastName": "Lite",
+          "address": "Biswa Bangla Sarangi ",
+          "city": "Newtown ",
+          "state": "West Bengal ",
+          "pincode": "700012",
+          "country": "India",
+          "phoneNumber": "9898989898",
+          "phoneCountryCode": "+91"
+        },
+        "status": "Processing"
+      },
+      {
         "id": "1748450764972",
         "date": "28/05/2025",
         "items": [
@@ -121,6 +183,53 @@
       }
     ],
     "wishlist": [
+      {
+        "id": "5",
+        "name": "Volumizing Lash Mascara",
+        "category": "Eyes",
+        "brand": "Earth Puran",
+        "price": 24,
+        "description": "Get dramatic, voluminous lashes with this intense black mascara. The specially designed brush coats every lash for maximum impact. Smudge-proof and long-lasting. A signature product from Earth Puran.",
+        "imageUrl": "https://placehold.co/600x600.png",
+        "imageHint": "mascara product",
+        "color": "Intense Black",
+        "rating": 4.4,
+        "reviews": 150,
+        "stock": 70,
+        "tags": [
+          "mascara",
+          "volumizing",
+          "lashes",
+          "smudge-proof",
+          "natural-waxes"
+        ]
+      },
+      {
+        "id": "1",
+        "name": "Velvet Matte Lipstick",
+        "category": "Lips",
+        "brand": "Earth Puran",
+        "price": 28,
+        "description": "A luxurious, long-wearing matte lipstick with a velvety finish. Infused with nourishing oils for comfortable wear. Experience intense color payoff and a smooth, non-drying feel. Exclusively from Earth Puran.",
+        "imageUrl": "https://placehold.co/600x600.png",
+        "imageHint": "lipstick beauty",
+        "colors": [
+          "Ruby Red",
+          "Dusty Rose",
+          "Nude Beige",
+          "Deep Plum"
+        ],
+        "rating": 4.5,
+        "reviews": 120,
+        "stock": 50,
+        "tags": [
+          "matte",
+          "long-wearing",
+          "lipstick",
+          "velvet",
+          "natural"
+        ]
+      },
       {
         "id": "2",
         "name": "Radiant Glow Foundation",

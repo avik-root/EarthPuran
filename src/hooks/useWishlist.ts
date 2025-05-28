@@ -43,7 +43,7 @@ export function useWishlist() {
   }, [loadWishlistData]);
 
 
-  const persistWishlist = async (updatedWishlistItems: Product[]) => {
+  const persistWishlist = useCallback(async (updatedWishlistItems: Product[]) => {
     if (currentUserEmail) {
        try {
         await updateUserWishlist(currentUserEmail, updatedWishlistItems);
@@ -52,27 +52,30 @@ export function useWishlist() {
         toast({ title: "Sync Error", description: "Could not save wishlist changes to server.", variant: "destructive" });
       }
     }
-  };
+  }, [currentUserEmail, toast]);
 
   const toggleWishlist = useCallback(async (product: Product) => {
     if (!currentUserEmail) {
         toast({title: "Login Required", description: "Please log in to manage your wishlist.", variant: "destructive"});
         return;
     }
-    const wasInWishlist = wishlistItems.some(item => item.id === product.id);
-    let newItemsState: Product[];
+    
+    const productWasAlreadyInWishlist = wishlistItems.some(item => item.id === product.id);
 
-    if (wasInWishlist) {
-      newItemsState = wishlistItems.filter(item => item.id !== product.id);
-    } else {
-      newItemsState = [...wishlistItems, product];
-    }
-
-    setWishlistItems(newItemsState); 
-    await persistWishlist(newItemsState);
+    setWishlistItems(prevItems => {
+      const isInWishlist = prevItems.some(item => item.id === product.id);
+      let newComputedItems: Product[];
+      if (isInWishlist) {
+        newComputedItems = prevItems.filter(item => item.id !== product.id);
+      } else {
+        newComputedItems = [...prevItems, product];
+      }
+      persistWishlist(newComputedItems); // Persist the newly computed state
+      return newComputedItems; // Update React state
+    });
 
     setTimeout(() => {
-      if (wasInWishlist) {
+      if (productWasAlreadyInWishlist) {
         toast({
           title: "Removed from Wishlist",
           description: `${product.name} has been removed from your wishlist.`,
@@ -85,7 +88,7 @@ export function useWishlist() {
         });
       }
     },0);
-  }, [wishlistItems, toast, currentUserEmail]);
+  }, [currentUserEmail, persistWishlist, toast, wishlistItems]); // wishlistItems is needed here for productWasAlreadyInWishlist logic for toast
 
   const isInWishlist = useCallback((productId: string): boolean => {
     return wishlistItems.some(item => item.id === productId);
@@ -93,9 +96,12 @@ export function useWishlist() {
   
   const clearWishlist = useCallback(async () => {
     if (!currentUserEmail) return;
-    const newItemsState: Product[] = [];
-    setWishlistItems(newItemsState);
-    await persistWishlist(newItemsState);
+    
+    setWishlistItems(prevItems => {
+        const newComputedItems: Product[] = [];
+        persistWishlist(newComputedItems);
+        return newComputedItems;
+    });
     
     setTimeout(() => {
      toast({
@@ -103,7 +109,7 @@ export function useWishlist() {
       description: "All items have been removed from your wishlist.",
     });
     }, 0);
-  }, [toast, currentUserEmail]);
+  }, [currentUserEmail, persistWishlist, toast]);
 
   return {
     wishlistItems,
