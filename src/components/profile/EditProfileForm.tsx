@@ -21,18 +21,17 @@ const passwordSchema = z.string()
   .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character.");
 
 const editProfileSchema = z.object({
-  // For prototype, we'll focus on PIN change. Password change is complex without real auth.
-  // currentPassword: z.string().min(1, "Current password is required."),
-  // newPassword: passwordSchema,
-  // confirmNewPassword: z.string(),
+  currentPassword: z.string().min(1, "Current password is required."),
+  newPassword: passwordSchema,
+  confirmNewPassword: z.string(),
   currentPin: z.string().length(6, "Current PIN must be 6 digits.").regex(/^\d+$/, "PIN must be numeric."),
   newPin: z.string().length(6, "New PIN must be 6 digits.").regex(/^\d+$/, "PIN must be numeric."),
   confirmNewPin: z.string().length(6, "Confirm PIN must be 6 digits.").regex(/^\d+$/, "PIN must be numeric."),
 })
-// .refine(data => data.newPassword === data.confirmNewPassword, {
-//   message: "New passwords don't match.",
-//   path: ["confirmNewPassword"],
-// })
+.refine(data => data.newPassword === data.confirmNewPassword, {
+  message: "New passwords don't match.",
+  path: ["confirmNewPassword"],
+})
 .refine(data => data.newPin === data.confirmNewPin, {
   message: "New PINs don't match.",
   path: ["confirmNewPin"],
@@ -42,9 +41,9 @@ type EditProfileFormValues = z.infer<typeof editProfileSchema>;
 
 export function EditProfileForm() {
   const { toast } = useToast();
-  // const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  // const [showNewPassword, setShowNewPassword] = useState(false);
-  // const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,9 +56,9 @@ export function EditProfileForm() {
   const form = useForm<EditProfileFormValues>({
     resolver: zodResolver(editProfileSchema),
     defaultValues: {
-      // currentPassword: "",
-      // newPassword: "",
-      // confirmNewPassword: "",
+      currentPassword: "",
+      newPassword: "",
+      confirmNewPassword: "",
       currentPin: "",
       newPin: "",
       confirmNewPin: "",
@@ -71,15 +70,14 @@ export function EditProfileForm() {
         toast({ title: "Error", description: "You must be logged in to change security settings.", variant: "destructive"});
         return;
     }
-    console.log("Edit profile form submitted (PIN change for now):", values);
+    console.log("Edit profile form submitted:", values);
     // In a real app:
-    // 1. Verify currentPin against stored hashed PIN for currentUserEmail.
-    // 2. If valid, hash newPin and call an action like:
-    //    await updateUserSecurity(currentUserEmail, { newHashedPin: ... });
+    // 1. Verify currentPassword and currentPin against stored hashed values for currentUserEmail.
+    // 2. If valid, hash newPassword and newPin and call an action like:
+    //    await updateUserSecurity(currentUserEmail, { newHashedPassword: ..., newHashedPin: ... });
     // For this prototype, we'll just show a success message.
-    // Password update logic would also call an action like updateUserProfile or a specific changePassword action.
     
-    toast({ title: "PIN Updated (Simulated)", description: "Your PIN has been successfully updated." });
+    toast({ title: "Security Info Updated (Simulated)", description: "Your password and PIN have been successfully updated." });
     form.reset(); 
   }
 
@@ -90,8 +88,6 @@ export function EditProfileForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* Password change section commented out for prototype simplicity */}
-        {/* 
         <section className="space-y-6">
           <h3 className="text-lg font-medium text-foreground">Change Password</h3>
           <FormField
@@ -151,8 +147,7 @@ export function EditProfileForm() {
           />
         </section>
         <Separator />
-        */}
-
+        
         <section className="space-y-6">
           <h3 className="text-lg font-medium text-foreground">Change PIN</h3>
           <FormField
