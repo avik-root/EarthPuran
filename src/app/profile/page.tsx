@@ -1,27 +1,29 @@
 
 "use client";
 
-import { useState }
-from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Lock, MapPin, ListOrdered, Heart } from "lucide-react";
 import Link from "next/link";
 
-// Form components (will be created in separate files)
+// Form components
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { AddressManagement } from "@/components/profile/AddressManagement";
+import { UserProfileDisplay } from "@/components/profile/UserProfileDisplay"; // Import the new component
 
 export default function ProfilePage() {
   return (
     <div className="space-y-8">
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-3 mb-8">
         <User className="h-10 w-10 text-primary" />
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary">My Profile</h1>
           <p className="text-muted-foreground">Manage your account settings and view your activity.</p>
         </div>
       </div>
+
+      <UserProfileDisplay /> 
 
       <Tabs defaultValue="edit-profile" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2 h-auto">

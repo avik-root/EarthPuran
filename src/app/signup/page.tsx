@@ -85,6 +85,17 @@ export default function SignupPage() {
     console.log("Signup form submitted:", values);
     // Simulate successful signup
     localStorage.setItem("isLoggedInPrototype", "true");
+    
+    // Store user profile data
+    const userProfile = {
+      firstName: values.firstName,
+      lastName: values.lastName,
+      email: values.email,
+      countryCode: values.countryCode,
+      phoneNumber: values.phoneNumber,
+    };
+    localStorage.setItem('userProfilePrototype', JSON.stringify(userProfile));
+
     toast({ title: "Account Created!", description: "Welcome to Earth Puran." });
     router.push("/");
   }

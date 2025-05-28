@@ -41,10 +41,23 @@ export default function LoginPage() {
   function onSubmit(values: LoginFormValues) {
     console.log("Login form submitted:", values);
 
-    // For prototype purposes, any valid submission (passes Zod schema) is a "successful" login
-    // In a real app, you'd validate against a user database
     localStorage.setItem("isLoggedInPrototype", "true");
-    localStorage.removeItem("isAdminPrototype"); // Ensure admin flag is cleared just in case
+
+    // Store mock user profile data
+    let userProfile = {
+      firstName: "Test",
+      lastName: "User",
+      email: values.email,
+      countryCode: "IN", // Default mock country
+      phoneNumber: "9876543210", // Default mock phone
+    };
+
+    if (values.email === "anu@gmail.com") { // Example specific user
+        userProfile.firstName = "Anu";
+        userProfile.lastName = "Puran";
+    }
+    localStorage.setItem('userProfilePrototype', JSON.stringify(userProfile));
+
     toast({ title: "Login Successful", description: "Welcome back!" });
     router.push("/");
   }
