@@ -35,6 +35,12 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // This check ensures localStorage is available
+    if (typeof window === 'undefined') {
+        setLoading(false); 
+        return;
+    }
+
     const gatePassed = localStorage.getItem("adminAccessGranted") === "true";
     const adminConfigured = localStorage.getItem("adminCredentialsConfigured") === "true";
     const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
@@ -43,14 +49,14 @@ export default function AdminLayout({
     const isFullyAuthenticatedForDashboard = gatePassed && adminConfigured && isAdmin && isLoggedIn;
 
     if (pathname === '/admin/access-gate' || pathname === '/admin/login') {
-      // If on public admin auth pages but already fully authenticated for dashboard, redirect
-      if (isFullyAuthenticatedForDashboard && pathname !== '/admin/dashboard') {
+      if (isFullyAuthenticatedForDashboard && pathname !== '/admin/dashboard') { // If on auth pages but already fully auth'd for dashboard
         router.push('/admin/dashboard');
       }
-      // These pages are part of the auth flow, allow rendering them.
-      // The pages themselves might have further checks (e.g., login page checks gate).
+      // For auth pages like /admin/access-gate or /admin/login, we don't set isAuthorizedForProtectedRoutes here.
+      // The page itself will render. Authorization for *other* routes is what this state is for.
+      // The check `isAuthorizedForProtectedRoutes` is used below to determine if sidebar or access denied card is shown *for non-auth pages*.
     } else {
-      // Protected admin routes (e.g., /admin/dashboard, /admin/products)
+      // This is a protected admin route (e.g., /admin/dashboard, /admin/products)
       if (!gatePassed) {
         router.push('/admin/access-gate');
         setIsAuthorizedForProtectedRoutes(false);
@@ -93,12 +99,18 @@ export default function AdminLayout({
   // These are protected. If not authorized, show Access Denied card.
   if (!isAuthorizedForProtectedRoutes) {
     // Determine correct link based on what's missing
-    let missingStepLink = "/admin/access-gate";
-    if (localStorage.getItem("adminAccessGranted") === "true" && localStorage.getItem("adminCredentialsConfigured") !== "true") {
-        missingStepLink = "/admin/login"; // This will show create admin form
-    } else if (localStorage.getItem("adminAccessGranted") === "true" && localStorage.getItem("adminCredentialsConfigured") === "true") {
-        missingStepLink = "/admin/login"; // This will show login form
+    let missingStepLink = "/admin/access-gate"; // Default if gate not passed
+    if (typeof window !== 'undefined') { // Ensure localStorage is available
+        const gatePassedCheck = localStorage.getItem("adminAccessGranted") === "true";
+        const adminConfiguredCheck = localStorage.getItem("adminCredentialsConfigured") === "true";
+
+        if (gatePassedCheck && !adminConfiguredCheck) {
+            missingStepLink = "/admin/login"; // Gate passed, but admin not configured -> show create admin form
+        } else if (gatePassedCheck && adminConfiguredCheck) {
+            missingStepLink = "/admin/login"; // Gate passed, admin configured, but not logged in -> show login form
+        }
     }
+    
 
     return (
         <div className="flex h-screen items-center justify-center bg-background p-4">
@@ -186,7 +198,7 @@ export default function AdminLayout({
           <div className="ml-auto flex items-center gap-4">
             <ThemeToggle />
             <Avatar>
-              <AvatarImage src="https://placehold.co/40x40.png" alt="Admin" data-ai-hint="user avatar" />
+              <AvatarImage src="https://placehold.co/40x40.png" alt="Admin" data-ai-hint="user avatar"/>
               <AvatarFallback>AD</AvatarFallback>
             </Avatar>
           </div>
