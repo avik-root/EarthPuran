@@ -12,9 +12,9 @@ import { Input } from "@/components/ui/input";
 import { PinInput } from "@/components/ui/pin-input";
 import { Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation"; 
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { getUserData } from "@/app/actions/userActions"; 
+import { getUserData } from "@/app/actions/userActions";
 import type { UserData, UserProfile } from "@/types/userData";
 import adminCredentials from '@/data/admin.json';
 import bcrypt from 'bcryptjs';
@@ -22,8 +22,8 @@ import bcrypt from 'bcryptjs';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }).refine(val => val.endsWith('@gmail.com'), { message: "Only Gmail addresses are allowed." }),
-  password: z.string().min(1, { message: "Password is required." }), 
-  pin: z.string().length(6, { message: "PIN must be 6 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }), 
+  password: z.string().min(1, { message: "Password is required." }),
+  pin: z.string().length(6, { message: "PIN must be 6 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -34,7 +34,7 @@ export default function LoginPage() {
   const pathname = usePathname();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
-  const [showPin, setShowPin] = useState(true); 
+  const [showPin, setShowPin] = useState(false); // Default to false (masked)
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export default function LoginPage() {
 
   async function onSubmit(values: LoginFormValues) {
     console.log("Login form submitted:", values);
-    
+
     // Admin Login Check
     if (values.email === adminCredentials.email) {
       // IMPORTANT: admin.json is expected to store HASHED password and PIN for this to work.
@@ -71,20 +71,19 @@ export default function LoginPage() {
 
       if (isPasswordCorrect && isPinCorrect) {
         localStorage.setItem("isLoggedInPrototype", "true");
-        localStorage.setItem("isAdminPrototype", "true"); // This flag is currently unused as admin panel was removed
+        localStorage.setItem("isAdminPrototype", "true");
         localStorage.setItem('currentUserEmail', values.email);
-        const adminProfileForStorage: UserProfile = { 
-            firstName: "Admin", 
-            lastName: "User", 
-            email: values.email, 
-            countryCode: "IN", 
+        const adminProfileForStorage: UserProfile = {
+            firstName: "Admin",
+            lastName: "User",
+            email: values.email,
+            countryCode: "IN",
             phoneNumber: "0000000000",
-            // No need to store hashed password/pin in localStorage for client-side display
         };
         localStorage.setItem('userProfilePrototype', JSON.stringify(adminProfileForStorage));
 
         toast({ title: "Admin Login Successful", description: "Welcome, Admin!" });
-        const redirectUrl = searchParams.get('redirect') || "/"; // Redirect admin to home for now
+        const redirectUrl = searchParams.get('redirect') || "/";
         router.push(redirectUrl);
          if (redirectUrl === pathname) router.refresh();
         return;
@@ -112,14 +111,14 @@ export default function LoginPage() {
     // Validate password and PIN for regular user using bcrypt
     const isPasswordCorrect = bcrypt.compareSync(values.password, userData.profile.hashedPassword);
     const isPinCorrect = bcrypt.compareSync(values.pin, userData.profile.hashedPin);
-    
+
     if (!isPasswordCorrect || !isPinCorrect) {
       toast({ title: "Login Failed", description: "Invalid credentials. Please check your email, password, and PIN.", variant: "destructive" });
       return;
     }
-    
+
     localStorage.setItem("isLoggedInPrototype", "true");
-    localStorage.setItem("isAdminPrototype", "false"); 
+    localStorage.setItem("isAdminPrototype", "false");
     localStorage.setItem('currentUserEmail', values.email);
      const profileForStorage: UserProfile = { // Store only non-sensitive parts of profile
         firstName: userData.profile.firstName,
@@ -135,12 +134,12 @@ export default function LoginPage() {
     const redirectUrl = searchParams.get('redirect') || "/";
     router.push(redirectUrl);
     if (redirectUrl === pathname) {
-        router.refresh(); 
+        router.refresh();
     }
   }
-  
+
   if (!hasMounted) {
-    return null; 
+    return null;
   }
 
   return (

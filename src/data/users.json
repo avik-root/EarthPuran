@@ -312,5 +312,20 @@
     "orders": [],
     "wishlist": [],
     "cart": []
+  },
+  "a@gmail.com": {
+    "profile": {
+      "firstName": "A",
+      "lastName": "B",
+      "email": "a@gmail.com",
+      "countryCode": "IN",
+      "phoneNumber": "9898989898",
+      "hashedPassword": "$2a$10$n8M93DoBHTeIjbLUfh6ACeh9ssJo72w5PznPR3IeILqfNzYBhIOl6",
+      "hashedPin": "$2a$10$XpgavIi6sRqJN3fMH6XUQO8TVEMnQ/H94OuJ2//PCa5WsMPC.quju"
+    },
+    "addresses": [],
+    "orders": [],
+    "wishlist": [],
+    "cart": []
   }
 }
