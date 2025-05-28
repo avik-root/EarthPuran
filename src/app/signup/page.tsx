@@ -15,8 +15,9 @@ import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { PinInput } from "@/components/ui/pin-input";
+import { useToast } from "@/hooks/use-toast";
 
-// Simplified country data
 const countries = [
   { code: "US", name: "United States", flag: "🇺🇸", phoneCode: "+1" },
   { code: "CA", name: "Canada", flag: "🇨🇦", phoneCode: "+1" },
@@ -36,7 +37,7 @@ const signupSchema = z.object({
   lastName: z.string().min(1, "Last name is required."),
   email: z.string().email("Invalid email address.").refine(val => val.endsWith('@gmail.com'), "Only Gmail addresses are allowed."),
   countryCode: z.string().min(1, "Country is required."),
-  phoneNumber: z.string().min(5, "Phone number is required.").regex(/^\d+$/, "Phone number must be numeric."),
+  phoneNumber: z.string().min(5, "Phone number is required.").max(10, "Phone number cannot exceed 10 digits.").regex(/^\d+$/, "Phone number must be numeric."),
   password: passwordSchema,
   confirmPassword: z.string(),
   pin: z.string().length(6, "PIN must be 6 digits.").regex(/^\d+$/, "PIN must be numeric."),
@@ -49,10 +50,10 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showPin, setShowPin] = useState(false);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -60,7 +61,7 @@ export default function SignupPage() {
       firstName: "",
       lastName: "",
       email: "",
-      countryCode: "",
+      countryCode: "US", // Default country
       phoneNumber: "",
       password: "",
       confirmPassword: "",
@@ -81,7 +82,7 @@ export default function SignupPage() {
 
   function onSubmit(values: SignupFormValues) {
     console.log("Signup form submitted:", values);
-    // toast({ title: "Account Creation", description: "Setting up your account..." });
+    toast({ title: "Account Created!", description: "Welcome to Earth Puran." });
     router.push("/");
   }
 
@@ -161,7 +162,7 @@ export default function SignupPage() {
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
                       <FormLabel>Phone Number</FormLabel>
-                      <FormControl><Input type="tel" placeholder="1234567890" {...field} /></FormControl>
+                      <FormControl><Input type="tel" placeholder="1234567890" {...field} maxLength={10} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -182,6 +183,7 @@ export default function SignupPage() {
                           size="icon"
                           className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
                           onClick={() => setShowPassword(!showPassword)}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
                         >
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
@@ -218,6 +220,7 @@ export default function SignupPage() {
                           size="icon"
                           className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                         >
                           {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
@@ -234,18 +237,14 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>6-Digit PIN</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <Input type={showPin ? "text" : "password"} placeholder="Create a 6-digit PIN" {...field} maxLength={6} />
-                         <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                          onClick={() => setShowPin(!showPin)}
-                        >
-                          {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
+                       <PinInput
+                        length={6}
+                        value={field.value}
+                        onChange={field.onChange}
+                        name={field.name}
+                        onBlur={field.onBlur}
+                        disabled={field.disabled}
+                      />
                     </FormControl>
                     <FormDescription className="text-xs">This PIN will be used for quick access and sensitive actions.</FormDescription>
                     <FormMessage />

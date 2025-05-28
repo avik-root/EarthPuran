@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PinInput } from "@/components/ui/pin-input";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }).refine(val => val.endsWith('@gmail.com'), { message: "Only Gmail addresses are allowed." }),
@@ -23,8 +25,8 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
-  const [showPin, setShowPin] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -36,10 +38,8 @@ export default function LoginPage() {
   });
 
   function onSubmit(values: LoginFormValues) {
-    // TODO: Implement login logic (e.g., call an API endpoint or server action)
     console.log("Login form submitted:", values);
-    // For demonstration, you might use react-hot-toast here
-    // toast({ title: "Login Attempt", description: "Processing your login..." });
+    toast({ title: "Login Successful", description: "Welcome back!" });
     router.push("/");
   }
 
@@ -81,6 +81,7 @@ export default function LoginPage() {
                           size="icon"
                           className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
                           onClick={() => setShowPassword(!showPassword)}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
                         >
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
@@ -97,18 +98,14 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>6-Digit PIN</FormLabel>
                     <FormControl>
-                     <div className="relative">
-                        <Input type={showPin ? "text" : "password"} placeholder="••••••" {...field} maxLength={6} />
-                         <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                          onClick={() => setShowPin(!showPin)}
-                        >
-                          {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
+                      <PinInput
+                        length={6}
+                        value={field.value}
+                        onChange={field.onChange}
+                        name={field.name}
+                        onBlur={field.onBlur}
+                        disabled={field.disabled}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

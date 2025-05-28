@@ -2,10 +2,18 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, User, Heart, Search, Menu } from "lucide-react";
+import { ShoppingBag, User, Heart, Search, Menu, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import { useState } from "react";
 
 const navItems = [
@@ -18,6 +26,7 @@ const navItems = [
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isLoggedIn = true; // Placeholder for actual auth state
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -38,8 +47,8 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center space-x-3">
-          <Button variant="ghost" size="icon" aria-label="Search">
+        <div className="flex items-center space-x-1 sm:space-x-3">
+          <Button variant="ghost" size="icon" aria-label="Search" className="hidden sm:inline-flex">
             <Search className="h-5 w-5" />
           </Button>
           <Link href="/wishlist" passHref>
@@ -52,11 +61,38 @@ export function Header() {
               <ShoppingBag className="h-5 w-5" />
             </Button>
           </Link>
-          <Link href="/login" passHref>
-            <Button variant="ghost" size="icon" aria-label="Account">
-              <User className="h-5 w-5" />
-            </Button>
-          </Link>
+          
+          {isLoggedIn ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="User Account">
+                  <UserCircle className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile">Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/orders">Order History</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/admin/dashboard">Admin Dashboard</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Log Out (Not Implemented)</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link href="/login" passHref>
+              <Button variant="ghost" size="icon" aria-label="Login">
+                <User className="h-5 w-5" />
+              </Button>
+            </Link>
+          )}
+
           <ThemeToggle />
           <div className="md:hidden">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -66,26 +102,46 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <nav className="flex flex-col space-y-4 pt-8">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="text-lg font-medium text-foreground transition-colors hover:text-primary"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {item.label}
+                 <div className="p-4">
+                    <Link href="/" className="flex items-center mb-6" onClick={() => setMobileMenuOpen(false)}>
+                        <span className="text-xl font-bold tracking-tight text-primary">Earth Puran</span>
                     </Link>
-                  ))}
-                  <hr/>
-                   <Link
-                      href="/admin/dashboard"
-                      className="text-lg font-medium text-foreground transition-colors hover:text-primary"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Admin Dashboard
-                    </Link>
-                </nav>
+                    <nav className="flex flex-col space-y-3">
+                    {navItems.map((item) => (
+                        <Link
+                        key={item.href}
+                        href={item.href}
+                        className="text-base font-medium text-foreground transition-colors hover:text-primary"
+                        onClick={() => setMobileMenuOpen(false)}
+                        >
+                        {item.label}
+                        </Link>
+                    ))}
+                    <hr className="my-3"/>
+                    {isLoggedIn && (
+                        <>
+                            <Link href="/profile" className="text-base font-medium text-foreground transition-colors hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
+                                My Profile
+                            </Link>
+                            <Link href="/orders" className="text-base font-medium text-foreground transition-colors hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
+                                Order History
+                            </Link>
+                        </>
+                    )}
+                     <Link
+                        href="/admin/dashboard"
+                        className="text-base font-medium text-foreground transition-colors hover:text-primary"
+                        onClick={() => setMobileMenuOpen(false)}
+                        >
+                        Admin Dashboard
+                        </Link>
+                    {isLoggedIn && (
+                         <Button variant="outline" onClick={() => { console.log('Logout'); setMobileMenuOpen(false);}} className="mt-4">
+                            Log Out
+                        </Button>
+                    )}
+                    </nav>
+                </div>
               </SheetContent>
             </Sheet>
           </div>
