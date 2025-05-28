@@ -104,7 +104,7 @@ export default function AdminAuthPage() {
   const adminLoginForm = useForm<AdminLoginFormValues>({
     resolver: zodResolver(adminLoginSchema),
     defaultValues: {
-      email: localStorage.getItem("adminEmailPrototype") || "", // Pre-fill if exists
+      email: typeof window !== 'undefined' ? localStorage.getItem("adminEmailPrototype") || "" : "", // Pre-fill if exists
       password: "",
       loginPin: "",
     },
@@ -412,3 +412,4 @@ export default function AdminAuthPage() {
     </div>
   );
 }
+
