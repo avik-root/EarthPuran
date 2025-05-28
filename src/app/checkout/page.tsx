@@ -13,10 +13,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { useCart, type CartItem } from "@/hooks/useCart";
+import { useCart } from "@/hooks/useCart"; // Removed CartItem type import as OrderItem will be used
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { Order, OrderItem, ShippingDetails } from "@/types/order"; // Import centralized types
 
 interface UserProfileData {
   firstName: string;
@@ -36,24 +37,6 @@ interface UserAddress {
   isDefault: boolean;
 }
 
-export interface OrderItem {
-  productId: string;
-  name: string;
-  quantity: number;
-  price: number;
-  imageUrl: string;
-  imageHint?: string;
-}
-
-export interface Order {
-  id: string;
-  date: string;
-  items: OrderItem[];
-  totalAmount: number;
-  shippingDetails: ShippingFormValues;
-  status: 'Processing' | 'Shipped' | 'Delivered';
-}
-
 const ADDRESS_STORAGE_KEY = 'earthPuranUserAddresses';
 const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
 
@@ -65,6 +48,7 @@ const countries: { code: string; name: string; phoneCode: string }[] = [
   { code: "IN", name: "India", phoneCode: "+91" },
 ];
 
+// This schema and type remain local to checkout for form validation
 const shippingSchema = z.object({
   firstName: z.string().min(1, "First name is required."),
   lastName: z.string().min(1, "Last name is required."),
@@ -78,6 +62,7 @@ const shippingSchema = z.object({
 });
 
 export type ShippingFormValues = z.infer<typeof shippingSchema>;
+
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -162,10 +147,23 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Ensure shippingDetailsSaved matches the ShippingDetails type for the Order
+    const orderShippingDetails: ShippingDetails = {
+        firstName: shippingDetailsSaved.firstName,
+        lastName: shippingDetailsSaved.lastName,
+        address: shippingDetailsSaved.address,
+        city: shippingDetailsSaved.city,
+        state: shippingDetailsSaved.state,
+        pincode: shippingDetailsSaved.pincode,
+        country: shippingDetailsSaved.country,
+        phoneNumber: shippingDetailsSaved.phoneNumber,
+        phoneCountryCode: shippingDetailsSaved.phoneCountryCode,
+    };
+
     const newOrder: Order = {
       id: Date.now().toString(),
       date: new Date().toLocaleDateString('en-GB'), // DD/MM/YYYY format
-      items: cartItems.map(item => ({
+      items: cartItems.map(item => ({ // cartItem from useCart hook
         productId: item.product.id,
         name: item.product.name,
         quantity: item.quantity,
@@ -174,7 +172,7 @@ export default function CheckoutPage() {
         imageHint: item.product.imageHint,
       })),
       totalAmount: totalAmount,
-      shippingDetails: shippingDetailsSaved,
+      shippingDetails: orderShippingDetails, // Use the mapped details
       status: 'Processing',
     };
 
@@ -200,6 +198,7 @@ export default function CheckoutPage() {
     });
     router.push("/");
   };
+
 
   return (
     <div className="space-y-8">
@@ -276,20 +275,18 @@ export default function CheckoutPage() {
                      <FormField control={form.control} name="country" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Country</FormLabel>
-                          <FormControl><Input {...field} /></FormControl> {/* Removed readOnly based on profileData for wider usability */}
+                          <FormControl><Input {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}/>
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
                       <div className="flex items-center gap-2">
-                        <Input
-                          value={form.watch("phoneCountryCode")}
-                          readOnly
-                          className="w-20 bg-muted"
-                        />
+                        <FormField control={form.control} name="phoneCountryCode" render={({ field }) => (
+                             <FormControl><Input {...field} readOnly className="w-20 bg-muted"/></FormControl>
+                        )}/>
                         <FormField control={form.control} name="phoneNumber" render={({ field }) => (
-                            <FormControl><Input type="tel" placeholder="9876543210" {...field} maxLength={10} /></FormControl> {/* Removed readOnly based on profileData */}
+                            <FormControl><Input type="tel" placeholder="9876543210" {...field} maxLength={10} /></FormControl>
                         )}/>
                       </div>
                        <FormMessage>{form.formState.errors.phoneNumber?.message || form.formState.errors.phoneCountryCode?.message}</FormMessage>

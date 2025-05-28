@@ -17,32 +17,7 @@ import { UserProfileDisplay } from "@/components/profile/UserProfileDisplay";
 import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/hooks/useWishlist"; // For Wishlist tab
 import { ProductCard } from "@/components/ProductCard"; // For Wishlist tab
-
-// Define Order types directly or import if moved to a types file
-interface OrderItem {
-  productId: string;
-  name: string;
-  quantity: number;
-  price: number;
-  imageUrl: string;
-  imageHint?: string;
-}
-interface Order {
-  id: string;
-  date: string;
-  items: OrderItem[];
-  totalAmount: number;
-  // Simplified shippingDetails for display
-  shippingDetails: {
-    firstName: string;
-    lastName: string;
-    address: string;
-    city: string;
-    state: string;
-    pincode: string;
-  };
-  status: 'Processing' | 'Shipped' | 'Delivered';
-}
+import type { Order, OrderItem } from "@/types/order"; // Import centralized types
 
 const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
 
@@ -138,7 +113,7 @@ export default function ProfilePage() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                    {orders.sort((a,b) => parseInt(b.id) - parseInt(a.id)).map((order) => ( // Sort by newest first
+                    {orders.sort((a,b) => parseInt(b.id) - parseInt(a.id)).map((order) => (
                         <Card key={order.id}>
                         <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                             <div>
@@ -162,9 +137,6 @@ export default function ProfilePage() {
                                 </li>
                             ))}
                             </ul>
-                            {/* <div className="mt-3 flex justify-end">
-                                <Button variant="outline" size="xs">View Order Details (Not Implemented)</Button>
-                            </div> */}
                         </CardContent>
                         </Card>
                     ))}
@@ -213,5 +185,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    

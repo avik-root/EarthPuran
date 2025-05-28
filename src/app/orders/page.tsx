@@ -7,32 +7,7 @@ import Image from "next/image";
 import { ListOrdered, PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-// Define Order types directly or import if moved to a types file
-interface OrderItem {
-  productId: string;
-  name: string;
-  quantity: number;
-  price: number;
-  imageUrl: string;
-  imageHint?: string;
-}
-
-interface Order {
-  id: string;
-  date: string;
-  items: OrderItem[];
-  totalAmount: number;
-  shippingDetails: { // Simplified for display
-    firstName: string;
-    lastName: string;
-    address: string;
-    city: string;
-    state: string;
-    pincode: string;
-  };
-  status: 'Processing' | 'Shipped' | 'Delivered';
-}
+import type { Order, OrderItem } from "@/types/order"; // Import centralized types
 
 const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
 
@@ -120,9 +95,6 @@ export default function OrdersPage() {
                     </li>
                   ))}
                 </ul>
-                {/* <div className="mt-4 flex justify-end">
-                    <Button variant="outline" size="sm">View Order Details (Not Implemented)</Button>
-                </div> */}
               </CardContent>
             </Card>
           ))}
@@ -131,5 +103,3 @@ export default function OrdersPage() {
     </div>
   );
 }
-
-    
