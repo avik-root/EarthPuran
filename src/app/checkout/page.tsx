@@ -87,7 +87,7 @@ export default function CheckoutPage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [shippingDetailsSaved, setShippingDetailsSaved] = useState<ShippingFormValues | null>(null);
 
-  const shippingCost = cartItems.length > 0 ? 50.00 : 0; 
+  const shippingCost = cartItems.length > 0 ? 50.00 : 0;
   const totalAmount = subtotal + shippingCost;
 
   const form = useForm<ShippingFormValues>({
@@ -99,9 +99,9 @@ export default function CheckoutPage() {
       city: "",
       state: "",
       pincode: "",
-      country: "India", 
+      country: "India",
       phoneNumber: "",
-      phoneCountryCode: "+91", 
+      phoneCountryCode: "+91",
     },
   });
 
@@ -128,7 +128,7 @@ export default function CheckoutPage() {
         console.error("Failed to parse user addresses for checkout", error);
       }
     }
-    
+
     const countryInfo = countries.find(c => c.code === parsedProfile?.countryCode);
 
     form.reset({
@@ -198,7 +198,7 @@ export default function CheckoutPage() {
       title: "Order Placed Successfully!",
       description: "Your Earth Puran order (COD) has been confirmed. Thank you for shopping!",
     });
-    router.push("/"); 
+    router.push("/");
   };
 
   return (
@@ -283,9 +283,9 @@ export default function CheckoutPage() {
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
                       <div className="flex items-center gap-2">
-                        <Input 
-                          value={form.watch("phoneCountryCode")} 
-                          readOnly 
+                        <Input
+                          value={form.watch("phoneCountryCode")}
+                          readOnly
                           className="w-20 bg-muted"
                         />
                         <FormField control={form.control} name="phoneNumber" render={({ field }) => (
@@ -348,9 +348,9 @@ export default function CheckoutPage() {
               )}
             </CardContent>
             <CardFooter>
-              <Button 
-                size="lg" 
-                className="w-full" 
+              <Button
+                size="lg"
+                className="w-full"
                 onClick={handlePlaceOrder}
                 disabled={!shippingDetailsSaved || cartItems.length === 0 || loadingProfile}
               >
@@ -363,5 +363,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
-    
