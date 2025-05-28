@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation"; // Import usePathname
 import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
@@ -38,20 +38,21 @@ export function Header() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileSearchTerm, setMobileSearchTerm] = useState("");
   const router = useRouter();
+  const pathname = usePathname(); // Get current pathname
   const { toast } = useToast();
   
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false); // New state for admin
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
-    // This effect runs only on the client, after initial render
+    // This effect runs on mount and whenever the pathname changes
     const storedLoginStatus = localStorage.getItem("isLoggedInPrototype") === "true";
     const storedAdminStatus = localStorage.getItem("isAdminPrototype") === "true";
     setIsLoggedIn(storedLoginStatus);
-    setIsAdmin(storedLoginStatus && storedAdminStatus); // Admin only if also logged in
-    setHasMounted(true); // Set hasMounted to true after login state is determined
-  }, []);
+    setIsAdmin(storedLoginStatus && storedAdminStatus);
+    setHasMounted(true);
+  }, [pathname]); // Add pathname as a dependency
 
 
   const handleMobileSearchSubmit = (e?: React.FormEvent) => {
@@ -66,12 +67,14 @@ export function Header() {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    setIsAdmin(false); // Clear admin status on logout
+    setIsAdmin(false);
     localStorage.removeItem("isLoggedInPrototype");
-    localStorage.removeItem("isAdminPrototype"); // Clear admin flag from storage
+    localStorage.removeItem("isAdminPrototype");
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
     setMobileMenuOpen(false); 
     router.push("/"); 
+    // Optionally, to ensure the header definitely re-reads after state update from localStorage
+    // router.refresh(); // or force a more explicit state update if pathname doesn't change
   };
 
   return (
@@ -160,7 +163,7 @@ export function Header() {
                     <DropdownMenuItem asChild>
                       <Link href="/orders"><ListOrdered className="mr-2 h-4 w-4" />Order History</Link>
                     </DropdownMenuItem>
-                    {isAdmin && ( // Conditionally render Admin Dashboard link
+                    {isAdmin && ( 
                       <DropdownMenuItem asChild>
                         <Link href="/admin/dashboard"><Settings className="mr-2 h-4 w-4" />Admin Dashboard</Link>
                       </DropdownMenuItem>
@@ -212,7 +215,7 @@ export function Header() {
                         </Link>
                     ))}
                     <hr className="my-3"/>
-                    {hasMounted ? ( // Only render dynamic auth section after mount
+                    {hasMounted ? ( 
                         isLoggedIn ? (
                           <>
                               <Link href="/profile" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
@@ -221,7 +224,7 @@ export function Header() {
                               <Link href="/orders" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
                                  <ListOrdered className="mr-2 h-4 w-4" /> Order History
                               </Link>
-                              {isAdmin && ( // Conditionally render Admin Dashboard link in mobile
+                              {isAdmin && ( 
                                 <Link
                                   href="/admin/dashboard"
                                   className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center"
@@ -240,7 +243,6 @@ export function Header() {
                            </Button>
                         )
                     ) : (
-                       // Placeholder for mobile menu auth section before mount
                        <div className="h-10 mt-4" aria-hidden="true" />
                     )}
                     </nav>
