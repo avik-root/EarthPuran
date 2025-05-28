@@ -34,15 +34,11 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // This effect runs only on the client
     const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
 
-    if (!isLoggedIn) {
-        router.push('/login?redirect=/admin/dashboard'); // Redirect to login if not logged in at all
-    } else if (!isAdmin) {
-      // Logged in but not admin
-      router.push('/'); // Redirect to homepage
+    if (!isLoggedIn || !isAdmin) {
+      router.push('/admin/login'); // Redirect to dedicated admin login
     } else {
       setIsAuthorized(true);
     }
@@ -63,8 +59,6 @@ export default function AdminLayout({
   }
 
   if (!isAuthorized) {
-    // This part is mainly a fallback or if the redirect is slow.
-    // The router.push should handle navigation.
     return (
         <div className="flex h-screen items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md text-center">
@@ -76,7 +70,7 @@ export default function AdminLayout({
                 <CardContent>
                     <p className="text-muted-foreground mb-6">You do not have permission to view this page.</p>
                     <Button asChild>
-                        <Link href="/">Go to Homepage</Link>
+                        <Link href="/admin/login">Go to Admin Login</Link>
                     </Button>
                 </CardContent>
             </Card>
@@ -143,11 +137,9 @@ export default function AdminLayout({
             </SidebarGroup>
           </SidebarMenu>
         </SidebarContent>
-        {/* Footer can be added here if needed */}
       </Sidebar>
       <SidebarInset>
         <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-          {/* Mobile sidebar trigger (optional if sidebar already has one) */}
           <SidebarTrigger className="sm:hidden" /> 
           <div className="ml-auto flex items-center gap-4">
             <ThemeToggle />
