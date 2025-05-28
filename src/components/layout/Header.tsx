@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, User, Heart, Search, Menu, UserCircle, LogOut, Settings, ListOrdered, Sun } from "lucide-react";
+import { ShoppingBag, User, Heart, Search, Menu, UserCircle, LogOut, Settings, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
@@ -40,7 +40,7 @@ export function Header() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | undefined>(undefined);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false); // Initialize to false
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -49,13 +49,6 @@ export function Header() {
     setIsLoggedIn(storedLoginStatus);
     setHasMounted(true); // Set hasMounted to true after login state is determined
   }, []);
-
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && hasMounted && isLoggedIn !== undefined) {
-      localStorage.setItem("isLoggedInPrototype", String(isLoggedIn));
-    }
-  }, [isLoggedIn, hasMounted]);
 
 
   const handleMobileSearchSubmit = (e?: React.FormEvent) => {
@@ -70,6 +63,7 @@ export function Header() {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
+    localStorage.setItem("isLoggedInPrototype", "false"); // Update localStorage on logout
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
     setMobileMenuOpen(false); 
     router.push("/"); 
@@ -145,51 +139,43 @@ export function Header() {
           {/* Dynamic Auth UI and Theme Toggle - Rendered only after client mount */}
           {hasMounted ? (
             <>
-              {isLoggedIn !== undefined ? (
-                isLoggedIn ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" aria-label="User Account">
-                        <UserCircle className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/orders"><ListOrdered className="mr-2 h-4 w-4" />Order History</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/admin/dashboard"><Settings className="mr-2 h-4 w-4" />Admin Dashboard</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" />Log Out
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/login">Login</Link>
-                  </Button>
-                )
+              {isLoggedIn ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label="User Account">
+                      <UserCircle className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/orders"><ListOrdered className="mr-2 h-4 w-4" />Order History</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin/dashboard"><Settings className="mr-2 h-4 w-4" />Admin Dashboard</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />Log Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
-                // Placeholder while isLoggedIn is being determined (after mount)
-                <Button variant="outline" size="sm" disabled style={{ visibility: 'hidden' }} aria-hidden="true">
-                  Login
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/login">Login</Link>
                 </Button>
               )}
               <ThemeToggle />
             </>
           ) : (
-            // Static placeholders for SSR and initial client render
-            // to match the structure and avoid hydration errors.
-            // One placeholder for the auth button/menu area, one for ThemeToggle.
+            // Static placeholders for SSR and initial client render.
+            // These MUST be identical on server and client's first pass.
             <>
-              <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" /> {/* Approx space for Login button */}
+              <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" /> {/* Approx space for Login button / UserMenu trigger */}
               <div style={{ width: '40px', height: '40px' }} aria-hidden="true" /> {/* Approx space for ThemeToggle icon button */}
             </>
           )}
@@ -219,7 +205,7 @@ export function Header() {
                         </Link>
                     ))}
                     <hr className="my-3"/>
-                    {hasMounted && isLoggedIn !== undefined ? (
+                    {hasMounted ? ( // Only render dynamic auth section after mount
                         isLoggedIn ? (
                           <>
                               <Link href="/profile" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
