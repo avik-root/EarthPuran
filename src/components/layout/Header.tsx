@@ -41,7 +41,7 @@ export function Header() {
   const pathname = usePathname();
   const { toast } = useToast();
   
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false); 
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -61,19 +61,16 @@ export function Header() {
       router.push(`/products?q=${encodeURIComponent(mobileSearchTerm.trim())}`);
       setMobileSearchTerm("");
       setMobileSearchOpen(false);
-      setMobileMenuOpen(false); // Close main menu if search is submitted from there
+      setMobileMenuOpen(false); 
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedInPrototype");
     localStorage.removeItem("currentUserEmail");
-    // localStorage.removeItem('userProfilePrototype'); // This was for older mock data, userActions now handle real data
-    // The useEffect listening to pathname will update isLoggedIn after navigation
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
     setMobileMenuOpen(false); 
     router.push("/"); 
-    // No need to setIsLoggedIn(false) here; useEffect will handle it
   };
 
   return (
@@ -189,7 +186,7 @@ export function Header() {
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0">
                  <SheetHeader className="p-4 border-b">
-                    <SheetTitle className="text-left flex items-center gap-2">
+                    <SheetTitle>
                          <Link href="/" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
                             <Package className="h-6 w-6 text-primary" />
                             <span className="text-xl font-bold tracking-tight text-primary">Earth Puran</span>
@@ -228,7 +225,7 @@ export function Header() {
                            </Button>
                         )
                     ) : (
-                       <div className="h-10 mt-4" aria-hidden="true" /> // Placeholder for auth buttons
+                       <div className="h-10 mt-4 bg-muted rounded animate-pulse" aria-hidden="true" /> 
                     )}
                     </nav>
                 </div>
