@@ -97,8 +97,7 @@ export default function SignupPage() {
     try {
       await initializeUserAccount(userProfileData);
       localStorage.setItem("isLoggedInPrototype", "true");
-      localStorage.setItem('userProfilePrototype', JSON.stringify(userProfileData)); // Still useful for immediate client-side display
-      localStorage.setItem('currentUserEmail', values.email); // Key for userActions
+      localStorage.setItem('currentUserEmail', values.email); 
 
       toast({ title: "Account Created!", description: "Welcome to Earth Puran." });
       router.push("/");
@@ -296,7 +295,7 @@ export default function SignupPage() {
           <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
             <Button variant="link" asChild className="p-0 h-auto text-primary">
-              <Link href="/login">Sign In</Link>
+              <Link href="/login">Login</Link>
             </Button>
           </p>
         </CardFooter>
