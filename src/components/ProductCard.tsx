@@ -12,25 +12,39 @@ import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { usePathname, useRouter } from "next/navigation"; // Import useRouter and usePathname
+import { useState, useEffect } from "react"; // Import useState and useEffect
 
 interface ProductCardProps {
   product: Product;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const router = useRouter();
+  const { toast } = useToast();
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
-  const { toast } = useToast();
-  const router = useRouter(); // Initialize useRouter
+  const pathname = usePathname();
+
+  const [isClientMounted, setIsClientMounted] = useState(false);
+  const [isUserActuallyLoggedIn, setIsUserActuallyLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsClientMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isClientMounted) {
+      setIsUserActuallyLoggedIn(localStorage.getItem("isLoggedInPrototype") === "true");
+    }
+  }, [isClientMounted, pathname]); // Re-check on navigation
 
   const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault(); 
+    e.preventDefault();
     e.stopPropagation();
 
-    const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
-    if (!isLoggedIn) {
-      router.push("/login"); // Redirect to login page
+    if (!isUserActuallyLoggedIn) {
+      router.push("/login");
       return;
     }
 
@@ -51,9 +65,8 @@ export function ProductCard({ product }: ProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
-    if (!isLoggedIn) {
-      router.push("/login"); // Redirect to login page
+    if (!isUserActuallyLoggedIn) {
+      router.push("/login");
       return;
     }
     toggleWishlist(product);
@@ -118,12 +131,12 @@ export function ProductCard({ product }: ProductCardProps) {
       </CardContent>
       <CardFooter className="p-4 pt-0 flex items-center justify-between">
         <p className="text-xl font-bold text-primary">₹{product.price.toFixed(2)}</p>
-        <Button 
-          size="sm" 
-          variant="outline" 
+        <Button
+          size="sm"
+          variant="outline"
           className="hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
           onClick={handleAddToCart}
-          disabled={product.stock === 0 && localStorage.getItem("isLoggedInPrototype") === "true"} // Disable if out of stock AND logged in
+          disabled={product.stock === 0 && isUserActuallyLoggedIn}
         >
           <ShoppingCart className="mr-2 h-4 w-4" />
           {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}

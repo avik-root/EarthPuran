@@ -1,8 +1,8 @@
 
-"use client"; 
+"use client";
 
 import Image from "next/image";
-import { useParams, useRouter } from "next/navigation"; // Import useRouter
+import { useParams, useRouter, usePathname } from "next/navigation"; // Import useRouter, usePathname
 import { getProductById, getProducts } from "@/app/actions/productActions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,8 @@ import Link from "next/link";
 export default function ProductDetailPage() {
   const params = useParams();
   const productId = params.id as string;
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter();
+  const pathname = usePathname();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
@@ -32,7 +33,20 @@ export default function ProductDetailPage() {
 
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
-  const { toast } = useToast(); 
+  const { toast } = useToast();
+
+  const [isClientMounted, setIsClientMounted] = useState(false);
+  const [isUserActuallyLoggedIn, setIsUserActuallyLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsClientMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isClientMounted) {
+      setIsUserActuallyLoggedIn(localStorage.getItem("isLoggedInPrototype") === "true");
+    }
+  }, [isClientMounted, pathname]); // Re-check on navigation
 
   useEffect(() => {
     async function fetchData() {
@@ -41,7 +55,7 @@ export default function ProductDetailPage() {
       try {
         const fetchedProduct = await getProductById(productId);
         if (!fetchedProduct) {
-          setProduct(null); 
+          setProduct(null);
         } else {
           setProduct(fetchedProduct);
           const allProducts = await getProducts();
@@ -52,7 +66,7 @@ export default function ProductDetailPage() {
         }
       } catch (error) {
         console.error("Failed to fetch product data:", error);
-        setProduct(null); 
+        setProduct(null);
       } finally {
         setLoading(false);
       }
@@ -98,9 +112,8 @@ export default function ProductDetailPage() {
   const isProductInWishlist = isInWishlist(product.id);
 
   const handleAddToCart = () => {
-    const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
-    if (!isLoggedIn) {
-      router.push("/login"); // Redirect to login page
+    if (!isUserActuallyLoggedIn) {
+      router.push("/login");
       return;
     }
     if (product.stock > 0) {
@@ -113,11 +126,10 @@ export default function ProductDetailPage() {
       });
     }
   };
-  
+
   const handleToggleWishlist = () => {
-    const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
-    if (!isLoggedIn) {
-      router.push("/login"); // Redirect to login page
+    if (!isUserActuallyLoggedIn) {
+      router.push("/login");
       return;
     }
     toggleWishlist(product);
@@ -162,7 +174,7 @@ export default function ProductDetailPage() {
                 </div>
               )}
               <CardDescription className="text-base text-foreground/90 leading-relaxed">{product.description}</CardDescription>
-              
+
               {product.colors && product.colors.length > 0 && (
                 <div>
                   <p className="text-sm font-medium text-foreground mb-2">Available Colors:</p>
@@ -181,7 +193,7 @@ export default function ProductDetailPage() {
               )}
 
               <p className="text-3xl font-bold text-accent">₹{product.price.toFixed(2)}</p>
-             
+
               <div className="flex items-center space-x-2">
                 <Truck className="h-5 w-5 text-primary" />
                 <span className="text-sm text-muted-foreground">Free shipping on orders over ₹5000</span>
@@ -203,24 +215,24 @@ export default function ProductDetailPage() {
                 </div>
               )}
               <div className="flex gap-3 w-full flex-col sm:flex-row">
-                <Button 
-                  size="lg" 
-                  className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-70" 
-                  disabled={product.stock === 0 && localStorage.getItem("isLoggedInPrototype") === "true"}
+                <Button
+                  size="lg"
+                  className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-70"
+                  disabled={product.stock === 0 && isUserActuallyLoggedIn}
                   onClick={handleAddToCart}
                 >
                   <ShoppingCart className="mr-2 h-5 w-5" /> {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
                 </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
+                <Button
+                  size="lg"
+                  variant="outline"
                   className={cn(
                     "w-full sm:w-auto hover:bg-accent/10 hover:border-accent hover:text-accent",
                     isProductInWishlist && "bg-accent/10 border-accent text-accent"
                     )}
                   onClick={handleToggleWishlist}
                 >
-                  <Heart className={cn("mr-2 h-5 w-5", isProductInWishlist && "fill-accent")} /> 
+                  <Heart className={cn("mr-2 h-5 w-5", isProductInWishlist && "fill-accent")} />
                   {isProductInWishlist ? 'In Wishlist' : 'Wishlist'}
                 </Button>
               </div>
@@ -240,7 +252,7 @@ export default function ProductDetailPage() {
             <p>Apply evenly to face using fingertips, sponge, or brush. Blend well. (Provide usage instructions)</p>
         </div>
       </div>
-      
+
       {relatedProducts.length > 0 && (
         <div>
           <Separator className="my-8"/>
