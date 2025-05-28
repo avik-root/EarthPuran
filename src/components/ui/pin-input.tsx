@@ -12,6 +12,7 @@ interface PinInputProps {
   name?: string; // For react-hook-form
   onBlur?: () => void; // For react-hook-form
   disabled?: boolean;
+  showPin?: boolean; // New prop to toggle visibility
 }
 
 export const PinInput: React.FC<PinInputProps> = ({
@@ -21,6 +22,7 @@ export const PinInput: React.FC<PinInputProps> = ({
   name,
   onBlur,
   disabled,
+  showPin = true, // Default to showing PIN
 }) => {
   const [pin, setPin] = useState<string[]>(Array(length).fill(""));
   const inputRefs = useRef<HTMLInputElement[]>([]);
@@ -87,7 +89,7 @@ export const PinInput: React.FC<PinInputProps> = ({
       {Array.from({ length }).map((_, index) => (
         <Input
           key={index}
-          type="text" // Use text to allow single char, handle validation manually
+          type={showPin ? "text" : "password"} // Toggle type based on showPin prop
           inputMode="numeric" // Hint for mobile numeric keyboard
           maxLength={1}
           value={pin[index] || ""}

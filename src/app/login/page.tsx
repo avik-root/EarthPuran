@@ -27,6 +27,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const [showPin, setShowPin] = useState(true); // Initially show PIN
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -96,7 +97,19 @@ export default function LoginPage() {
                 name="pin"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>6-Digit PIN</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>6-Digit PIN</FormLabel>
+                       <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => setShowPin(!showPin)}
+                          aria-label={showPin ? "Hide PIN" : "Show PIN"}
+                        >
+                          {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                    </div>
                     <FormControl>
                       <PinInput
                         length={6}
@@ -105,6 +118,7 @@ export default function LoginPage() {
                         name={field.name}
                         onBlur={field.onBlur}
                         disabled={field.disabled}
+                        showPin={showPin}
                       />
                     </FormControl>
                     <FormMessage />

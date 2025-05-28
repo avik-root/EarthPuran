@@ -54,6 +54,7 @@ export default function SignupPage() {
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPin, setShowPin] = useState(true); // Initially show PIN
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -61,7 +62,7 @@ export default function SignupPage() {
       firstName: "",
       lastName: "",
       email: "",
-      countryCode: "US", // Default country
+      countryCode: "IN", // Default country to India
       phoneNumber: "",
       password: "",
       confirmPassword: "",
@@ -235,7 +236,19 @@ export default function SignupPage() {
                 name="pin"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>6-Digit PIN</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>6-Digit PIN</FormLabel>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setShowPin(!showPin)}
+                        aria-label={showPin ? "Hide PIN" : "Show PIN"}
+                      >
+                        {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
                     <FormControl>
                        <PinInput
                         length={6}
@@ -244,6 +257,7 @@ export default function SignupPage() {
                         name={field.name}
                         onBlur={field.onBlur}
                         disabled={field.disabled}
+                        showPin={showPin}
                       />
                     </FormControl>
                     <FormDescription className="text-xs">This PIN will be used for quick access and sensitive actions.</FormDescription>
