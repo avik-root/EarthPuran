@@ -11,7 +11,6 @@ import {
   SheetTrigger,
   SheetHeader,
   SheetTitle,
-  SheetFooter
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -41,21 +40,19 @@ export function Header() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // Default to true, will be synced with localStorage
-  const [hasMounted, setHasMounted] = useState(false); // New state for hydration fix
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | undefined>(undefined); // Initialize as undefined
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
-    setHasMounted(true); // Component has mounted on the client
-    // Sync with localStorage on client-side
-    if (typeof window !== 'undefined') {
-      const storedLoginStatus = localStorage.getItem("isLoggedInPrototype") === "true";
-      setIsLoggedIn(storedLoginStatus);
-    }
+    // This effect runs only on the client, after initial render
+    const storedLoginStatus = localStorage.getItem("isLoggedInPrototype") === "true";
+    setIsLoggedIn(storedLoginStatus);
+    setHasMounted(true); // Set hasMounted to true after login state is determined
   }, []);
 
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && hasMounted) { // Only update localStorage if mounted
+    if (typeof window !== 'undefined' && hasMounted && isLoggedIn !== undefined) {
       localStorage.setItem("isLoggedInPrototype", String(isLoggedIn));
     }
   }, [isLoggedIn, hasMounted]);
@@ -67,14 +64,15 @@ export function Header() {
       router.push(`/products?q=${encodeURIComponent(mobileSearchTerm.trim())}`);
       setMobileSearchTerm("");
       setMobileSearchOpen(false);
+      setMobileMenuOpen(false); // Close main mobile menu if search is submitted from there
     }
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
-    setMobileMenuOpen(false); // Close mobile menu if open
-    router.push("/"); // Redirect to home page after logout
+    setMobileMenuOpen(false); 
+    router.push("/"); 
   };
 
   return (
@@ -140,7 +138,7 @@ export function Header() {
             </Button>
           </Link>
 
-          {hasMounted && ( // Only render this part after client has mounted
+          {hasMounted && isLoggedIn !== undefined ? (
             isLoggedIn ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -171,9 +169,8 @@ export function Header() {
                   <Link href="/login">Login</Link>
                </Button>
             )
-          )}
-          {!hasMounted && ( // Placeholder or null render for server/initial client render
-             <Button variant="outline" size="sm" disabled style={{ visibility: 'hidden' }}>Login</Button> // Or simply null
+          ) : (
+             null // Render nothing on server and initial client render for this slot
           )}
 
 
@@ -202,33 +199,33 @@ export function Header() {
                         </Link>
                     ))}
                     <hr className="my-3"/>
-                    {hasMounted && isLoggedIn && (
-                        <>
-                            <Link href="/profile" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
-                                <User className="mr-2 h-4 w-4" /> My Profile
-                            </Link>
-                            <Link href="/orders" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
-                               <ListOrdered className="mr-2 h-4 w-4" /> Order History
-                            </Link>
-                            <Link
-                              href="/admin/dashboard"
-                              className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center"
-                              onClick={() => setMobileMenuOpen(false)}
-                            >
-                              <Settings className="mr-2 h-4 w-4" /> Admin Dashboard
-                            </Link>
-                            <Button variant="outline" onClick={handleLogout} className="mt-4 flex items-center justify-center">
-                                <LogOut className="mr-2 h-4 w-4" /> Log Out
-                            </Button>
-                        </>
-                    )}
-                    {hasMounted && !isLoggedIn && (
-                       <Button asChild className="w-full mt-4" onClick={() => setMobileMenuOpen(false)}>
-                          <Link href="/login">Login / Sign Up</Link>
-                       </Button>
-                    )}
-                    {!hasMounted && ( // Placeholder for mobile menu login/logout actions
-                        <Button className="w-full mt-4" disabled style={{ visibility: 'hidden' }}>Login / Sign Up</Button>
+                    {hasMounted && isLoggedIn !== undefined ? (
+                        isLoggedIn ? (
+                          <>
+                              <Link href="/profile" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
+                                  <User className="mr-2 h-4 w-4" /> My Profile
+                              </Link>
+                              <Link href="/orders" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
+                                 <ListOrdered className="mr-2 h-4 w-4" /> Order History
+                              </Link>
+                              <Link
+                                href="/admin/dashboard"
+                                className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center"
+                                onClick={() => setMobileMenuOpen(false)}
+                              >
+                                <Settings className="mr-2 h-4 w-4" /> Admin Dashboard
+                              </Link>
+                              <Button variant="outline" onClick={handleLogout} className="mt-4 flex items-center justify-center">
+                                  <LogOut className="mr-2 h-4 w-4" /> Log Out
+                              </Button>
+                          </>
+                        ) : (
+                           <Button asChild className="w-full mt-4" onClick={() => setMobileMenuOpen(false)}>
+                              <Link href="/login">Login / Sign Up</Link>
+                           </Button>
+                        )
+                    ) : (
+                        null // Render nothing on server and initial client render for this mobile slot
                     )}
                     </nav>
                 </div>
