@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { useCart, type CartItem } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area"; // Added import
 
 interface UserProfileData {
   firstName: string;
