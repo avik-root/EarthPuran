@@ -5,15 +5,15 @@ import Link from "next/link";
 import { ShoppingBag, User, Heart, Search, Menu, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { 
-  Sheet, 
-  SheetContent, 
+import {
+  Sheet,
+  SheetContent,
   SheetTrigger,
   SheetHeader,
   SheetTitle,
   SheetFooter
 } from "@/components/ui/sheet";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -41,11 +41,11 @@ export function Header() {
   const isLoggedIn = true; // Placeholder for actual auth state
 
   const handleMobileSearchSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault(); 
+    if (e) e.preventDefault();
     if (mobileSearchTerm.trim()) {
       router.push(`/products?q=${encodeURIComponent(mobileSearchTerm.trim())}`);
-      setMobileSearchTerm(""); 
-      setMobileSearchOpen(false); 
+      setMobileSearchTerm("");
+      setMobileSearchOpen(false);
     }
   };
 
@@ -88,7 +88,7 @@ export function Header() {
                     value={mobileSearchTerm}
                     onChange={(e) => setMobileSearchTerm(e.target.value)}
                     autoFocus
-                    className="text-base" 
+                    className="text-base"
                   />
                   <Button type="submit" className="w-full">
                     Search
@@ -113,7 +113,7 @@ export function Header() {
               <ShoppingBag className="h-5 w-5" />
             </Button>
           </Link>
-          
+
           {isLoggedIn ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
