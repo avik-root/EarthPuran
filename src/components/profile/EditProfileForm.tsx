@@ -9,7 +9,6 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { PinInput } from "@/components/ui/pin-input";
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator";
 import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -25,7 +24,7 @@ const passwordStrengthSchema = z.string()
 // Base schema for the form - all fields optional initially
 const baseEditProfileSchema = z.object({
   currentPassword: z.string().optional(),
-  newPassword: passwordStrengthSchema.optional(),
+  newPassword: passwordStrengthSchema.optional(), // Keep strong validation for new password
   confirmNewPassword: z.string().optional(),
   currentPin: z.string().optional(),
   newPin: z.string().optional(),
@@ -37,7 +36,7 @@ type EditProfileFormValues = z.infer<typeof baseEditProfileSchema>;
 // Specific schema for password change validation
 const passwordChangeValidationSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required."),
-  newPassword: passwordStrengthSchema, // Use the strong schema here
+  newPassword: passwordStrengthSchema,
   confirmNewPassword: z.string().min(1, "Please confirm your new password."),
 }).refine(data => data.newPassword === data.confirmNewPassword, {
   message: "New passwords don't match.",
@@ -63,6 +62,10 @@ export function EditProfileForm() {
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [newPasswordStrength, setNewPasswordStrength] = useState(0);
+
+  const [showCurrentPin, setShowCurrentPin] = useState(true);
+  const [showNewPin, setShowNewPin] = useState(true);
+  const [showConfirmNewPin, setShowConfirmNewPin] = useState(true);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -228,9 +231,21 @@ export function EditProfileForm() {
               name="currentPin"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Current 6-Digit PIN</FormLabel>
+                    <div className="flex items-center justify-between">
+                        <FormLabel>Current 6-Digit PIN</FormLabel>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setShowCurrentPin(!showCurrentPin)}
+                            aria-label={showCurrentPin ? "Hide Current PIN" : "Show Current PIN"}
+                        >
+                            {showCurrentPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                    </div>
                   <FormControl>
-                    <PinInput length={6} {...field} />
+                    <PinInput length={6} {...field} showPin={showCurrentPin} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -241,9 +256,21 @@ export function EditProfileForm() {
               name="newPin"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New 6-Digit PIN</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>New 6-Digit PIN</FormLabel>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setShowNewPin(!showNewPin)}
+                        aria-label={showNewPin ? "Hide New PIN" : "Show New PIN"}
+                    >
+                        {showNewPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                   <FormControl>
-                    <PinInput length={6} {...field} />
+                    <PinInput length={6} {...field} showPin={showNewPin} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -254,9 +281,21 @@ export function EditProfileForm() {
               name="confirmNewPin"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm New 6-Digit PIN</FormLabel>
+                    <div className="flex items-center justify-between">
+                        <FormLabel>Confirm New 6-Digit PIN</FormLabel>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setShowConfirmNewPin(!showConfirmNewPin)}
+                            aria-label={showConfirmNewPin ? "Hide Confirm New PIN" : "Show Confirm New PIN"}
+                        >
+                            {showConfirmNewPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                    </div>
                   <FormControl>
-                    <PinInput length={6} {...field} />
+                    <PinInput length={6} {...field} showPin={showConfirmNewPin} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
