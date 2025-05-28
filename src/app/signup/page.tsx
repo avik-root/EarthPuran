@@ -97,12 +97,14 @@ export default function SignupPage() {
     };
 
     try {
+      // The server action will handle hashing before saving
       const createdUserData = await initializeUserAccount(userProfileDataForAction, values.password, values.pin);
       
       localStorage.setItem("isLoggedInPrototype", "true");
       localStorage.setItem('currentUserEmail', values.email); 
+      // It's better to store the profile as fetched from the server action if it returns it,
+      // but initializeUserAccount currently returns the full UserData object.
       localStorage.setItem('userProfilePrototype', JSON.stringify(createdUserData.profile));
-
 
       toast({ title: "Account Created!", description: "Welcome to Earth Puran." });
       router.push("/");
@@ -130,7 +132,7 @@ export default function SignupPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>First Name</FormLabel>
-                      <FormControl><Input placeholder="Priya" {...field} /></FormControl>
+                      <FormControl><Input placeholder="Ananya" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -141,7 +143,7 @@ export default function SignupPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Last Name</FormLabel>
-                      <FormControl><Input placeholder="Sharma" {...field} /></FormControl>
+                      <FormControl><Input placeholder="Bose" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
