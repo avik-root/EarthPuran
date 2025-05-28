@@ -55,7 +55,7 @@ export function Footer() {
               My Account
             </h4>
             <ul className="mt-4 space-y-2">
-              <li><Link href="/login" className="text-sm text-foreground/80 hover:text-primary">Sign In</Link></li>
+              <li><Link href="/login" className="text-sm text-foreground/80 hover:text-primary">Login</Link></li>
               <li><Link href="/signup" className="text-sm text-foreground/80 hover:text-primary">Create Account</Link></li>
               <li><Link href="/wishlist" className="text-sm text-foreground/80 hover:text-primary">Wishlist</Link></li>
               <li><Link href="/orders" className="text-sm text-foreground/80 hover:text-primary">Order History</Link></li>
