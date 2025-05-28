@@ -1,7 +1,6 @@
 
 "use client";
 
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Lock, MapPin, ListOrdered, Heart } from "lucide-react";
@@ -10,7 +9,7 @@ import Link from "next/link";
 // Form components
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { AddressManagement } from "@/components/profile/AddressManagement";
-import { UserProfileDisplay } from "@/components/profile/UserProfileDisplay"; // Import the new component
+import { UserProfileDisplay } from "@/components/profile/UserProfileDisplay"; 
 
 export default function ProfilePage() {
   return (
@@ -44,7 +43,7 @@ export default function ProfilePage() {
         <TabsContent value="edit-profile" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Edit Profile Information</CardTitle>
+              <CardTitle className="text-xl font-semibold">Edit Profile Information</CardTitle>
               <CardDescription>Update your password and security PIN.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -56,7 +55,7 @@ export default function ProfilePage() {
         <TabsContent value="addresses" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Manage Delivery Addresses</CardTitle>
+              <CardTitle className="text-xl font-semibold">Manage Delivery Addresses</CardTitle>
               <CardDescription>Add, edit, or remove your shipping addresses.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -65,14 +64,9 @@ export default function ProfilePage() {
           </Card>
         </TabsContent>
         
-        {/* Content for Orders and Wishlist are handled by linking to their respective pages */}
-         <TabsContent value="orders">
-          {/* This content won't be directly shown as the trigger is a Link */}
-        </TabsContent>
-         <TabsContent value="wishlist">
-           {/* This content won't be directly shown as the trigger is a Link */}
-        </TabsContent>
-
+        {/* These TabsContent elements are necessary for Tabs to function correctly, even if the trigger is a link */}
+         <TabsContent value="orders" />
+         <TabsContent value="wishlist" />
       </Tabs>
     </div>
   );
