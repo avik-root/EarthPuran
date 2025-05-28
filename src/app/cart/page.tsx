@@ -1,23 +1,38 @@
 
-import { ShoppingCart, Trash2 } from "lucide-react";
+"use client";
+
+import { ShoppingCart, Trash2, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import { useCart, type CartItem } from "@/hooks/useCart";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function CartPage() {
-  // In a real app, you would fetch cart items
-  const cartItems: any[] = []; // Placeholder, e.g. [{ product: { id: '1', name: 'Velvet Lipstick', price: 2800, imageUrl: '...' }, quantity: 1 }]
+  const { cartItems, removeFromCart, updateQuantity, subtotal, clearCart } = useCart();
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const shipping = cartItems.length > 0 ? 50.00 : 0; // Example shipping in INR
   const total = subtotal + shipping;
 
+  const handleQuantityChange = (item: CartItem, newQuantity: number) => {
+    const quantity = Math.max(1, Math.min(newQuantity, item.product.stock)); // Ensure quantity is within bounds
+    updateQuantity(item.product.id, quantity);
+  };
+
+
   return (
     <div className="space-y-8">
-      <h1 className="text-4xl font-extrabold tracking-tight text-primary">Shopping Cart</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-4xl font-extrabold tracking-tight text-primary">Shopping Cart</h1>
+        {cartItems.length > 0 && (
+          <Button variant="outline" onClick={clearCart} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+            <Trash2 className="mr-2 h-4 w-4" /> Clear Cart
+          </Button>
+        )}
+      </div>
       {cartItems.length === 0 ? (
         <div className="text-center py-12 border border-dashed rounded-lg">
           <ShoppingCart className="mx-auto h-16 w-16 text-muted-foreground/50" />
@@ -32,20 +47,47 @@ export default function CartPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            {cartItems.map((item, index) => (
-              <Card key={index} className="flex items-center p-4 gap-4">
-                <Image src={item.product.imageUrl} alt={item.product.name} width={80} height={80} className="rounded-md" data-ai-hint="product item" />
+            {cartItems.map((item) => (
+              <Card key={item.product.id} className="flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4">
+                <Image 
+                  src={item.product.imageUrl} 
+                  alt={item.product.name} 
+                  width={100} // Increased size
+                  height={100} // Increased size
+                  className="rounded-md object-cover aspect-square" 
+                  data-ai-hint={item.product.imageHint || "product item"} 
+                />
                 <div className="flex-grow">
-                  <h3 className="font-semibold">{item.product.name}</h3>
+                  <Link href={`/products/${item.product.id}`} className="hover:underline">
+                    <h3 className="font-semibold text-lg">{item.product.name}</h3>
+                  </Link>
                   <p className="text-sm text-muted-foreground">₹{item.product.price.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Category: {item.product.category}</p>
+                  {item.quantity > item.product.stock && (
+                     <Alert variant="destructive" className="mt-2 text-xs p-2">
+                        <AlertDescription>Only {item.product.stock} in stock. Please adjust quantity.</AlertDescription>
+                     </Alert>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  {/* Quantity controls would go here */}
-                  <Input type="number" defaultValue={item.quantity} className="w-16 text-center" />
+                <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(item, item.quantity - 1)} disabled={item.quantity <= 1}>
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <Input 
+                    type="number" 
+                    value={item.quantity} 
+                    onChange={(e) => handleQuantityChange(item, parseInt(e.target.value))}
+                    className="w-16 h-8 text-center"
+                    min={1}
+                    max={item.product.stock}
+                  />
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(item, item.quantity + 1)} disabled={item.quantity >= item.product.stock}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
-                <p className="font-semibold w-20 text-right">₹{(item.product.price * item.quantity).toFixed(2)}</p>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
+                <p className="font-semibold w-24 text-right mt-2 sm:mt-0">₹{(item.product.price * item.quantity).toFixed(2)}</p>
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive mt-2 sm:mt-0" onClick={() => removeFromCart(item.product.id)}>
+                  <Trash2 className="h-5 w-5" />
                 </Button>
               </Card>
             ))}
@@ -70,7 +112,7 @@ export default function CartPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button asChild size="lg" className="w-full">
+              <Button asChild size="lg" className="w-full" disabled={cartItems.length === 0}>
                 <Link href="/checkout">Proceed to Checkout</Link>
               </Button>
             </CardFooter>

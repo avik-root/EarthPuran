@@ -1,38 +1,120 @@
 
+"use client"; // Required for hooks like useState, useEffect, and custom hooks
+
 import Image from "next/image";
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation"; // useParams for client components
 import { getProductById, getProducts } from "@/app/actions/productActions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Heart, Minus, Plus, ShoppingCart, Star, Truck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ProductCard } from "@/components/ProductCard"; // For related products
+import { ProductCard } from "@/components/ProductCard";
 import type { Product } from "@/types/product";
+import { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCart } from "@/hooks/useCart";
+import { useWishlist } from "@/hooks/useWishlist";
+import { cn } from "@/lib/utils";
 
-export async function generateStaticParams() {
-  const products = await getProducts();
-  return products.map((product) => ({
-    id: product.id,
-  }));
-}
+// Removed generateStaticParams as this page is now client-rendered for dynamic data hooks
 
-interface ProductDetailPageProps {
-  params: { id: string };
-}
+export default function ProductDetailPage() {
+  const params = useParams();
+  const productId = params.id as string;
 
-export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
-  const product = await getProductById(params.id);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
+
+  const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!productId) return;
+      setLoading(true);
+      try {
+        const fetchedProduct = await getProductById(productId);
+        if (!fetchedProduct) {
+          // Instead of calling notFound() directly in client component, handle appropriately
+          setProduct(null); 
+        } else {
+          setProduct(fetchedProduct);
+          const allProducts = await getProducts();
+          const filteredRelated = allProducts
+            .filter(p => p.category === fetchedProduct.category && p.id !== fetchedProduct.id)
+            .slice(0, 4);
+          setRelatedProducts(filteredRelated);
+        }
+      } catch (error) {
+        console.error("Failed to fetch product data:", error);
+        setProduct(null); // Or set an error state
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [productId]);
+
+  if (loading) {
+    return (
+      <div className="space-y-12">
+        <Card className="overflow-hidden">
+          <div className="grid md:grid-cols-2 gap-8">
+            <Skeleton className="w-full h-[400px] md:h-[600px] rounded-lg" />
+            <div className="p-6 flex flex-col justify-center space-y-4">
+              <Skeleton className="h-6 w-1/4" />
+              <Skeleton className="h-10 w-3/4" />
+              <Skeleton className="h-6 w-1/3" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-10 w-1/2" />
+              <div className="flex gap-3 w-full flex-col sm:flex-row">
+                <Skeleton className="h-12 w-full sm:flex-1" />
+                <Skeleton className="h-12 w-full sm:w-auto sm:px-10" />
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   if (!product) {
-    notFound();
+    // This will be caught by Next.js error handling or a custom not-found UI can be shown
+    // For client components, you might redirect or show a specific message
+    return (
+        <div className="text-center py-10">
+            <h2 className="text-2xl font-semibold">Product Not Found</h2>
+            <p className="text-muted-foreground">The product you are looking for does not exist.</p>
+            <Button asChild className="mt-4">
+                <Link href="/products">Go to Products</Link>
+            </Button>
+        </div>
+    );
   }
+
+  const isProductInWishlist = isInWishlist(product.id);
+
+  const handleAddToCart = () => {
+    if (product.stock > 0) {
+      addToCart(product, quantity);
+    }
+  };
   
-  // Fetch a few related products (e.g., same category, excluding current product)
-  const allProducts = await getProducts();
-  const relatedProducts = allProducts
-    .filter(p => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
+  const handleToggleWishlist = () => {
+    toggleWishlist(product);
+  };
+
+  const incrementQuantity = () => {
+    setQuantity(prev => Math.min(prev + 1, product.stock));
+  };
+
+  const decrementQuantity = () => {
+    setQuantity(prev => Math.max(1, prev - 1));
+  };
+
 
   return (
     <div className="space-y-12">
@@ -93,23 +175,37 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               </p>
 
             </CardContent>
-            <CardFooter className="p-0 mt-6 space-y-4">
+            <CardFooter className="p-0 mt-6 space-y-4 flex-col items-start">
               {product.stock > 0 && (
                 <div className="flex items-center space-x-3">
                   <p className="text-sm font-medium">Quantity:</p>
                   <div className="flex items-center border rounded-md">
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-r-none"><Minus className="h-4 w-4"/></Button>
-                    <span className="px-4 text-sm font-medium">1</span>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-l-none"><Plus className="h-4 w-4"/></Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-r-none" onClick={decrementQuantity} disabled={quantity <= 1}><Minus className="h-4 w-4"/></Button>
+                    <span className="px-4 text-sm font-medium w-10 text-center">{quantity}</span>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-l-none" onClick={incrementQuantity} disabled={quantity >= product.stock}><Plus className="h-4 w-4"/></Button>
                   </div>
                 </div>
               )}
               <div className="flex gap-3 w-full flex-col sm:flex-row">
-                <Button size="lg" className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={product.stock === 0}>
+                <Button 
+                  size="lg" 
+                  className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-70" 
+                  disabled={product.stock === 0}
+                  onClick={handleAddToCart}
+                >
                   <ShoppingCart className="mr-2 h-5 w-5" /> {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
                 </Button>
-                <Button size="lg" variant="outline" className="w-full sm:w-auto hover:bg-accent/10 hover:border-accent hover:text-accent">
-                  <Heart className="mr-2 h-5 w-5" /> Wishlist
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className={cn(
+                    "w-full sm:w-auto hover:bg-accent/10 hover:border-accent hover:text-accent",
+                    isProductInWishlist && "bg-accent/10 border-accent text-accent"
+                    )}
+                  onClick={handleToggleWishlist}
+                >
+                  <Heart className={cn("mr-2 h-5 w-5", isProductInWishlist && "fill-accent")} /> 
+                  {isProductInWishlist ? 'In Wishlist' : 'Wishlist'}
                 </Button>
               </div>
             </CardFooter>
@@ -117,11 +213,9 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
       </Card>
 
-      {/* Product Details / Reviews Tabs - Placeholder */}
       <Separator />
       <div>
         <h3 className="text-2xl font-semibold mb-4">Product Details</h3>
-        {/* Implement Tabs for Description, Ingredients, How to Use, Reviews */}
         <div className="prose dark:prose-invert max-w-none text-foreground/90">
             <p>More detailed information about the product, ingredients, how to use, etc., would go here. This can be structured using tabs for better organization.</p>
             <h4>Ingredients:</h4>
@@ -131,14 +225,13 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
       </div>
       
-      {/* Related Products Section */}
       {relatedProducts.length > 0 && (
         <div>
           <Separator className="my-8"/>
           <h2 className="text-2xl font-semibold mb-6">You Might Also Like</h2>
           <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4 xl:gap-x-8">
-            {relatedProducts.map((relatedProduct: Product) => (
-              <ProductCard key={relatedProduct.id} product={relatedProduct} />
+            {relatedProducts.map((relatedProd: Product) => (
+              <ProductCard key={relatedProd.id} product={relatedProd} />
             ))}
           </div>
         </div>

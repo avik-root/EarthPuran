@@ -1,4 +1,6 @@
 
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/types/product";
@@ -6,12 +8,37 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Heart, ShoppingCart, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useCart } from "@/hooks/useCart";
+import { useWishlist } from "@/hooks/useWishlist";
+import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
   product: Product;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent link navigation if card is wrapped in Link
+    e.stopPropagation();
+    if (product.stock > 0) {
+      addToCart(product);
+    } else {
+      // Optionally show a toast that product is out of stock
+      console.warn("Product is out of stock");
+    }
+  };
+
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist(product);
+  };
+
+  const isProductInWishlist = isInWishlist(product.id);
+
   return (
     <Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl flex flex-col h-full group">
       <CardHeader className="p-0 relative">
@@ -28,13 +55,20 @@ export function ProductCard({ product }: ProductCardProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="absolute top-2 right-2 bg-background/70 hover:bg-background text-primary rounded-full h-8 w-8"
-          aria-label="Add to wishlist"
+          className={cn(
+            "absolute top-2 right-2 bg-background/70 hover:bg-background text-primary rounded-full h-8 w-8",
+            isProductInWishlist && "text-destructive hover:text-destructive/80"
+          )}
+          aria-label={isProductInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+          onClick={handleToggleWishlist}
         >
-          <Heart className="h-4 w-4" />
+          <Heart className={cn("h-4 w-4", isProductInWishlist && "fill-destructive")} />
         </Button>
         {product.tags && product.tags.includes("new") && (
            <Badge className="absolute top-2 left-2" variant="destructive">NEW</Badge>
+        )}
+         {product.stock === 0 && (
+           <Badge className="absolute bottom-2 left-2 bg-destructive/80 text-destructive-foreground" variant="destructive">OUT OF STOCK</Badge>
         )}
       </CardHeader>
       <CardContent className="p-4 flex-grow">
@@ -62,9 +96,15 @@ export function ProductCard({ product }: ProductCardProps) {
       </CardContent>
       <CardFooter className="p-4 pt-0 flex items-center justify-between">
         <p className="text-xl font-bold text-primary">₹{product.price.toFixed(2)}</p>
-        <Button size="sm" variant="outline" className="hover:bg-primary hover:text-primary-foreground">
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
+          onClick={handleAddToCart}
+          disabled={product.stock === 0}
+        >
           <ShoppingCart className="mr-2 h-4 w-4" />
-          Add to Cart
+          {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
         </Button>
       </CardFooter>
     </Card>

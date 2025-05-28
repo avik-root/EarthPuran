@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, User, Heart, Search, Menu, UserCircle } from "lucide-react";
+import { ShoppingBag, User, Heart, Search, Menu, UserCircle, LogOut, Settings, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
@@ -21,9 +21,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -38,7 +39,34 @@ export function Header() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileSearchTerm, setMobileSearchTerm] = useState("");
   const router = useRouter();
-  const isLoggedIn = true; // Placeholder for actual auth state
+  const { toast } = useToast();
+  
+  // For prototype purposes, manage login state here.
+  // In a real app, this would come from an auth context/provider.
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem("isLoggedInPrototype") === "true";
+    }
+    return true; // Default to true for SSR or if localStorage is not available yet
+  });
+
+  useEffect(() => {
+    // Sync with localStorage on client-side
+    if (typeof window !== 'undefined') {
+      const storedLoginStatus = localStorage.getItem("isLoggedInPrototype") === "true";
+      if (isLoggedIn !== storedLoginStatus) {
+        setIsLoggedIn(storedLoginStatus);
+      }
+    }
+  }, []);
+
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("isLoggedInPrototype", String(isLoggedIn));
+    }
+  }, [isLoggedIn]);
+
 
   const handleMobileSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -47,6 +75,13 @@ export function Header() {
       setMobileSearchTerm("");
       setMobileSearchOpen(false);
     }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    toast({ title: "Logged Out", description: "You have been successfully logged out." });
+    setMobileMenuOpen(false); // Close mobile menu if open
+    router.push("/"); // Redirect to home page after logout
   };
 
   return (
@@ -69,8 +104,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center space-x-1 sm:space-x-3">
-          {/* Mobile Search Button & Sheet */}
-          <div className="sm:hidden"> {/* Visible only on screens smaller than 'sm' */}
+          <div className="sm:hidden">
             <Sheet open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Search products (mobile)">
@@ -98,7 +132,6 @@ export function Header() {
             </Sheet>
           </div>
 
-          {/* Existing Search for larger screens (sm and up) */}
           <Button variant="ghost" size="icon" aria-label="Search" className="hidden sm:inline-flex">
             <Search className="h-5 w-5" />
           </Button>
@@ -125,24 +158,24 @@ export function Header() {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/profile">Profile</Link>
+                  <Link href="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/orders">Order History</Link>
+                  <Link href="/orders"><ListOrdered className="mr-2 h-4 w-4" />Order History</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/admin/dashboard">Admin Dashboard</Link>
+                  <Link href="/admin/dashboard"><Settings className="mr-2 h-4 w-4" />Admin Dashboard</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Log Out (Not Implemented)</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />Log Out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Link href="/login" passHref>
-              <Button variant="ghost" size="icon" aria-label="Login">
-                <User className="h-5 w-5" />
-              </Button>
-            </Link>
+             <Button asChild variant="outline" size="sm">
+                <Link href="/login">Login</Link>
+             </Button>
           )}
 
           <ThemeToggle />
@@ -172,25 +205,28 @@ export function Header() {
                     <hr className="my-3"/>
                     {isLoggedIn && (
                         <>
-                            <Link href="/profile" className="text-base font-medium text-foreground transition-colors hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
-                                My Profile
+                            <Link href="/profile" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
+                                <User className="mr-2 h-4 w-4" /> My Profile
                             </Link>
-                            <Link href="/orders" className="text-base font-medium text-foreground transition-colors hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
-                                Order History
+                            <Link href="/orders" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
+                               <ListOrdered className="mr-2 h-4 w-4" /> Order History
                             </Link>
+                            <Link
+                              href="/admin/dashboard"
+                              className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center"
+                              onClick={() => setMobileMenuOpen(false)}
+                            >
+                              <Settings className="mr-2 h-4 w-4" /> Admin Dashboard
+                            </Link>
+                            <Button variant="outline" onClick={handleLogout} className="mt-4 flex items-center justify-center">
+                                <LogOut className="mr-2 h-4 w-4" /> Log Out
+                            </Button>
                         </>
                     )}
-                     <Link
-                        href="/admin/dashboard"
-                        className="text-base font-medium text-foreground transition-colors hover:text-primary"
-                        onClick={() => setMobileMenuOpen(false)}
-                        >
-                        Admin Dashboard
-                        </Link>
-                    {isLoggedIn && (
-                         <Button variant="outline" onClick={() => { console.log('Logout'); setMobileMenuOpen(false);}} className="mt-4">
-                            Log Out
-                        </Button>
+                    {!isLoggedIn && (
+                       <Button asChild className="w-full mt-4" onClick={() => setMobileMenuOpen(false)}>
+                          <Link href="/login">Login / Sign Up</Link>
+                       </Button>
                     )}
                     </nav>
                 </div>
