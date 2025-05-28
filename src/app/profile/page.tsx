@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Lock, MapPin, ListOrdered, Heart, PackageSearch, Trash2, XCircle, RotateCcw, Truck } from "lucide-react";
+import { User, Lock, MapPin, ListOrdered, Heart, PackageSearch, Trash2, XCircle, Truck } from "lucide-react"; // Removed RotateCcw
 import Link from "next/link";
 import Image from "next/image";
 
@@ -18,9 +18,9 @@ import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/hooks/useWishlist";
 import { ProductCard } from "@/components/ProductCard";
 import type { Order, OrderItem } from "@/types/order";
-import { useCart } from "@/hooks/useCart"; // For reorder in profile's order history
-import { useToast } from "@/hooks/use-toast"; // For reorder/cancel toasts
-import type { Product } from "@/types/product"; // For reorder
+import { useCart } from "@/hooks/useCart";
+import { useToast } from "@/hooks/use-toast";
+import type { Product } from "@/types/product";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
@@ -32,8 +32,8 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   
-  const { addToCart } = useCart(); // For reorder functionality
-  const { toast } = useToast(); // For notifications
+  const { addToCart } = useCart();
+  const { toast } = useToast();
 
   useEffect(() => {
     try {
@@ -63,27 +63,8 @@ export default function ProfilePage() {
     }
   };
 
-  const handleReorderInProfile = (orderToReorder: Order) => {
-    let itemsAddedCount = 0;
-    orderToReorder.items.forEach(item => {
-      const productForCart: Product = {
-        id: item.productId,
-        name: item.name,
-        price: item.price,
-        imageUrl: item.imageUrl,
-        imageHint: item.imageHint || "product image",
-        category: 'Reordered', 
-        brand: 'Earth Puran',
-        description: `Reordered: ${item.name}`,
-        stock: 100, 
-      };
-      addToCart(productForCart, item.quantity);
-      itemsAddedCount++;
-    });
-    if (itemsAddedCount > 0) {
-      toast({ title: "Items Reordered", description: `${itemsAddedCount} item(s) from order #${orderToReorder.id} added to your cart.` });
-    }
-  };
+  // Reorder logic removed
+  // const handleReorderInProfile = (orderToReorder: Order) => { ... };
 
   const handleTrackPackageInProfile = (orderId: string) => {
     toast({ title: "Tracking Not Available", description: `Package tracking for order #${orderId} is not yet implemented.` });
@@ -91,10 +72,10 @@ export default function ProfilePage() {
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
-      case 'Processing': return 'text-yellow-600';
-      case 'Shipped': return 'text-blue-600';
-      case 'Delivered': return 'text-green-600';
-      case 'Cancelled': return 'text-red-600';
+      case 'Processing': return 'text-yellow-600 dark:text-yellow-400';
+      case 'Shipped': return 'text-blue-600 dark:text-blue-400';
+      case 'Delivered': return 'text-green-600 dark:text-green-400';
+      case 'Cancelled': return 'text-red-600 dark:text-red-400';
       default: return 'text-muted-foreground';
     }
   };
@@ -220,9 +201,7 @@ export default function ProfilePage() {
                                 <Button variant="outline" size="sm" onClick={() => handleTrackPackageInProfile(order.id)}>
                                     <Truck className="mr-2 h-4 w-4" /> Track Package
                                 </Button>
-                                <Button variant="secondary" size="sm" onClick={() => handleReorderInProfile(order)}>
-                                    <RotateCcw className="mr-2 h-4 w-4" /> Reorder Items
-                                </Button>
+                                {/* Reorder Items button removed from here */}
                             </CardFooter>
                         </Card>
                     ))}

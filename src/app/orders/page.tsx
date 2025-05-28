@@ -4,14 +4,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ListOrdered, PackageSearch, XCircle, RotateCcw, Truck } from "lucide-react";
+import { ListOrdered, PackageSearch, XCircle, Truck } from "lucide-react"; // Removed RotateCcw
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { Order, OrderItem } from "@/types/order";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
-import type { Product } from "@/types/product"; // For reorder
+import type { Product } from "@/types/product";
 import { cn } from "@/lib/utils";
 
 const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
@@ -19,7 +19,7 @@ const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const { addToCart } = useCart();
+  const { addToCart } = useCart(); // Still needed if other cart interactions exist, but not for reorder
   const { toast } = useToast();
 
   useEffect(() => {
@@ -50,27 +50,8 @@ export default function OrdersPage() {
     }
   };
 
-  const handleReorder = (orderToReorder: Order) => {
-    let itemsAddedCount = 0;
-    orderToReorder.items.forEach(item => {
-      const productForCart: Product = {
-        id: item.productId,
-        name: item.name,
-        price: item.price,
-        imageUrl: item.imageUrl,
-        imageHint: item.imageHint || "product image",
-        category: 'Reordered', // Placeholder
-        brand: 'Earth Puran',
-        description: `Reordered: ${item.name}`,
-        stock: 100, // Assume in stock for prototype reorder
-      };
-      addToCart(productForCart, item.quantity);
-      itemsAddedCount++;
-    });
-    if (itemsAddedCount > 0) {
-      toast({ title: "Items Reordered", description: `${itemsAddedCount} item(s) from order #${orderToReorder.id} added to your cart.` });
-    }
-  };
+  // Reorder logic removed
+  // const handleReorder = (orderToReorder: Order) => { ... };
 
   const handleTrackPackage = (orderId: string) => {
     toast({ title: "Tracking Not Available", description: `Package tracking for order #${orderId} is not yet implemented.` });
@@ -78,10 +59,10 @@ export default function OrdersPage() {
   
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
-      case 'Processing': return 'text-yellow-600';
-      case 'Shipped': return 'text-blue-600';
-      case 'Delivered': return 'text-green-600';
-      case 'Cancelled': return 'text-red-600';
+      case 'Processing': return 'text-yellow-600 dark:text-yellow-400';
+      case 'Shipped': return 'text-blue-600 dark:text-blue-400';
+      case 'Delivered': return 'text-green-600 dark:text-green-400';
+      case 'Cancelled': return 'text-red-600 dark:text-red-400';
       default: return 'text-muted-foreground';
     }
   };
@@ -173,9 +154,7 @@ export default function OrdersPage() {
                 <Button variant="outline" size="sm" onClick={() => handleTrackPackage(order.id)}>
                     <Truck className="mr-2 h-4 w-4" /> Track Package
                 </Button>
-                 <Button variant="secondary" size="sm" onClick={() => handleReorder(order)}>
-                    <RotateCcw className="mr-2 h-4 w-4" /> Reorder Items
-                  </Button>
+                {/* Reorder Items button removed from here */}
               </CardFooter>
             </Card>
           ))}
