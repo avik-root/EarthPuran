@@ -49,7 +49,9 @@ export function useWishlist() {
         await updateUserWishlist(currentUserEmail, updatedWishlistItems);
       } catch (error) {
         console.error("Failed to persist wishlist:", error);
-        toast({ title: "Sync Error", description: "Could not save wishlist changes to server.", variant: "destructive" });
+        setTimeout(() => {
+            toast({ title: "Sync Error", description: "Could not save wishlist changes to server.", variant: "destructive" });
+        }, 0);
       }
     }
   }, [currentUserEmail, toast]);
@@ -57,6 +59,7 @@ export function useWishlist() {
   const toggleWishlist = useCallback(async (product: Product) => {
     if (!currentUserEmail) {
         toast({title: "Login Required", description: "Please log in to manage your wishlist.", variant: "destructive"});
+        // router.push('/login'); // Assuming router is not available here, toast is fallback
         return;
     }
     
@@ -70,8 +73,11 @@ export function useWishlist() {
       } else {
         newComputedItems = [...prevItems, product];
       }
-      persistWishlist(newComputedItems); // Persist the newly computed state
-      return newComputedItems; // Update React state
+      // Persist this new state immediately after computing it
+      if (currentUserEmail) {
+        persistWishlist(newComputedItems);
+      }
+      return newComputedItems;
     });
 
     setTimeout(() => {
@@ -88,7 +94,7 @@ export function useWishlist() {
         });
       }
     },0);
-  }, [currentUserEmail, persistWishlist, toast, wishlistItems]); // wishlistItems is needed here for productWasAlreadyInWishlist logic for toast
+  }, [currentUserEmail, persistWishlist, toast, wishlistItems]);
 
   const isInWishlist = useCallback((productId: string): boolean => {
     return wishlistItems.some(item => item.id === productId);
@@ -97,11 +103,11 @@ export function useWishlist() {
   const clearWishlist = useCallback(async () => {
     if (!currentUserEmail) return;
     
-    setWishlistItems(prevItems => {
-        const newComputedItems: Product[] = [];
+    const newComputedItems: Product[] = [];
+    setWishlistItems(newComputedItems); // Update React state first
+    if (currentUserEmail) { // Persist the cleared state
         persistWishlist(newComputedItems);
-        return newComputedItems;
-    });
+    }
     
     setTimeout(() => {
      toast({

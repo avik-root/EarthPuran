@@ -23,7 +23,7 @@ export function useCart() {
 
   const loadCartData = useCallback(async () => {
     if (!currentUserEmail) {
-      setCartItems([]); // No user, clear cart
+      setCartItems([]); 
       setIsLoading(false);
       return;
     }
@@ -50,7 +50,9 @@ export function useCart() {
         await updateUserCart(currentUserEmail, updatedCartItems);
       } catch (error) {
         console.error("Failed to persist cart:", error);
-        toast({ title: "Sync Error", description: "Could not save cart changes to server.", variant: "destructive" });
+        setTimeout(() => {
+            toast({ title: "Sync Error", description: "Could not save cart changes to server.", variant: "destructive" });
+        }, 0);
       }
     }
   }, [currentUserEmail, toast]);
@@ -74,8 +76,11 @@ export function useCart() {
       } else {
         newComputedCart = [...prevCartItems, { product, quantity: Math.min(quantity, product.stock) }];
       }
-      persistCart(newComputedCart); // Persist the newly computed state
-      return newComputedCart; // Update React state
+      // Persist this new state immediately after computing it
+      if (currentUserEmail) {
+        persistCart(newComputedCart);
+      }
+      return newComputedCart; 
     });
 
     setTimeout(() => { 
@@ -93,7 +98,9 @@ export function useCart() {
     
     setCartItems(prevCartItems => {
         const newComputedCart = prevCartItems.filter(item => item.product.id !== productId);
-        persistCart(newComputedCart);
+        if (currentUserEmail) {
+            persistCart(newComputedCart);
+        }
         return newComputedCart;
     });
 
@@ -106,7 +113,7 @@ export function useCart() {
         });
       }, 0);
     }
-  }, [cartItems, currentUserEmail, persistCart, toast]); // cartItems needed for finding productToRemove for toast
+  }, [cartItems, currentUserEmail, persistCart, toast]);
 
   const updateQuantity = useCallback(async (productId: string, newQuantity: number) => {
     if (!currentUserEmail) return;
@@ -119,7 +126,9 @@ export function useCart() {
             }
             return item;
         });
-        persistCart(newComputedCart);
+        if (currentUserEmail) {
+            persistCart(newComputedCart);
+        }
         return newComputedCart;
     });
   }, [currentUserEmail, persistCart]);
@@ -127,11 +136,11 @@ export function useCart() {
   const clearCart = useCallback(async () => {
     if (!currentUserEmail) return;
 
-    setCartItems(prevCartItems => {
-        const newComputedCart: FullCartItem[] = [];
+    const newComputedCart: FullCartItem[] = [];
+    setCartItems(newComputedCart); 
+    if (currentUserEmail) {
         persistCart(newComputedCart);
-        return newComputedCart;
-    });
+    }
 
     setTimeout(() => {
       toast({

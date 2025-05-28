@@ -229,34 +229,6 @@
           "velvet",
           "natural"
         ]
-      },
-      {
-        "id": "2",
-        "name": "Radiant Glow Foundation",
-        "category": "Face",
-        "brand": "Earth Puran",
-        "price": 45,
-        "description": "Achieve a flawless, radiant complexion with this lightweight foundation. Provides buildable coverage and a natural, dewy finish. Enriched with hyaluronic acid for all-day hydration. Discover Earth Puran's commitment to quality.",
-        "imageUrl": "https://placehold.co/600x600.png",
-        "imageHint": "foundation makeup",
-        "shades": [
-          "Porcelain",
-          "Ivory",
-          "Sand",
-          "Beige",
-          "Tan",
-          "Mocha"
-        ],
-        "rating": 4.8,
-        "reviews": 250,
-        "stock": 30,
-        "tags": [
-          "foundation",
-          "radiant",
-          "dewy",
-          "hydrating",
-          "organic"
-        ]
       }
     ],
     "cart": []
