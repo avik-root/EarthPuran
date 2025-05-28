@@ -12,43 +12,57 @@ import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { Progress } from "@/components/ui/progress"; // Import Progress
-import { cn } from "@/lib/utils"; // Import cn
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
-// import { updateUserProfile } from "@/app/actions/userActions"; // For actual profile updates
-
-const passwordSchema = z.string()
+// Existing strong password schema
+const passwordStrengthSchema = z.string()
   .min(8, "Password must be at least 8 characters long.")
   .regex(/[A-Z]/, "Password must contain at least one uppercase letter.")
   .regex(/[0-9]/, "Password must contain at least one number.")
   .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character.");
 
-const editProfileSchema = z.object({
+// Base schema for the form - all fields optional initially
+const baseEditProfileSchema = z.object({
+  currentPassword: z.string().optional(),
+  newPassword: passwordStrengthSchema.optional(),
+  confirmNewPassword: z.string().optional(),
+  currentPin: z.string().optional(),
+  newPin: z.string().optional(),
+  confirmNewPin: z.string().optional(),
+});
+
+type EditProfileFormValues = z.infer<typeof baseEditProfileSchema>;
+
+// Specific schema for password change validation
+const passwordChangeValidationSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required."),
-  newPassword: passwordSchema,
-  confirmNewPassword: z.string(),
-  currentPin: z.string().length(6, "Current PIN must be 6 digits.").regex(/^\d+$/, "PIN must be numeric."),
-  newPin: z.string().length(6, "New PIN must be 6 digits.").regex(/^\d+$/, "PIN must be numeric."),
-  confirmNewPin: z.string().length(6, "Confirm PIN must be 6 digits.").regex(/^\d+$/, "PIN must be numeric."),
-})
-.refine(data => data.newPassword === data.confirmNewPassword, {
+  newPassword: passwordStrengthSchema, // Use the strong schema here
+  confirmNewPassword: z.string().min(1, "Please confirm your new password."),
+}).refine(data => data.newPassword === data.confirmNewPassword, {
   message: "New passwords don't match.",
   path: ["confirmNewPassword"],
-})
-.refine(data => data.newPin === data.confirmNewPin, {
+});
+
+// Specific schema for PIN change validation
+const pinChangeValidationSchema = z.object({
+  currentPin: z.string().length(6, "Current PIN must be 6 digits.").regex(/^\d+$/, "Current PIN must be numeric."),
+  newPin: z.string().length(6, "New PIN must be 6 digits.").regex(/^\d+$/, "New PIN must be numeric."),
+  confirmNewPin: z.string().length(6, "Confirm PIN must be 6 digits.").regex(/^\d+$/, "Confirm PIN must be numeric."),
+}).refine(data => data.newPin === data.confirmNewPin, {
   message: "New PINs don't match.",
   path: ["confirmNewPin"],
 });
 
-type EditProfileFormValues = z.infer<typeof editProfileSchema>;
 
 export function EditProfileForm() {
   const { toast } = useToast();
+  const [visibleSection, setVisibleSection] = useState<'none' | 'password' | 'pin'>('none');
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
-  const [newPasswordStrength, setNewPasswordStrength] = useState(0); // State for new password strength
+  const [newPasswordStrength, setNewPasswordStrength] = useState(0);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -56,9 +70,8 @@ export function EditProfileForm() {
     }
   }, []);
 
-
   const form = useForm<EditProfileFormValues>({
-    resolver: zodResolver(editProfileSchema),
+    resolver: zodResolver(baseEditProfileSchema), // Use base schema for initial form structure
     defaultValues: {
       currentPassword: "",
       newPassword: "",
@@ -73,151 +86,191 @@ export function EditProfileForm() {
 
   useEffect(() => {
     let strength = 0;
-    if (watchedNewPassword?.length >= 8) strength += 25;
-    if (/[A-Z]/.test(watchedNewPassword)) strength += 25;
-    if (/[0-9]/.test(watchedNewPassword)) strength += 25;
-    if (/[^A-Za-z0-9]/.test(watchedNewPassword)) strength += 25;
+    if (watchedNewPassword) {
+      if (watchedNewPassword.length >= 8) strength += 25;
+      if (/[A-Z]/.test(watchedNewPassword)) strength += 25;
+      if (/[0-9]/.test(watchedNewPassword)) strength += 25;
+      if (/[^A-Za-z0-9]/.test(watchedNewPassword)) strength += 25;
+    }
     setNewPasswordStrength(strength);
   }, [watchedNewPassword]);
 
   async function onSubmit(values: EditProfileFormValues) {
     if (!currentUserEmail) {
-        toast({ title: "Error", description: "You must be logged in to change security settings.", variant: "destructive"});
-        return;
+      toast({ title: "Error", description: "You must be logged in to change security settings.", variant: "destructive"});
+      return;
     }
-    console.log("Edit profile form submitted:", values);
-    // In a real app:
-    // 1. Verify currentPassword and currentPin against stored hashed values for currentUserEmail.
-    // 2. If valid, hash newPassword and newPin and call an action like:
-    //    await updateUserSecurity(currentUserEmail, { newHashedPassword: ..., newHashedPin: ... });
-    // For this prototype, we'll just show a success message.
+    form.clearErrors(); // Clear previous errors before new validation
+
+    if (visibleSection === 'password') {
+      const result = passwordChangeValidationSchema.safeParse(values);
+      if (!result.success) {
+        result.error.issues.forEach(issue => {
+          form.setError(issue.path[0] as keyof EditProfileFormValues, { message: issue.message, type: 'manual' });
+        });
+        return;
+      }
+      console.log("Password change data:", result.data);
+      toast({ title: "Password Changed (Simulated)", description: "Your password has been successfully updated." });
+    } else if (visibleSection === 'pin') {
+      const result = pinChangeValidationSchema.safeParse(values);
+      if (!result.success) {
+        result.error.issues.forEach(issue => {
+          form.setError(issue.path[0] as keyof EditProfileFormValues, { message: issue.message, type: 'manual' });
+        });
+        return;
+      }
+      console.log("PIN change data:", result.data);
+      toast({ title: "PIN Changed (Simulated)", description: "Your PIN has been successfully updated." });
+    }
     
-    toast({ title: "Security Info Updated (Simulated)", description: "Your password and PIN have been successfully updated." });
+    setVisibleSection('none');
     form.reset(); 
+  }
+
+  const handleCancel = () => {
+    setVisibleSection('none');
+    form.reset();
+    form.clearErrors();
   }
 
   if (typeof window !== 'undefined' && !localStorage.getItem('currentUserEmail')) {
       return <p className="text-muted-foreground text-center py-4">Please log in to edit your profile.</p>;
   }
 
+  if (visibleSection === 'none') {
+    return (
+      <div className="space-y-4">
+        <Button onClick={() => setVisibleSection('password')} className="w-full sm:w-auto">Change Password</Button>
+        <Button onClick={() => setVisibleSection('pin')} className="w-full sm:w-auto ml-0 sm:ml-4" variant="outline">Change PIN</Button>
+      </div>
+    );
+  }
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <section className="space-y-6">
-          <h3 className="text-lg font-medium text-foreground">Change Password</h3>
-          <FormField
-            control={form.control}
-            name="currentPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Current Password</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input type={showCurrentPassword ? "text" : "password"} placeholder="Enter your current password" {...field} />
-                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowCurrentPassword(!showCurrentPassword)} aria-label="Toggle current password visibility">
-                      {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="newPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>New Password</FormLabel>
-                 <FormControl>
-                  <div className="relative">
-                    <Input type={showNewPassword ? "text" : "password"} placeholder="Enter your new password" {...field} />
-                     <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowNewPassword(!showNewPassword)} aria-label="Toggle new password visibility">
-                       {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </FormControl>
-                <Progress
-                  value={newPasswordStrength}
-                  className="h-2 mt-1"
-                  indicatorClassName={cn({
-                    'bg-red-500': newPasswordStrength > 0 && newPasswordStrength < 50,
-                    'bg-yellow-500': newPasswordStrength >= 50 && newPasswordStrength < 75,
-                    'bg-green-500': newPasswordStrength >= 75,
-                  })}
-                />
-                <FormDescription className="text-xs">Min 8 chars, 1 uppercase, 1 number, 1 special char.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="confirmNewPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirm New Password</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input type={showConfirmNewPassword ? "text" : "password"} placeholder="Confirm your new password" {...field} />
-                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)} aria-label="Toggle confirm new password visibility">
-                       {showConfirmNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </section>
-        <Separator />
-        
-        <section className="space-y-6">
-          <h3 className="text-lg font-medium text-foreground">Change PIN</h3>
-          <FormField
-            control={form.control}
-            name="currentPin"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Current 6-Digit PIN</FormLabel>
-                <FormControl>
-                  <PinInput length={6} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="newPin"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>New 6-Digit PIN</FormLabel>
-                <FormControl>
-                  <PinInput length={6} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="confirmNewPin"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirm New 6-Digit PIN</FormLabel>
-                <FormControl>
-                  <PinInput length={6} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </section>
+        {visibleSection === 'password' && (
+          <section className="space-y-6">
+            <h3 className="text-lg font-medium text-foreground">Change Password</h3>
+            <FormField
+              control={form.control}
+              name="currentPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Current Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input type={showCurrentPassword ? "text" : "password"} placeholder="Enter your current password" {...field} />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowCurrentPassword(!showCurrentPassword)} aria-label="Toggle current password visibility">
+                        {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="newPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>New Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input type={showNewPassword ? "text" : "password"} placeholder="Enter your new password" {...field} />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowNewPassword(!showNewPassword)} aria-label="Toggle new password visibility">
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <Progress
+                    value={newPasswordStrength}
+                    className="h-2 mt-1"
+                    indicatorClassName={cn({
+                      'bg-red-500': newPasswordStrength > 0 && newPasswordStrength < 50,
+                      'bg-yellow-500': newPasswordStrength >= 50 && newPasswordStrength < 75,
+                      'bg-green-500': newPasswordStrength >= 75,
+                    })}
+                  />
+                  <FormDescription className="text-xs">Min 8 chars, 1 uppercase, 1 number, 1 special char.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="confirmNewPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input type={showConfirmNewPassword ? "text" : "password"} placeholder="Confirm your new password" {...field} />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)} aria-label="Toggle confirm new password visibility">
+                        {showConfirmNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </section>
+        )}
 
-        <div className="flex justify-end">
-          <Button type="submit">Save Changes</Button>
-        </div>
+        {visibleSection === 'pin' && (
+          <section className="space-y-6">
+            <h3 className="text-lg font-medium text-foreground">Change PIN</h3>
+            <FormField
+              control={form.control}
+              name="currentPin"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Current 6-Digit PIN</FormLabel>
+                  <FormControl>
+                    <PinInput length={6} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="newPin"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>New 6-Digit PIN</FormLabel>
+                  <FormControl>
+                    <PinInput length={6} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="confirmNewPin"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm New 6-Digit PIN</FormLabel>
+                  <FormControl>
+                    <PinInput length={6} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </section>
+        )}
+        
+        {(visibleSection === 'password' || visibleSection === 'pin') && (
+            <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={handleCancel}>Cancel</Button>
+                <Button type="submit">Save {visibleSection === 'password' ? 'Password' : 'PIN'} Changes</Button>
+            </div>
+        )}
       </form>
     </Form>
   );
