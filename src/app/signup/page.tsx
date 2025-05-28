@@ -76,44 +76,32 @@ export default function SignupPage() {
 
   useEffect(() => {
     let strength = 0;
-    if (currentPassword?.length >= 8) strength += 25;
-    if (/[A-Z]/.test(currentPassword)) strength += 25;
-    if (/[0-9]/.test(currentPassword)) strength += 25;
-    if (/[^A-Za-z0-9]/.test(currentPassword)) strength += 25;
+    if (currentPassword) { // Check if currentPassword is not undefined
+        if (currentPassword.length >= 8) strength += 25;
+        if (/[A-Z]/.test(currentPassword)) strength += 25;
+        if (/[0-9]/.test(currentPassword)) strength += 25;
+        if (/[^A-Za-z0-9]/.test(currentPassword)) strength += 25;
+    }
     setPasswordStrength(strength);
   }, [currentPassword]);
 
   async function onSubmit(values: SignupFormValues) {
     console.log("Signup form submitted:", values);
     
-    // UserProfile now expects hashedPassword and hashedPin, but we pass plaintext
-    // to initializeUserAccount which will handle hashing.
     const userProfileDataForAction: UserProfile = {
       firstName: values.firstName,
       lastName: values.lastName,
       email: values.email,
       countryCode: values.countryCode,
       phoneNumber: values.phoneNumber,
-      // Hashing will be done by the server action
     };
 
     try {
-      // Pass plaintext password and PIN to be hashed by the server action
       const createdUserData = await initializeUserAccount(userProfileDataForAction, values.password, values.pin);
       
       localStorage.setItem("isLoggedInPrototype", "true");
       localStorage.setItem('currentUserEmail', values.email); 
-      // Store the profile returned by the server action (which includes hashed creds, though we don't use them client-side)
-      // Or store a simplified profile for display purposes
-      const profileForStorage: UserProfile = {
-        firstName: createdUserData.profile.firstName,
-        lastName: createdUserData.profile.lastName,
-        email: createdUserData.profile.email,
-        countryCode: createdUserData.profile.countryCode,
-        phoneNumber: createdUserData.profile.phoneNumber,
-        // No need to store hashed password/pin in localStorage for client-side display
-      };
-      localStorage.setItem('userProfilePrototype', JSON.stringify(profileForStorage));
+      localStorage.setItem('userProfilePrototype', JSON.stringify(createdUserData.profile));
 
 
       toast({ title: "Account Created!", description: "Welcome to Earth Puran." });
@@ -142,7 +130,7 @@ export default function SignupPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>First Name</FormLabel>
-                      <FormControl><Input placeholder="Jane" {...field} /></FormControl>
+                      <FormControl><Input placeholder="Priya" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -153,7 +141,7 @@ export default function SignupPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Last Name</FormLabel>
-                      <FormControl><Input placeholder="Doe" {...field} /></FormControl>
+                      <FormControl><Input placeholder="Sharma" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -165,7 +153,7 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email Address (Gmail only)</FormLabel>
-                    <FormControl><Input placeholder="yourname@gmail.com" {...field} /></FormControl>
+                    <FormControl><Input placeholder="example@gmail.com" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

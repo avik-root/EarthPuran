@@ -135,15 +135,8 @@ export default function LoginPage() {
 
     localStorage.setItem("isLoggedInPrototype", "true");
     localStorage.setItem("isAdminPrototype", "false"); // Ensure admin flag is false for regular users
-    localStorage.setItem('currentUserEmail', values.email);
-     const profileForStorage: UserProfile = { 
-        firstName: userData.profile.firstName,
-        lastName: userData.profile.lastName,
-        email: userData.profile.email,
-        countryCode: userData.profile.countryCode,
-        phoneNumber: userData.profile.phoneNumber,
-    };
-    localStorage.setItem('userProfilePrototype', JSON.stringify(profileForStorage));
+    localStorage.setItem('currentUserEmail', values.email); 
+    localStorage.setItem('userProfilePrototype', JSON.stringify(userData.profile));
 
 
     toast({ title: "Login Successful", description: "Welcome back!" });
@@ -175,7 +168,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Email Address (Gmail only)</FormLabel>
                     <FormControl>
-                      <Input placeholder="yourname@gmail.com" {...field} />
+                      <Input placeholder="example@gmail.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -232,7 +225,7 @@ export default function LoginPage() {
                         name={field.name}
                         onBlur={field.onBlur}
                         disabled={field.disabled}
-                        showPin={showPin} // Default is false (masked)
+                        showPin={showPin} 
                       />
                     </FormControl>
                     <FormMessage />
@@ -260,5 +253,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    

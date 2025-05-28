@@ -67,7 +67,7 @@ export default function ContactUsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
-                      <FormControl><Input placeholder="Jane Doe" {...field} /></FormControl>
+                      <FormControl><Input placeholder="Priya Sharma" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -78,7 +78,7 @@ export default function ContactUsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Email Address</FormLabel>
-                      <FormControl><Input type="email" placeholder="jane.doe@example.com" {...field} /></FormControl>
+                      <FormControl><Input type="email" placeholder="priya.sharma@example.com" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
