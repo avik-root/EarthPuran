@@ -12,6 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { Progress } from "@/components/ui/progress"; // Import Progress
+import { cn } from "@/lib/utils"; // Import cn
+
 // import { updateUserProfile } from "@/app/actions/userActions"; // For actual profile updates
 
 const passwordSchema = z.string()
@@ -45,6 +48,7 @@ export function EditProfileForm() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [newPasswordStrength, setNewPasswordStrength] = useState(0); // State for new password strength
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -64,6 +68,17 @@ export function EditProfileForm() {
       confirmNewPin: "",
     },
   });
+
+  const watchedNewPassword = form.watch("newPassword");
+
+  useEffect(() => {
+    let strength = 0;
+    if (watchedNewPassword?.length >= 8) strength += 25;
+    if (/[A-Z]/.test(watchedNewPassword)) strength += 25;
+    if (/[0-9]/.test(watchedNewPassword)) strength += 25;
+    if (/[^A-Za-z0-9]/.test(watchedNewPassword)) strength += 25;
+    setNewPasswordStrength(strength);
+  }, [watchedNewPassword]);
 
   async function onSubmit(values: EditProfileFormValues) {
     if (!currentUserEmail) {
@@ -122,6 +137,15 @@ export function EditProfileForm() {
                     </Button>
                   </div>
                 </FormControl>
+                <Progress
+                  value={newPasswordStrength}
+                  className="h-2 mt-1"
+                  indicatorClassName={cn({
+                    'bg-red-500': newPasswordStrength > 0 && newPasswordStrength < 50,
+                    'bg-yellow-500': newPasswordStrength >= 50 && newPasswordStrength < 75,
+                    'bg-green-500': newPasswordStrength >= 75,
+                  })}
+                />
                 <FormDescription className="text-xs">Min 8 chars, 1 uppercase, 1 number, 1 special char.</FormDescription>
                 <FormMessage />
               </FormItem>
