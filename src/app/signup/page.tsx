@@ -92,18 +92,24 @@ export default function SignupPage() {
       email: values.email,
       countryCode: values.countryCode,
       phoneNumber: values.phoneNumber,
+      password_plaintext_prototype_only: values.password,
+      pin_plaintext_prototype_only: values.pin,
     };
 
     try {
       await initializeUserAccount(userProfileData);
       localStorage.setItem("isLoggedInPrototype", "true");
       localStorage.setItem('currentUserEmail', values.email); 
+      // Storing profile in localStorage for immediate availability.
+      // In a real app, this might be managed by a session or context.
+      localStorage.setItem('userProfilePrototype', JSON.stringify(userProfileData));
+
 
       toast({ title: "Account Created!", description: "Welcome to Earth Puran." });
       router.push("/");
     } catch (error) {
       console.error("Signup failed:", error);
-      toast({ title: "Signup Failed", description: "Could not create your account. Please try again.", variant: "destructive" });
+      toast({ title: "Signup Failed", description: "Could not create your account. It's possible this email is already registered. Please try again or try logging in.", variant: "destructive" });
     }
   }
 

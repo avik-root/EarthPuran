@@ -9,7 +9,11 @@ export interface UserProfile {
   email: string; // Primary identifier
   countryCode: string; // e.g., "IN"
   phoneNumber: string;
-  // Password and PIN are handled by auth logic, not directly stored here in plain text
+  // IMPORTANT: Storing plaintext passwords/PINs is for prototype demonstration ONLY.
+  // In a real production application, you MUST use strong, salted hashing (e.g., bcrypt, Argon2)
+  // for passwords and PINs, and never store them in plaintext.
+  password_plaintext_prototype_only: string;
+  pin_plaintext_prototype_only: string;
 }
 
 // Corresponds to data managed in AddressManagement and used in checkout

@@ -38,7 +38,7 @@ async function writeUsersFile(data: AllUsersData): Promise<void> {
 
 function getDefaultUserData(profile: UserProfile): UserData {
     return {
-        profile,
+        profile, // Profile now includes plaintext password and pin for prototype
         addresses: [],
         orders: [],
         wishlist: [],
@@ -58,7 +58,9 @@ export async function getUserData(email: string): Promise<UserData | null> {
 export async function initializeUserAccount(profile: UserProfile): Promise<UserData> {
     const allUsers = await readUsersFile();
     if (allUsers[profile.email]) {
-        return allUsers[profile.email];
+        // Optionally, throw an error if user already exists, or just return existing data
+        // For now, let's throw an error to prevent accidental overwrites via signup
+        throw new Error(`User with email ${profile.email} already exists.`);
     }
     allUsers[profile.email] = getDefaultUserData(profile);
     await writeUsersFile(allUsers);
@@ -72,7 +74,17 @@ export async function updateUserProfile(email: string, profileData: Partial<User
       console.error(`Attempted to update profile for non-existent user: ${email}`);
       return false;
     }
-    allUsers[email].profile = { ...allUsers[email].profile, ...profileData };
+    // Ensure password and pin are not accidentally wiped if not provided in partial update
+    const existingPassword = allUsers[email].profile.password_plaintext_prototype_only;
+    const existingPin = allUsers[email].profile.pin_plaintext_prototype_only;
+
+    allUsers[email].profile = { 
+        ...allUsers[email].profile, 
+        ...profileData,
+        // Preserve existing password/pin if not part of this specific update
+        password_plaintext_prototype_only: profileData.password_plaintext_prototype_only || existingPassword,
+        pin_plaintext_prototype_only: profileData.pin_plaintext_prototype_only || existingPin,
+     };
     await writeUsersFile(allUsers);
     return true;
 }
@@ -97,7 +109,7 @@ export async function addOrder(email: string, newOrder: Order): Promise<boolean>
       return false;
     }
     allUsers[email].orders.push(newOrder);
-    allUsers[email].orders.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+    allUsers[email].orders.sort((a, b) => parseInt(b.id) - parseInt(a.id)); // Sort by newest first
     await writeUsersFile(allUsers);
     return true;
 }
@@ -220,31 +232,3 @@ export async function clearUserCartAction(email: string): Promise<{ success: boo
   await writeUsersFile(allUsers);
   return { success: true, cart: allUsers[email].cart };
 }
-
-// The following functions are deprecated in favor of the more granular actions above
-// to prevent race conditions. They can be removed if no longer used directly.
-/*
-export async function updateUserWishlist(email: string, wishlist: WishlistProduct[]): Promise<boolean> {
-    if (!email) return false;
-    const allUsers = await readUsersFile();
-    if (!allUsers[email]) {
-      console.error(`Attempted to update wishlist for non-existent user: ${email}`);
-      return false;
-    }
-    allUsers[email].wishlist = wishlist;
-    await writeUsersFile(allUsers);
-    return true;
-}
-
-export async function updateUserCart(email: string, cart: FullCartItem[]): Promise<boolean> {
-    if (!email) return false;
-    const allUsers = await readUsersFile();
-    if (!allUsers[email]) {
-      console.error(`Attempted to update cart for non-existent user: ${email}`);
-      return false;
-    }
-    allUsers[email].cart = cart;
-    await writeUsersFile(allUsers);
-    return true;
-}
-*/

@@ -8,9 +8,9 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   Sheet,
   SheetContent,
-  SheetTrigger,
   SheetHeader,
   SheetTitle,
+  SheetTrigger, // Added SheetTrigger
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -29,8 +29,8 @@ const navItems = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
   { href: "/blog", label: "Beauty Blog" },
-  // { href: "/about", label: "About Us" }, // Placeholder, can be added later
-  // { href: "/contact", label: "Contact" }, // Placeholder
+  // { href: "/about", label: "About Us" },
+  // { href: "/contact", label: "Contact" },
 ];
 
 export function Header() {
@@ -49,11 +49,11 @@ export function Header() {
   }, []);
 
   useEffect(() => {
-    if (hasMounted) {
+    if (hasMounted) { 
       const storedLoginStatus = localStorage.getItem("isLoggedInPrototype") === "true";
       setIsLoggedIn(storedLoginStatus);
     }
-  }, [hasMounted, pathname]);
+  }, [hasMounted, pathname]); 
 
   const handleMobileSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -68,6 +68,7 @@ export function Header() {
   const handleLogout = () => {
     localStorage.removeItem("isLoggedInPrototype");
     localStorage.removeItem("currentUserEmail");
+    setIsLoggedIn(false); 
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
     setMobileMenuOpen(false); 
     router.push("/"); 
@@ -172,7 +173,7 @@ export function Header() {
             // Static placeholders for server and initial client render to avoid hydration mismatch
             // Sized to approximate the space the actual components will take.
             <>
-              <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" /> {/* Approx space for Login button or UserCircle icon */}
+              <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" /> {/* Approx space for Login button */}
               <div style={{ width: '40px', height: '40px' }} aria-hidden="true" /> {/* Approx space for ThemeToggle icon button */}
             </>
           )}

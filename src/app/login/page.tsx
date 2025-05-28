@@ -15,7 +15,8 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation"; 
 import { useToast } from "@/hooks/use-toast";
 import { getUserData, initializeUserAccount } from "@/app/actions/userActions"; 
-import type { UserProfile } from "@/types/userData";
+import type { UserData, UserProfile } from "@/types/userData";
+import adminCredentials from '@/data/admin.json';
 
 
 const loginSchema = z.object({
@@ -41,7 +42,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (hasMounted) {
-      // If already logged in, redirect away from login page
       if (localStorage.getItem("isLoggedInPrototype") === "true") {
         router.push(searchParams.get('redirect') || "/");
       }
@@ -60,52 +60,74 @@ export default function LoginPage() {
   async function onSubmit(values: LoginFormValues) {
     console.log("Login form submitted:", values);
     
-    let userProfileData: UserProfile | null = null;
-    try {
-      userProfileData = await getUserData(values.email);
-    } catch (e) {
-      console.warn("Could not fetch user data for login, proceeding with potential initialization:", e);
-    }
+    // Admin Login Check
+    if (values.email === adminCredentials.email) {
+      if (values.password === adminCredentials.password && values.pin === adminCredentials.pin) {
+        localStorage.setItem("isLoggedInPrototype", "true");
+        localStorage.setItem("isAdminPrototype", "true");
+        localStorage.setItem('currentUserEmail', values.email);
+        const adminProfileForStorage: UserProfile = { // Simplified profile for admin for localStorage
+            firstName: "Admin", 
+            lastName: "User", 
+            email: values.email, 
+            countryCode: "IN", 
+            phoneNumber: "0000000000",
+            password_plaintext_prototype_only: adminCredentials.password, // For consistency if profile is ever fully displayed
+            pin_plaintext_prototype_only: adminCredentials.pin,
+        };
+        localStorage.setItem('userProfilePrototype', JSON.stringify(adminProfileForStorage));
 
-
-    if (!userProfileData) {
-      const newProfile: UserProfile = {
-        firstName: values.email.split('@')[0] || "User", 
-        lastName: "",
-        email: values.email,
-        countryCode: "IN", 
-        phoneNumber: "0000000000", 
-      };
-      try {
-        userProfileData = await initializeUserAccount(newProfile); 
-      } catch (error) {
-        console.error("Failed to initialize user account on login:", error);
-        toast({ title: "Login Error", description: "Could not retrieve or create user profile.", variant: "destructive" });
+        toast({ title: "Admin Login Successful", description: "Welcome, Admin!" });
+        const redirectUrl = searchParams.get('redirect') || "/admin/dashboard";
+        router.push(redirectUrl);
+         if (redirectUrl === pathname) router.refresh();
+        return;
+      } else {
+        toast({ title: "Login Failed", description: "Invalid admin credentials. Please check your password and PIN.", variant: "destructive" });
         return;
       }
     }
+
+    // Regular User Login
+    let userData: UserData | null = null;
+    try {
+      userData = await getUserData(values.email);
+    } catch (e) {
+      console.error("Error fetching user data for login:", e);
+      toast({ title: "Login Error", description: "An error occurred while trying to log you in. Please try again.", variant: "destructive" });
+      return;
+    }
+
+    if (!userData) {
+      toast({ title: "Login Failed", description: "User not found. Please sign up if you don't have an account.", variant: "destructive" });
+      return;
+    }
+
+    // Validate password and PIN for regular user
+    // IMPORTANT: This is comparing plaintext for prototype purposes. NEVER do this in production.
+    if (userData.profile.password_plaintext_prototype_only !== values.password || 
+        userData.profile.pin_plaintext_prototype_only !== values.pin) {
+      toast({ title: "Login Failed", description: "Invalid credentials. Please check your email, password, and PIN.", variant: "destructive" });
+      return;
+    }
     
     localStorage.setItem("isLoggedInPrototype", "true");
-    localStorage.setItem('currentUserEmail', values.email); 
-    if (userProfileData) { // Ensure profile data is available before storing
-      localStorage.setItem('userProfilePrototype', JSON.stringify(userProfileData));
-    }
+    localStorage.setItem("isAdminPrototype", "false"); 
+    localStorage.setItem('currentUserEmail', values.email);
+    localStorage.setItem('userProfilePrototype', JSON.stringify(userData.profile));
 
 
     toast({ title: "Login Successful", description: "Welcome back!" });
     const redirectUrl = searchParams.get('redirect') || "/";
     router.push(redirectUrl);
-    // Force a reload if going to the same page, to ensure header updates if it didn't via pathname change
     if (redirectUrl === pathname) {
-        router.refresh(); // Or window.location.href = redirectUrl; for full reload
+        router.refresh(); 
     }
   }
   
   if (!hasMounted) {
-    // Optional: Render a loading skeleton or null while waiting for client-side checks
     return null; 
   }
-
 
   return (
     <div className="flex items-center justify-center py-12">
