@@ -15,13 +15,13 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar";
-import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert } from "lucide-react";
+import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Skeleton } from "@/components/ui/skeleton"; // For loading state
+import { Skeleton } from "@/components/ui/skeleton"; 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AdminLayout({
@@ -34,11 +34,14 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const gatePassed = localStorage.getItem("adminAccessGranted") === "true";
     const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
 
-    if (!isLoggedIn || !isAdmin) {
-      router.push('/admin/login'); // Redirect to dedicated admin login
+    if (!gatePassed) {
+      router.push('/admin/access-gate');
+    } else if (!isLoggedIn || !isAdmin) {
+      router.push('/admin/login'); 
     } else {
       setIsAuthorized(true);
     }
@@ -49,8 +52,8 @@ export default function AdminLayout({
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
-            <Package className="h-12 w-12 text-primary animate-pulse" />
-            <p className="text-muted-foreground">Loading Admin Area...</p>
+            <KeyRound className="h-12 w-12 text-primary animate-pulse" />
+            <p className="text-muted-foreground">Verifying Admin Access...</p>
             <Skeleton className="h-4 w-[250px]" />
             <Skeleton className="h-4 w-[200px]" />
         </div>
@@ -59,6 +62,8 @@ export default function AdminLayout({
   }
 
   if (!isAuthorized) {
+    // This state should ideally be handled by the redirects in useEffect,
+    // but as a fallback:
     return (
         <div className="flex h-screen items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md text-center">
@@ -70,7 +75,7 @@ export default function AdminLayout({
                 <CardContent>
                     <p className="text-muted-foreground mb-6">You do not have permission to view this page.</p>
                     <Button asChild>
-                        <Link href="/admin/login">Go to Admin Login</Link>
+                        <Link href="/admin/access-gate">Verify Access</Link>
                     </Button>
                 </CardContent>
             </Card>
@@ -98,7 +103,7 @@ export default function AdminLayout({
               <SidebarMenuButton
                 href="/admin/dashboard"
                 tooltip="Dashboard"
-                isActive // Assuming this is the dashboard link
+                isActive 
               >
                 <LayoutDashboard />
                 <span>Dashboard</span>

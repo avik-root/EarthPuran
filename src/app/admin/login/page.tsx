@@ -44,7 +44,7 @@ export default function AdminLoginPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
-  const [showPin, setShowPin] = useState(false); // Default to masked
+  const [showPin, setShowPin] = useState(false); 
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -53,6 +53,13 @@ export default function AdminLoginPage() {
 
   useEffect(() => {
     if (hasMounted) {
+      // Check if gate PIN was entered
+      if (localStorage.getItem("adminAccessGranted") !== "true") {
+        router.push('/admin/access-gate');
+        return; // Stop further execution if gate not passed
+      }
+
+      // If gate passed and already logged in as admin, redirect to dashboard
       if (localStorage.getItem("isLoggedInPrototype") === "true" && localStorage.getItem("isAdminPrototype") === "true") {
         router.push(searchParams.get('redirect') || "/admin/dashboard");
       }
@@ -62,13 +69,19 @@ export default function AdminLoginPage() {
   const form = useForm<AdminLoginFormValues>({
     resolver: zodResolver(adminLoginSchema),
     defaultValues: {
-      email: adminCredentials.email, // Pre-fill admin email
+      email: adminCredentials.email, 
       password: "",
       pin: "",
     },
   });
 
   async function onSubmit(values: AdminLoginFormValues) {
+    if (localStorage.getItem("adminAccessGranted") !== "true") {
+      toast({ title: "Access Denied", description: "Please verify access PIN first.", variant: "destructive" });
+      router.push('/admin/access-gate');
+      return;
+    }
+
     if (values.email !== adminCredentials.email) {
       toast({ title: "Admin Login Failed", description: "Invalid email for admin.", variant: "destructive" });
       return;
@@ -77,31 +90,27 @@ export default function AdminLoginPage() {
     let isPasswordCorrect = false;
     let isPinCorrect = false;
 
-    // Admin password/PIN might be plaintext or hashed in admin.json
-    // Check if they look like bcrypt hashes
     if (adminCredentials.password.startsWith('$2a$') || adminCredentials.password.startsWith('$2b$')) {
       isPasswordCorrect = bcrypt.compareSync(values.password, adminCredentials.password);
     } else {
-      isPasswordCorrect = values.password === adminCredentials.password; // Plaintext check for easier prototype setup
+      isPasswordCorrect = values.password === adminCredentials.password; 
     }
 
     if (adminCredentials.pin.startsWith('$2a$') || adminCredentials.pin.startsWith('$2b$')) {
        isPinCorrect = bcrypt.compareSync(values.pin, adminCredentials.pin);
     } else {
-      isPinCorrect = values.pin === adminCredentials.pin; // Plaintext check
+      isPinCorrect = values.pin === adminCredentials.pin; 
     }
     
     if (isPasswordCorrect && isPinCorrect) {
       localStorage.setItem("isLoggedInPrototype", "true");
       localStorage.setItem("isAdminPrototype", "true");
-      localStorage.setItem('currentUserEmail', values.email); // Still useful for general user data fetching if needed
+      localStorage.setItem('currentUserEmail', values.email); 
       
-      // For admin, we might not need a full userProfilePrototype, or a simplified one
       const adminProfileForStorage = {
           firstName: "Admin",
           lastName: "User",
           email: values.email,
-          // other fields as necessary for UserProfile type, or make them optional
       };
       localStorage.setItem('userProfilePrototype', JSON.stringify(adminProfileForStorage));
 
@@ -118,6 +127,29 @@ export default function AdminLoginPage() {
   if (!hasMounted) {
     return null; 
   }
+  
+  // If mounted but gate not passed, this will be caught by useEffect and redirect.
+  // This check is a fallback for the brief moment before useEffect runs.
+  if (hasMounted && typeof window !== 'undefined' && localStorage.getItem("adminAccessGranted") !== "true") {
+      return (
+        <div className="flex h-screen items-center justify-center bg-background p-4">
+            <Card className="w-full max-w-md text-center">
+                <CardHeader>
+                    <CardTitle className="text-2xl text-destructive flex items-center justify-center gap-2">
+                        <ShieldAlert className="h-8 w-8" /> Gate Access Required
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground mb-6">You must pass the security PIN gate first.</p>
+                    <Button asChild>
+                        <Link href="/admin/access-gate">Go to Access Gate</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+        </div>
+      );
+  }
+
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-12 bg-background">

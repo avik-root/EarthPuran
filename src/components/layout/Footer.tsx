@@ -59,7 +59,7 @@ export function Footer() {
               <li><Link href="/signup" className="text-sm text-foreground/80 hover:text-primary">Create Account</Link></li>
               <li><Link href="/wishlist" className="text-sm text-foreground/80 hover:text-primary">Wishlist</Link></li>
               <li><Link href="/orders" className="text-sm text-foreground/80 hover:text-primary">Order History</Link></li>
-              <li><Link href="/admin/login" className="text-sm text-foreground/80 hover:text-primary">Admin Login</Link></li>
+              <li><Link href="/admin/access-gate" className="text-sm text-foreground/80 hover:text-primary">Admin Login</Link></li>
             </ul>
           </div>
         </div>
