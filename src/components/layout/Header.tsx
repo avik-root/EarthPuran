@@ -41,15 +41,19 @@ export function Header() {
   const pathname = usePathname();
   const { toast } = useToast();
   
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false); // Default to not logged in
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
-    const storedLoginStatus = localStorage.getItem("isLoggedInPrototype") === "true";
-    setIsLoggedIn(storedLoginStatus);
-    setHasMounted(true);
-  }, [pathname]);
+    setHasMounted(true); // Step 1: Indicate component has mounted on the client
+  }, []); // Runs only once after initial client-side render
 
+  useEffect(() => {
+    if (hasMounted) { // Step 2: Only after mounting, access localStorage
+      const storedLoginStatus = localStorage.getItem("isLoggedInPrototype") === "true";
+      setIsLoggedIn(storedLoginStatus);
+    }
+  }, [hasMounted, pathname]); // Re-check login status if hasMounted changes or pathname (navigation) changes
 
   const handleMobileSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -62,12 +66,12 @@ export function Header() {
   };
 
   const handleLogout = () => {
-    setIsLoggedIn(false);
     localStorage.removeItem("isLoggedInPrototype");
-    localStorage.removeItem("isAdminPrototype"); // Keep this for good measure if it was ever set
+    // setIsLoggedIn(false); // State will update via useEffect reacting to localStorage change after navigation
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
     setMobileMenuOpen(false); 
     router.push("/"); 
+    // After router.push, the useEffect depending on pathname will re-evaluate isLoggedIn
   };
 
   return (
@@ -169,6 +173,7 @@ export function Header() {
               <ThemeToggle />
             </>
           ) : (
+            // Static placeholders for server and initial client render
             <>
               <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" /> {/* Approx space for Login button / UserMenu trigger */}
               <div style={{ width: '40px', height: '40px' }} aria-hidden="true" /> {/* Approx space for ThemeToggle icon button */}
@@ -219,7 +224,7 @@ export function Header() {
                            </Button>
                         )
                     ) : (
-                       <div className="h-10 mt-4" aria-hidden="true" />
+                       <div className="h-10 mt-4" aria-hidden="true" /> // Placeholder for mobile auth section
                     )}
                     </nav>
                 </div>
