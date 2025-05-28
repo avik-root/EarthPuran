@@ -4,8 +4,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import type { AllUsersData, UserData, UserProfile, UserAddress, Order, Product as WishlistProduct, FullCartItem } from '@/types/userData';
+import type { AllUsersData, UserData, UserProfile, UserAddress, Product as WishlistProduct, FullCartItem } from '@/types/userData';
 import type { Product } from '@/types/product';
+import type { Order } from '@/types/order';
 
 const dataFilePath = path.join(process.cwd(), 'src', 'data', 'users.json');
 const saltRounds = 10;
@@ -15,6 +16,7 @@ async function readUsersFile(): Promise<AllUsersData> {
     const jsonData = await fs.readFile(dataFilePath, 'utf-8');
     if (!jsonData.trim()) {
       console.log("users.json is empty, initializing with {}.");
+      // If the file is empty, we still write an empty JSON object to ensure it's valid for next read.
       await fs.writeFile(dataFilePath, JSON.stringify({}, null, 2), 'utf-8');
       return {};
     }
@@ -23,7 +25,7 @@ async function readUsersFile(): Promise<AllUsersData> {
     } catch (parseError) {
       console.error("Failed to parse users.json. File content may be corrupted. Content snippet (first 500 chars):", jsonData.substring(0, 500), "Error:", parseError);
       console.warn("Returning empty data due to users.json parse error. Please check the file content. Consider backing up and deleting/re-initializing users.json if the issue persists.");
-      return {}; // Or throw new Error("Failed to parse user data."); for stricter error handling
+      return {};
     }
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
@@ -33,10 +35,7 @@ async function readUsersFile(): Promise<AllUsersData> {
       return {};
     }
     console.error("Failed to read users.json:", nodeError);
-    // Depending on the desired behavior, you might want to throw an error here
-    // or return a state that indicates failure to the calling action.
-    // Returning an empty object can mask issues if the caller isn't prepared for it.
-    return {}; // Fallback for other read errors
+    return {};
   }
 }
 
@@ -49,16 +48,22 @@ async function writeUsersFile(data: AllUsersData): Promise<void> {
   }
 }
 
-function getDefaultUserData(profile: UserProfile, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string): UserData {
+function getDefaultUserData(profile: UserProfile, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string, isFirstUser: boolean): UserData {
     const hashedPassword = bcrypt.hashSync(plaintextPassword_prototype_only, saltRounds);
     const hashedPin = bcrypt.hashSync(plaintextPin_prototype_only, saltRounds);
     
+    const userProfileWithAdminStatus: UserProfile = {
+        ...profile,
+        hashedPassword,
+        hashedPin,
+    };
+
+    if (isFirstUser) {
+        userProfileWithAdminStatus.isAdmin = true;
+    }
+    
     return {
-        profile: {
-            ...profile,
-            hashedPassword,
-            hashedPin,
-        },
+        profile: userProfileWithAdminStatus,
         addresses: [],
         orders: [],
         wishlist: [],
@@ -80,7 +85,8 @@ export async function initializeUserAccount(profile: UserProfile, plaintextPassw
     if (allUsers[profile.email]) {
         throw new Error(`User with email ${profile.email} already exists.`);
     }
-    allUsers[profile.email] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only);
+    const isFirstUser = Object.keys(allUsers).length === 0;
+    allUsers[profile.email] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, isFirstUser);
     await writeUsersFile(allUsers);
     return allUsers[profile.email];
 }
@@ -283,4 +289,3 @@ export async function clearUserCartAction(email: string): Promise<{ success: boo
   await writeUsersFile(allUsers);
   return { success: true, cart: allUsers[email].cart };
 }
-

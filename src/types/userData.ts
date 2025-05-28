@@ -9,9 +9,9 @@ export interface UserProfile {
   email: string; // Primary identifier
   countryCode: string; // e.g., "IN"
   phoneNumber: string;
-  // Store hashed credentials
-  hashedPassword?: string; // Make optional as admin profile might not have this set via userActions
-  hashedPin?: string;    // Make optional for same reason
+  hashedPassword?: string; 
+  hashedPin?: string;    
+  isAdmin?: boolean; // Flag for admin status
 }
 
 // Corresponds to data managed in AddressManagement and used in checkout

@@ -16,7 +16,6 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { getUserData } from "@/app/actions/userActions";
 import type { UserData, UserProfile } from "@/types/userData";
-import adminCredentials from '@/data/admin.json';
 import bcrypt from 'bcryptjs';
 
 
@@ -61,67 +60,21 @@ export default function LoginPage() {
   async function onSubmit(values: LoginFormValues) {
     console.log("Login form submitted:", values);
 
-    // Admin Login Check
-    if (values.email === adminCredentials.email) {
-      // For this prototype, admin.json stores PLAINTEXT password and PIN for simplicity of setup.
-      // In a real app, these would be HASHED and compared with bcrypt.compareSync.
-      // For this example, we assume you've manually hashed them if bcrypt is fully integrated for admin.
-      // Let's proceed with a direct comparison for simplicity if admin.json has plaintext, 
-      // or switch to bcrypt if you have hashes there.
-      // For now, I'll assume admin.json might still be plaintext for easier prototype setup.
-
-      let isPasswordCorrect = false;
-      let isPinCorrect = false;
-
-      // Attempt to compare with bcrypt if admin password/pin look like hashes, otherwise direct compare for prototype
-      if (adminCredentials.password.startsWith('$2a$') || adminCredentials.password.startsWith('$2b$')) {
-        isPasswordCorrect = bcrypt.compareSync(values.password, adminCredentials.password);
-      } else {
-        isPasswordCorrect = values.password === adminCredentials.password; // Plaintext check for easier prototype setup
-      }
-
-      if (adminCredentials.pin.startsWith('$2a$') || adminCredentials.pin.startsWith('$2b$')) {
-         isPinCorrect = bcrypt.compareSync(values.pin, adminCredentials.pin);
-      } else {
-        isPinCorrect = values.pin === adminCredentials.pin; // Plaintext check
-      }
-      
-      if (isPasswordCorrect && isPinCorrect) {
-        localStorage.setItem("isLoggedInPrototype", "true");
-        localStorage.setItem("isAdminPrototype", "true"); // This flag is for prototype admin distinction
-        localStorage.setItem('currentUserEmail', values.email);
-        const adminProfileForStorage: UserProfile = {
-            firstName: "Admin",
-            lastName: "User",
-            email: values.email,
-            countryCode: "IN", 
-            phoneNumber: "0000000000",
-        };
-        localStorage.setItem('userProfilePrototype', JSON.stringify(adminProfileForStorage));
-
-        toast({ title: "Admin Login Successful", description: "Welcome, Admin!" });
-        const redirectUrl = searchParams.get('redirect') || "/"; // Redirect to admin dashboard if needed
-        router.push(redirectUrl);
-         if (redirectUrl === pathname) router.refresh();
-        return;
-      } else {
-        toast({ title: "Login Failed", description: "Invalid admin credentials. Please check your password and PIN.", variant: "destructive" });
-        return;
-      }
-    }
-
-    // Regular User Login
     let userData: UserData | null = null;
     try {
       userData = await getUserData(values.email);
     } catch (e) {
       console.error("Error fetching user data for login:", e);
-      toast({ title: "Login Error", description: "An error occurred while trying to log you in. Please try again.", variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Login Error", description: "An error occurred while trying to log you in. Please try again.", variant: "destructive" });
+      },0);
       return;
     }
 
     if (!userData || !userData.profile.hashedPassword || !userData.profile.hashedPin) {
-      toast({ title: "Login Failed", description: "User not found or credentials not set up. Please sign up if you don't have an account.", variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Login Failed", description: "User not found or credentials not set up. Please sign up if you don't have an account.", variant: "destructive" });
+      },0);
       return;
     }
 
@@ -129,20 +82,31 @@ export default function LoginPage() {
     const isPinCorrect = bcrypt.compareSync(values.pin, userData.profile.hashedPin);
 
     if (!isPasswordCorrect || !isPinCorrect) {
-      toast({ title: "Login Failed", description: "Invalid credentials. Please check your email, password, and PIN.", variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Login Failed", description: "Invalid credentials. Please check your email, password, and PIN.", variant: "destructive" });
+      },0);
       return;
+    }
+    
+    // Set admin status based on user data
+    if (userData.profile.isAdmin) {
+      localStorage.setItem("isAdminPrototype", "true");
+    } else {
+      localStorage.setItem("isAdminPrototype", "false");
     }
 
     localStorage.setItem("isLoggedInPrototype", "true");
-    localStorage.setItem("isAdminPrototype", "false"); // Ensure admin flag is false for regular users
     localStorage.setItem('currentUserEmail', values.email); 
+    // Store the fetched profile (which now includes isAdmin flag)
     localStorage.setItem('userProfilePrototype', JSON.stringify(userData.profile));
 
 
-    toast({ title: "Login Successful", description: "Welcome back!" });
+    setTimeout(() => {
+      toast({ title: "Login Successful", description: "Welcome back!" });
+    },0);
     const redirectUrl = searchParams.get('redirect') || "/";
     router.push(redirectUrl);
-    if (redirectUrl === pathname) {
+    if (redirectUrl === pathname) { // If redirecting to the same page, force a refresh for header to update
         router.refresh();
     }
   }
