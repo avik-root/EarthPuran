@@ -20,8 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Skeleton } from "@/components/ui/skeleton"; 
+import { useRouter, usePathname } from 'next/navigation'; // Import usePathname
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AdminLayout({
@@ -30,7 +30,8 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const pathname = usePathname(); // Get current pathname
+  const [isAuthorizedForProtectedRoutes, setIsAuthorizedForProtectedRoutes] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,15 +39,29 @@ export default function AdminLayout({
     const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
 
-    if (!gatePassed) {
-      router.push('/admin/access-gate');
-    } else if (!isLoggedIn || !isAdmin) {
-      router.push('/admin/login'); 
+    const isFullyAuthenticated = gatePassed && isAdmin && isLoggedIn;
+
+    if (pathname === '/admin/access-gate' || pathname === '/admin/login') {
+      // If on public admin pages but already fully authenticated, redirect to dashboard
+      if (isFullyAuthenticated && pathname !== '/admin/dashboard') {
+        router.push('/admin/dashboard');
+      }
+      // These pages don't require isAuthorizedForProtectedRoutes to be true to be visible
+      // The layout will just render {children} for them.
     } else {
-      setIsAuthorized(true);
+      // These are protected admin routes like /admin/dashboard, /admin/products
+      if (!gatePassed) {
+        router.push('/admin/access-gate');
+        setIsAuthorizedForProtectedRoutes(false);
+      } else if (!isLoggedIn || !isAdmin) {
+        router.push('/admin/login');
+        setIsAuthorizedForProtectedRoutes(false);
+      } else {
+        setIsAuthorizedForProtectedRoutes(true);
+      }
     }
     setLoading(false);
-  }, [router]);
+  }, [router, pathname]);
 
   if (loading) {
     return (
@@ -61,9 +76,15 @@ export default function AdminLayout({
     );
   }
 
-  if (!isAuthorized) {
-    // This state should ideally be handled by the redirects in useEffect,
-    // but as a fallback:
+  // If the current path is the access gate or login page, render its content directly.
+  // These pages manage their own UI and don't need the full admin sidebar layout.
+  if (pathname === '/admin/access-gate' || pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  // For all other /admin/* routes (e.g., /admin/dashboard, /admin/products):
+  // These are protected. If not authorized, show Access Denied card.
+  if (!isAuthorizedForProtectedRoutes) {
     return (
         <div className="flex h-screen items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md text-center">
@@ -83,6 +104,7 @@ export default function AdminLayout({
     );
   }
 
+  // If authorized for a protected route, render with sidebar
   return (
     <SidebarProvider defaultOpen>
       <Sidebar>
@@ -103,7 +125,7 @@ export default function AdminLayout({
               <SidebarMenuButton
                 href="/admin/dashboard"
                 tooltip="Dashboard"
-                isActive 
+                isActive={pathname === '/admin/dashboard'}
               >
                 <LayoutDashboard />
                 <span>Dashboard</span>
@@ -112,17 +134,17 @@ export default function AdminLayout({
             <SidebarGroup>
               <SidebarGroupLabel>Management</SidebarGroupLabel>
               <SidebarMenuItem>
-                <SidebarMenuButton href="/admin/products" tooltip="Products">
+                <SidebarMenuButton href="/admin/products" tooltip="Products" isActive={pathname.startsWith('/admin/products')}>
                   <Package /> <span>Products</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton href="/admin/orders" tooltip="Orders (coming soon)">
+                <SidebarMenuButton href="/admin/orders" tooltip="Orders (coming soon)" isActive={pathname.startsWith('/admin/orders')}>
                   <Users /> <span>Orders</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton href="/admin/users" tooltip="Users (coming soon)">
+                <SidebarMenuButton href="/admin/users" tooltip="Users (coming soon)" isActive={pathname.startsWith('/admin/users')}>
                   <Users /> <span>Customers</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -130,7 +152,7 @@ export default function AdminLayout({
             <SidebarGroup>
               <SidebarGroupLabel>Settings</SidebarGroupLabel>
                <SidebarMenuItem>
-                <SidebarMenuButton href="/admin/settings" tooltip="Settings (coming soon)">
+                <SidebarMenuButton href="/admin/settings" tooltip="Settings (coming soon)" isActive={pathname.startsWith('/admin/settings')}>
                   <Settings /> <span>Settings</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -145,7 +167,7 @@ export default function AdminLayout({
       </Sidebar>
       <SidebarInset>
         <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-          <SidebarTrigger className="sm:hidden" /> 
+          <SidebarTrigger className="sm:hidden" />
           <div className="ml-auto flex items-center gap-4">
             <ThemeToggle />
             <Avatar>
