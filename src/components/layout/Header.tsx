@@ -41,31 +41,24 @@ export function Header() {
   const router = useRouter();
   const { toast } = useToast();
   
-  // For prototype purposes, manage login state here.
-  // In a real app, this would come from an auth context/provider.
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem("isLoggedInPrototype") === "true";
-    }
-    return true; // Default to true for SSR or if localStorage is not available yet
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState(true); // Default to true, will be synced with localStorage
+  const [hasMounted, setHasMounted] = useState(false); // New state for hydration fix
 
   useEffect(() => {
+    setHasMounted(true); // Component has mounted on the client
     // Sync with localStorage on client-side
     if (typeof window !== 'undefined') {
       const storedLoginStatus = localStorage.getItem("isLoggedInPrototype") === "true";
-      if (isLoggedIn !== storedLoginStatus) {
-        setIsLoggedIn(storedLoginStatus);
-      }
+      setIsLoggedIn(storedLoginStatus);
     }
   }, []);
 
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && hasMounted) { // Only update localStorage if mounted
       localStorage.setItem("isLoggedInPrototype", String(isLoggedIn));
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, hasMounted]);
 
 
   const handleMobileSearchSubmit = (e?: React.FormEvent) => {
@@ -147,36 +140,42 @@ export function Header() {
             </Button>
           </Link>
 
-          {isLoggedIn ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="User Account">
-                  <UserCircle className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/orders"><ListOrdered className="mr-2 h-4 w-4" />Order History</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/admin/dashboard"><Settings className="mr-2 h-4 w-4" />Admin Dashboard</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />Log Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-             <Button asChild variant="outline" size="sm">
-                <Link href="/login">Login</Link>
-             </Button>
+          {hasMounted && ( // Only render this part after client has mounted
+            isLoggedIn ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="User Account">
+                    <UserCircle className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/orders"><ListOrdered className="mr-2 h-4 w-4" />Order History</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/dashboard"><Settings className="mr-2 h-4 w-4" />Admin Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />Log Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+               <Button asChild variant="outline" size="sm">
+                  <Link href="/login">Login</Link>
+               </Button>
+            )
           )}
+          {!hasMounted && ( // Placeholder or null render for server/initial client render
+             <Button variant="outline" size="sm" disabled style={{ visibility: 'hidden' }}>Login</Button> // Or simply null
+          )}
+
 
           <ThemeToggle />
           <div className="md:hidden">
@@ -203,7 +202,7 @@ export function Header() {
                         </Link>
                     ))}
                     <hr className="my-3"/>
-                    {isLoggedIn && (
+                    {hasMounted && isLoggedIn && (
                         <>
                             <Link href="/profile" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
                                 <User className="mr-2 h-4 w-4" /> My Profile
@@ -223,10 +222,13 @@ export function Header() {
                             </Button>
                         </>
                     )}
-                    {!isLoggedIn && (
+                    {hasMounted && !isLoggedIn && (
                        <Button asChild className="w-full mt-4" onClick={() => setMobileMenuOpen(false)}>
                           <Link href="/login">Login / Sign Up</Link>
                        </Button>
+                    )}
+                    {!hasMounted && ( // Placeholder for mobile menu login/logout actions
+                        <Button className="w-full mt-4" disabled style={{ visibility: 'hidden' }}>Login / Sign Up</Button>
                     )}
                     </nav>
                 </div>
@@ -238,3 +240,4 @@ export function Header() {
     </header>
   );
 }
+
