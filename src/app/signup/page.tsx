@@ -80,7 +80,6 @@ export default function SignupPage() {
   }, [currentPassword]);
 
   function onSubmit(values: SignupFormValues) {
-    // TODO: Implement signup logic
     console.log("Signup form submitted:", values);
     // toast({ title: "Account Creation", description: "Setting up your account..." });
     router.push("/");
@@ -190,13 +189,12 @@ export default function SignupPage() {
                     </FormControl>
                     <Progress
                       value={passwordStrength}
-                      className={cn(
-                        "h-2 mt-1",
-                        passwordStrength === 0 ? "bg-transparent" : // Hide if 0 or handle initial state
-                        passwordStrength < 30 ? "bg-red-500" :
-                        passwordStrength < 70 ? "bg-yellow-500" :
-                        "bg-green-500"
-                      )}
+                      className="h-2 mt-1"
+                      indicatorClassName={cn({
+                        'bg-red-500': passwordStrength > 0 && passwordStrength < 50,
+                        'bg-yellow-500': passwordStrength >= 50 && passwordStrength < 75,
+                        'bg-green-500': passwordStrength >= 75,
+                      })}
                     />
                     <FormDescription className="text-xs">
                       Min 8 chars, 1 uppercase, 1 number, 1 special char.
