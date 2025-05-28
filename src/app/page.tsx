@@ -6,9 +6,17 @@ import { ProductCard } from "@/components/ProductCard";
 import { PersonalizedRecommendations } from "@/components/PersonalizedRecommendations";
 import { getFeaturedProducts } from "@/app/actions/productActions";
 import { ArrowRight } from "lucide-react";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function HomePage() {
   const featuredProducts = await getFeaturedProducts(4);
+
+  const shopCategories = [
+    { name: "Makeup", href: "/products?category=Makeup", image: "https://placehold.co/300x200.png", imageHint: "makeup collection", description: "Explore our vibrant range of makeup essentials." },
+    { name: "Skincare", href: "/products?category=Skincare", image: "https://placehold.co/300x200.png", imageHint: "skincare products", description: "Nourish your skin with our natural skincare line." },
+    { name: "Haircare", href: "/products?category=Haircare", image: "https://placehold.co/300x200.png", imageHint: "haircare items", description: "Revitalize your hair with Earth Puran's best." },
+    { name: "Fragrance", href: "/products?category=Fragrance", image: "https://placehold.co/300x200.png", imageHint: "perfume display", description: "Discover your signature scent from our collection." },
+  ];
 
   return (
     <div className="space-y-16">
@@ -77,6 +85,41 @@ export default async function HomePage() {
             </div>
           </Link>
         ))}
+      </section>
+
+      {/* Shop by Category Section */}
+      <section>
+        <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">Shop by Category</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {shopCategories.map((category) => (
+            <Card key={category.name} className="overflow-hidden group flex flex-col">
+              <Link href={category.href} className="block">
+                <Image 
+                  src={category.image} 
+                  alt={category.name} 
+                  width={300} 
+                  height={200} 
+                  className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+                  data-ai-hint={category.imageHint}
+                />
+              </Link>
+              <CardHeader>
+                <CardTitle className="text-xl">{category.name}</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-grow">
+                <p className="text-sm text-muted-foreground line-clamp-2">{category.description}</p>
+              </CardContent>
+              <CardFooter>
+                <Button asChild variant="link" className="p-0 text-primary hover:text-primary/80">
+                  <Link href={category.href}>
+                    Explore {category.name}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
       </section>
 
       {/* Beauty Blog Teaser */}
