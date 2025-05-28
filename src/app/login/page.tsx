@@ -40,6 +40,8 @@ export default function LoginPage() {
 
   function onSubmit(values: LoginFormValues) {
     console.log("Login form submitted:", values);
+    // Simulate successful login
+    localStorage.setItem("isLoggedInPrototype", "true");
     toast({ title: "Login Successful", description: "Welcome back!" });
     router.push("/");
   }

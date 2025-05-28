@@ -83,6 +83,8 @@ export default function SignupPage() {
 
   function onSubmit(values: SignupFormValues) {
     console.log("Signup form submitted:", values);
+    // Simulate successful signup
+    localStorage.setItem("isLoggedInPrototype", "true");
     toast({ title: "Account Created!", description: "Welcome to Earth Puran." });
     router.push("/");
   }
