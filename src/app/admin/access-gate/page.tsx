@@ -1,4 +1,3 @@
-
 // src/app/admin/access-gate/page.tsx
 "use client";
 
@@ -50,15 +49,14 @@ export default function AdminAccessGatePage() {
   }, []);
 
   useEffect(() => {
-    // If user somehow gets here but already passed the gate AND has admin credentials configured AND is logged in as admin, redirect to dashboard
+    // If user somehow gets here but already passed the gate AND is logged in as admin, redirect to dashboard
     if (hasMounted && 
         localStorage.getItem("adminAccessGranted") === "true" &&
-        localStorage.getItem("adminCredentialsConfigured") === "true" && // New check
-        localStorage.getItem("isAdminPrototype") === "true" &&
+        localStorage.getItem("isAdminPrototype") === "true" && // Using isAdminPrototype from general login
         localStorage.getItem("isLoggedInPrototype") === "true") {
       router.push("/admin/dashboard");
     } else if (hasMounted && localStorage.getItem("adminAccessGranted") === "true") {
-      // If gate passed but other conditions not met, go to login/setup page
+      // If gate passed but other conditions not met (e.g. not logged in yet), go to login page
       router.push("/admin/login");
     }
   }, [hasMounted, router]);
@@ -75,8 +73,8 @@ export default function AdminAccessGatePage() {
     
     if (isPinCorrect) {
       localStorage.setItem("adminAccessGranted", "true");
-      toast({ title: "Access Granted", description: "Proceed to Admin Setup or Login." });
-      router.push("/admin/login"); // This page will handle if it's setup or login
+      toast({ title: "Access Granted", description: "Proceed to Admin Login." });
+      router.push("/admin/login"); 
     } else {
       toast({ title: "Access Denied", description: "Incorrect master access PIN.", variant: "destructive" });
       form.resetField("gatePin");

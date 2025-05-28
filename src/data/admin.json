@@ -1,7 +1,13 @@
 {
   "email": "anu@gmail.com",
-  "password": "Agtg@2005",
-  "pin": "092011"
+  "passwordHash": "REPLACE_WITH_BCRYPT_HASH_OF_Agtg@2005",
+  "pinHash": "REPLACE_WITH_BCRYPT_HASH_OF_092011"
 }
-// IMPORTANT: In a real application, passwords and PINs MUST be securely hashed.
-// This plaintext storage is for prototype demonstration purposes ONLY.
+// IMPORTANT: Replace the placeholder hash values above with actual bcrypt hashes.
+// You can generate these using a script like the one provided in the explanation.
+// Example generation:
+// const bcrypt = require('bcryptjs');
+// const saltRounds = 10;
+// const passwordHash = bcrypt.hashSync("Agtg@2005", saltRounds);
+// const pinHash = bcrypt.hashSync("092011", saltRounds);
+// console.log(passwordHash, pinHash);
