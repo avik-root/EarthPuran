@@ -184,50 +184,24 @@
     ],
     "wishlist": [
       {
-        "id": "5",
-        "name": "Volumizing Lash Mascara",
+        "id": "3",
+        "name": "Midnight Sparkle Eyeshadow Palette",
         "category": "Eyes",
         "brand": "Earth Puran",
-        "price": 24,
-        "description": "Get dramatic, voluminous lashes with this intense black mascara. The specially designed brush coats every lash for maximum impact. Smudge-proof and long-lasting. A signature product from Earth Puran.",
+        "price": 55,
+        "description": "Unleash your inner artist with this versatile eyeshadow palette. Features 12 highly pigmented shades in matte, shimmer, and glitter finishes. Perfect for creating day-to-night looks. Part of the Earth Puran collection.",
         "imageUrl": "https://placehold.co/600x600.png",
-        "imageHint": "mascara product",
-        "color": "Intense Black",
-        "rating": 4.4,
-        "reviews": 150,
-        "stock": 70,
+        "imageHint": "eyeshadow palette",
+        "paletteName": "Midnight Sparkle",
+        "rating": 4.7,
+        "reviews": 180,
+        "stock": 40,
         "tags": [
-          "mascara",
-          "volumizing",
-          "lashes",
-          "smudge-proof",
-          "natural-waxes"
-        ]
-      },
-      {
-        "id": "1",
-        "name": "Velvet Matte Lipstick",
-        "category": "Lips",
-        "brand": "Earth Puran",
-        "price": 28,
-        "description": "A luxurious, long-wearing matte lipstick with a velvety finish. Infused with nourishing oils for comfortable wear. Experience intense color payoff and a smooth, non-drying feel. Exclusively from Earth Puran.",
-        "imageUrl": "https://placehold.co/600x600.png",
-        "imageHint": "lipstick beauty",
-        "colors": [
-          "Ruby Red",
-          "Dusty Rose",
-          "Nude Beige",
-          "Deep Plum"
-        ],
-        "rating": 4.5,
-        "reviews": 120,
-        "stock": 50,
-        "tags": [
-          "matte",
-          "long-wearing",
-          "lipstick",
-          "velvet",
-          "natural"
+          "eyeshadow",
+          "palette",
+          "sparkle",
+          "pigmented",
+          "natural-minerals"
         ]
       }
     ],

@@ -6,12 +6,14 @@ import type { Product } from '@/types/product';
 import type { FullCartItem } from '@/types/userData';
 import { useToast } from './use-toast';
 import { getUserData, updateUserCart } from '@/app/actions/userActions';
+import { useRouter } from 'next/navigation'; // Added for potential redirect
 
 export function useCart() {
   const [cartItems, setCartItems] = useState<FullCartItem[]>([]);
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -34,7 +36,9 @@ export function useCart() {
     } catch (error) {
       console.error("Failed to load cart data:", error);
       setCartItems([]);
-      toast({ title: "Error", description: "Could not load your cart.", variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Error", description: "Could not load your cart.", variant: "destructive" });
+      }, 0);
     } finally {
       setIsLoading(false);
     }
@@ -45,110 +49,143 @@ export function useCart() {
   }, [loadCartData]);
 
   const persistCart = useCallback(async (updatedCartItems: FullCartItem[]) => {
-    if (currentUserEmail) {
-      try {
-        await updateUserCart(currentUserEmail, updatedCartItems);
-      } catch (error) {
-        console.error("Failed to persist cart:", error);
-        setTimeout(() => {
-            toast({ title: "Sync Error", description: "Could not save cart changes to server.", variant: "destructive" });
-        }, 0);
+    if (!currentUserEmail) {
+      console.warn("Attempted to persist cart without a current user email.");
+      throw new Error("User not logged in. Cannot persist cart.");
+    }
+    try {
+      const success = await updateUserCart(currentUserEmail, updatedCartItems);
+      if (!success) {
+        throw new Error("Server action updateUserCart returned false.");
       }
+    } catch (error) {
+      console.error("Failed to persist cart:", error);
+      setTimeout(() => {
+          toast({ title: "Sync Error", description: "Could not save cart changes to server.", variant: "destructive" });
+      }, 0);
+      throw error; // Re-throw
     }
   }, [currentUserEmail, toast]);
 
   const addToCart = useCallback(async (product: Product, quantity: number = 1) => {
     if (!currentUserEmail) {
-        toast({title: "Login Required", description: "Please log in to add items to your cart.", variant: "destructive"});
+        router.push('/login');
         return;
     }
 
-    setCartItems(prevCartItems => {
-      const existingItemIndex = prevCartItems.findIndex(item => item.product.id === product.id);
-      let newComputedCart: FullCartItem[];
+    const originalCartItems = [...cartItems];
+    const existingItemIndex = originalCartItems.findIndex(item => item.product.id === product.id);
+    let nextCartItems: FullCartItem[];
 
-      if (existingItemIndex > -1) {
-        newComputedCart = prevCartItems.map((item, index) =>
-          index === existingItemIndex
-            ? { ...item, quantity: Math.min(item.quantity + quantity, product.stock) }
-            : item
-        );
-      } else {
-        newComputedCart = [...prevCartItems, { product, quantity: Math.min(quantity, product.stock) }];
-      }
-      // Persist this new state immediately after computing it
-      if (currentUserEmail) {
-        persistCart(newComputedCart);
-      }
-      return newComputedCart; 
-    });
+    if (existingItemIndex > -1) {
+      nextCartItems = originalCartItems.map((item, index) =>
+        index === existingItemIndex
+          ? { ...item, quantity: Math.min(item.quantity + quantity, product.stock) }
+          : item
+      );
+    } else {
+      nextCartItems = [...originalCartItems, { product, quantity: Math.min(quantity, product.stock) }];
+    }
+    
+    setCartItems(nextCartItems);
 
-    setTimeout(() => { 
-        toast({
-            title: "Added to Cart",
-            description: `${product.name} has been added to your cart.`,
-        });
-    },0);
-  }, [currentUserEmail, persistCart, toast]);
+    try {
+      await persistCart(nextCartItems);
+      setTimeout(() => { 
+          toast({
+              title: "Added to Cart",
+              description: `${product.name} has been added to your cart.`,
+          });
+      },0);
+    } catch (error) {
+      console.error("Add to cart persistence failed, reverting local state.");
+      setCartItems(originalCartItems);
+      // Error toast handled by persistCart
+    }
+  }, [currentUserEmail, cartItems, persistCart, toast, router]);
 
   const removeFromCart = useCallback(async (productId: string) => {
-    if (!currentUserEmail) return; 
-
-    const productToRemove = cartItems.find(item => item.product.id === productId)?.product;
-    
-    setCartItems(prevCartItems => {
-        const newComputedCart = prevCartItems.filter(item => item.product.id !== productId);
-        if (currentUserEmail) {
-            persistCart(newComputedCart);
-        }
-        return newComputedCart;
-    });
-
-    if (productToRemove) {
-      setTimeout(() => {
-        toast({
-            title: "Item Removed",
-            description: `${productToRemove.name} has been removed from your cart.`,
-            variant: "destructive"
-        });
-      }, 0);
+    if (!currentUserEmail) {
+        router.push('/login');
+        return;
     }
-  }, [cartItems, currentUserEmail, persistCart, toast]);
+
+    const originalCartItems = [...cartItems];
+    const productToRemove = originalCartItems.find(item => item.product.id === productId)?.product;
+    const nextCartItems = originalCartItems.filter(item => item.product.id !== productId);
+    
+    setCartItems(nextCartItems);
+    
+    if (productToRemove) {
+      try {
+        await persistCart(nextCartItems);
+        setTimeout(() => {
+          toast({
+              title: "Item Removed",
+              description: `${productToRemove.name} has been removed from your cart.`,
+              variant: "destructive"
+          });
+        }, 0);
+      } catch (error) {
+        console.error("Remove from cart persistence failed, reverting local state.");
+        setCartItems(originalCartItems);
+        // Error toast handled by persistCart
+      }
+    }
+  }, [cartItems, currentUserEmail, persistCart, toast, router]);
 
   const updateQuantity = useCallback(async (productId: string, newQuantity: number) => {
-    if (!currentUserEmail) return;
-
-    setCartItems(prevCartItems => {
-        const newComputedCart = prevCartItems.map(item => {
-            if (item.product.id === productId) {
-                const validatedQuantity = Math.max(1, Math.min(newQuantity, item.product.stock));
-                return { ...item, quantity: validatedQuantity };
-            }
-            return item;
-        });
-        if (currentUserEmail) {
-            persistCart(newComputedCart);
-        }
-        return newComputedCart;
-    });
-  }, [currentUserEmail, persistCart]);
-
-  const clearCart = useCallback(async () => {
-    if (!currentUserEmail) return;
-
-    const newComputedCart: FullCartItem[] = [];
-    setCartItems(newComputedCart); 
-    if (currentUserEmail) {
-        persistCart(newComputedCart);
+    if (!currentUserEmail) {
+        router.push('/login');
+        return;
     }
 
-    setTimeout(() => {
-      toast({
-        title: "Cart Cleared",
-        description: "All items have been removed from your cart.",
-      });
-    }, 0);
-  }, [currentUserEmail, persistCart, toast]);
+    const originalCartItems = [...cartItems];
+    const nextCartItems = originalCartItems.map(item => {
+        if (item.product.id === productId) {
+            const validatedQuantity = Math.max(1, Math.min(newQuantity, item.product.stock));
+            return { ...item, quantity: validatedQuantity };
+        }
+        return item;
+    }).filter(item => item.quantity > 0); // Ensure no zero quantity items remain unless intended.
+
+    setCartItems(nextCartItems);
+
+    try {
+      await persistCart(nextCartItems);
+      // Optionally, add a success toast for quantity update if desired
+    } catch (error) {
+      console.error("Update quantity persistence failed, reverting local state.");
+      setCartItems(originalCartItems);
+      // Error toast handled by persistCart
+    }
+  }, [currentUserEmail, cartItems, persistCart, toast, router]);
+
+  const clearCart = useCallback(async () => {
+    if (!currentUserEmail) {
+        router.push('/login');
+        return;
+    }
+
+    const originalCartItems = [...cartItems];
+    const nextCartItems: FullCartItem[] = [];
+    
+    setCartItems(nextCartItems); 
+    
+    try {
+      await persistCart(nextCartItems);
+      setTimeout(() => {
+        toast({
+          title: "Cart Cleared",
+          description: "All items have been removed from your cart.",
+        });
+      }, 0);
+    } catch (error) {
+      console.error("Clear cart persistence failed, reverting local state.");
+      setCartItems(originalCartItems);
+      // Error toast handled by persistCart
+    }
+  }, [currentUserEmail, persistCart, toast, router, cartItems]);
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
