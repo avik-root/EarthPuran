@@ -2,7 +2,7 @@
 "use client"; 
 
 import Image from "next/image";
-import { useParams } from "next/navigation"; 
+import { useParams, useRouter } from "next/navigation"; // Import useRouter
 import { getProductById, getProducts } from "@/app/actions/productActions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,13 +16,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast"; // Import useToast
+import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 
 
 export default function ProductDetailPage() {
   const params = useParams();
   const productId = params.id as string;
+  const router = useRouter(); // Initialize useRouter
 
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
@@ -31,7 +32,7 @@ export default function ProductDetailPage() {
 
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
-  const { toast } = useToast(); // Initialize useToast
+  const { toast } = useToast(); 
 
   useEffect(() => {
     async function fetchData() {
@@ -99,11 +100,7 @@ export default function ProductDetailPage() {
   const handleAddToCart = () => {
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
     if (!isLoggedIn) {
-      toast({
-        title: "Login Required",
-        description: "Please log in to add items to your cart.",
-        variant: "destructive",
-      });
+      router.push("/login"); // Redirect to login page
       return;
     }
     if (product.stock > 0) {
@@ -120,11 +117,7 @@ export default function ProductDetailPage() {
   const handleToggleWishlist = () => {
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
     if (!isLoggedIn) {
-      toast({
-        title: "Login Required",
-        description: "Please log in to manage your wishlist.",
-        variant: "destructive",
-      });
+      router.push("/login"); // Redirect to login page
       return;
     }
     toggleWishlist(product);

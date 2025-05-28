@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast"; // Import useToast
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation"; // Import useRouter
 
 interface ProductCardProps {
   product: Product;
@@ -20,7 +21,8 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
-  const { toast } = useToast(); // Initialize useToast
+  const { toast } = useToast();
+  const router = useRouter(); // Initialize useRouter
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault(); 
@@ -28,11 +30,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
     if (!isLoggedIn) {
-      toast({
-        title: "Login Required",
-        description: "Please log in to add items to your cart.",
-        variant: "destructive",
-      });
+      router.push("/login"); // Redirect to login page
       return;
     }
 
@@ -53,11 +51,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
     if (!isLoggedIn) {
-      toast({
-        title: "Login Required",
-        description: "Please log in to manage your wishlist.",
-        variant: "destructive",
-      });
+      router.push("/login"); // Redirect to login page
       return;
     }
     toggleWishlist(product);
