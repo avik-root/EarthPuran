@@ -32,7 +32,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import bcrypt from 'bcryptjs';
 import { cn } from "@/lib/utils";
-import type { UserProfile } from "@/types/userData"; // For admin profile storage
+import type { UserProfile } from "@/types/userData"; 
 
 
 const passwordStrengthSchema = z.string()
@@ -80,7 +80,9 @@ export default function AdminAuthPage() {
     setHasMounted(true);
     if (typeof window !== 'undefined') {
       if (localStorage.getItem("adminAccessGranted") !== "true") {
-        toast({ title: "Gate Access Required", description: "Please verify master access PIN first.", variant: "destructive" });
+        setTimeout(() => {
+          toast({ title: "Gate Access Required", description: "Please verify master access PIN first.", variant: "destructive" });
+        }, 0);
         router.push('/admin/access-gate');
       } else {
         const configured = localStorage.getItem("adminCredentialsConfigured") === "true";
@@ -88,7 +90,8 @@ export default function AdminAuthPage() {
       }
     }
     setLoadingConfig(false);
-  }, [router, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]); // router is stable, toast is not needed as a dep here
 
   const createAdminForm = useForm<CreateAdminFormValues>({
     resolver: zodResolver(createAdminSchema),
@@ -131,18 +134,24 @@ export default function AdminAuthPage() {
       localStorage.setItem("adminLoginPinHashPrototype", hashedLoginPin);
       localStorage.setItem("adminCredentialsConfigured", "true");
 
-      toast({ title: "Admin Account Created", description: "Please log in with your new admin credentials." });
-      setNeedsAccountCreation(false); // Switch to login form
-      adminLoginForm.setValue("email", values.adminEmail); // Pre-fill email for login
+      setTimeout(() => {
+        toast({ title: "Admin Account Created", description: "Please log in with your new admin credentials." });
+      }, 0);
+      setNeedsAccountCreation(false); 
+      adminLoginForm.setValue("email", values.adminEmail); 
     } catch (error) {
       console.error("Admin creation error:", error);
-      toast({ title: "Creation Failed", description: "Could not create admin account.", variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Creation Failed", description: "Could not create admin account.", variant: "destructive" });
+      }, 0);
     }
   }
   
   async function onAdminLoginSubmit(values: AdminLoginFormValues) {
     if (localStorage.getItem("adminAccessGranted") !== "true") {
-      toast({ title: "Access Denied", description: "Please verify master access PIN first.", variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Access Denied", description: "Please verify master access PIN first.", variant: "destructive" });
+      }, 0);
       router.push('/admin/access-gate');
       return;
     }
@@ -152,13 +161,17 @@ export default function AdminAuthPage() {
     const expectedLoginPinHash = localStorage.getItem("adminLoginPinHashPrototype");
 
     if (!expectedEmail || !expectedPasswordHash || !expectedLoginPinHash) {
-      toast({ title: "Configuration Error", description: "Admin credentials not found in local storage. Please create admin account if not done.", variant: "destructive" });
-      setNeedsAccountCreation(true); // Force creation if not found
+      setTimeout(() => {
+        toast({ title: "Configuration Error", description: "Admin credentials not found. Please create admin account.", variant: "destructive" });
+      }, 0);
+      setNeedsAccountCreation(true); 
       return;
     }
     
     if (values.email !== expectedEmail) {
-      toast({ title: "Admin Login Failed", description: "Invalid email for admin.", variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Admin Login Failed", description: "Invalid email for admin.", variant: "destructive" });
+      }, 0);
       return;
     }
 
@@ -179,7 +192,9 @@ export default function AdminAuthPage() {
       };
       localStorage.setItem('userProfilePrototype', JSON.stringify(adminProfileForStorage));
 
-      toast({ title: "Admin Login Successful", description: "Welcome, Admin!" });
+      setTimeout(() => {
+        toast({ title: "Admin Login Successful", description: "Welcome, Admin!" });
+      }, 0);
       const redirectUrl = searchParams.get('redirect') || "/admin/dashboard";
       router.push(redirectUrl);
     } else {
@@ -191,7 +206,9 @@ export default function AdminAuthPage() {
       } else if (!isPinCorrect) {
         failureMessage = "Invalid admin PIN.";
       }
-      toast({ title: "Admin Login Failed", description: failureMessage, variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Admin Login Failed", description: failureMessage, variant: "destructive" });
+      }, 0);
     }
   }
 
@@ -207,7 +224,6 @@ export default function AdminAuthPage() {
   }
   
   if (hasMounted && typeof window !== 'undefined' && localStorage.getItem("adminAccessGranted") !== "true") {
-      // This part is mostly a fallback, AdminLayout should handle primary redirection
       router.push('/admin/access-gate');
       return null; 
   }
@@ -240,7 +256,7 @@ export default function AdminAuthPage() {
                   name="adminPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel>Admin Password</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input type={showPassword ? "text" : "password"} placeholder="Create a strong password" {...field} />
@@ -260,7 +276,7 @@ export default function AdminAuthPage() {
                   name="confirmAdminPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Confirm Password</FormLabel>
+                      <FormLabel>Confirm Admin Password</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input type={showConfirmPassword ? "text" : "password"} placeholder="Confirm your password" {...field} />
@@ -279,7 +295,7 @@ export default function AdminAuthPage() {
                   render={({ field }) => (
                     <FormItem>
                       <div className="flex items-center justify-between">
-                        <FormLabel>6-Digit Login PIN</FormLabel>
+                        <FormLabel>Admin 6-Digit Login PIN</FormLabel>
                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowLoginPin(!showLoginPin)} aria-label={showLoginPin ? "Hide PIN" : "Show PIN"}>
                           {showLoginPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
@@ -323,7 +339,7 @@ export default function AdminAuthPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel>Admin Password</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} />
@@ -342,7 +358,7 @@ export default function AdminAuthPage() {
                   render={({ field }) => (
                     <FormItem>
                       <div className="flex items-center justify-between">
-                        <FormLabel>6-Digit Login PIN</FormLabel>
+                        <FormLabel>Admin 6-Digit Login PIN</FormLabel>
                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowLoginPin(!showLoginPin)} aria-label={showLoginPin ? "Hide PIN" : "Show PIN"}>
                           {showLoginPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
