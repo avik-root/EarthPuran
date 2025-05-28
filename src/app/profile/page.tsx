@@ -2,9 +2,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Lock, MapPin, ListOrdered, Heart, PackageSearch, Trash2 } from "lucide-react";
+import { User, Lock, MapPin, ListOrdered, Heart, PackageSearch, Trash2, XCircle, RotateCcw, Truck } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -15,9 +15,15 @@ import { UserProfileDisplay } from "@/components/profile/UserProfileDisplay";
 
 // Imports for inlined Order History and Wishlist content
 import { Button } from "@/components/ui/button";
-import { useWishlist } from "@/hooks/useWishlist"; // For Wishlist tab
-import { ProductCard } from "@/components/ProductCard"; // For Wishlist tab
-import type { Order, OrderItem } from "@/types/order"; // Import centralized types
+import { useWishlist } from "@/hooks/useWishlist";
+import { ProductCard } from "@/components/ProductCard";
+import type { Order, OrderItem } from "@/types/order";
+import { useCart } from "@/hooks/useCart"; // For reorder in profile's order history
+import { useToast } from "@/hooks/use-toast"; // For reorder/cancel toasts
+import type { Product } from "@/types/product"; // For reorder
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+
 
 const ORDER_HISTORY_STORAGE_KEY = 'earthPuranUserOrders';
 
@@ -25,6 +31,9 @@ export default function ProfilePage() {
   const { wishlistItems, clearWishlist: clearWishlistHook } = useWishlist();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  
+  const { addToCart } = useCart(); // For reorder functionality
+  const { toast } = useToast(); // For notifications
 
   useEffect(() => {
     try {
@@ -38,6 +47,57 @@ export default function ProfilePage() {
     }
     setLoadingOrders(false);
   }, []);
+
+  const handleCancelOrderInProfile = (orderId: string) => {
+    const updatedOrders = orders.map(order =>
+      order.id === orderId && order.status === 'Processing'
+        ? { ...order, status: 'Cancelled' as const }
+        : order
+    );
+     if (updatedOrders.find(o => o.id === orderId)?.status === 'Cancelled') {
+      setOrders(updatedOrders);
+      localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify(updatedOrders));
+      toast({ title: "Order Cancelled", description: `Order #${orderId} has been cancelled.` });
+    } else {
+      toast({ title: "Cancellation Failed", description: "Order cannot be cancelled or was not found.", variant: "destructive" });
+    }
+  };
+
+  const handleReorderInProfile = (orderToReorder: Order) => {
+    let itemsAddedCount = 0;
+    orderToReorder.items.forEach(item => {
+      const productForCart: Product = {
+        id: item.productId,
+        name: item.name,
+        price: item.price,
+        imageUrl: item.imageUrl,
+        imageHint: item.imageHint || "product image",
+        category: 'Reordered', 
+        brand: 'Earth Puran',
+        description: `Reordered: ${item.name}`,
+        stock: 100, 
+      };
+      addToCart(productForCart, item.quantity);
+      itemsAddedCount++;
+    });
+    if (itemsAddedCount > 0) {
+      toast({ title: "Items Reordered", description: `${itemsAddedCount} item(s) from order #${orderToReorder.id} added to your cart.` });
+    }
+  };
+
+  const handleTrackPackageInProfile = (orderId: string) => {
+    toast({ title: "Tracking Not Available", description: `Package tracking for order #${orderId} is not yet implemented.` });
+  };
+
+  const getStatusColor = (status: Order['status']) => {
+    switch (status) {
+      case 'Processing': return 'text-yellow-600';
+      case 'Shipped': return 'text-blue-600';
+      case 'Delivered': return 'text-green-600';
+      case 'Cancelled': return 'text-red-600';
+      default: return 'text-muted-foreground';
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -115,29 +175,55 @@ export default function ProfilePage() {
                     <div className="space-y-4">
                     {orders.sort((a,b) => parseInt(b.id) - parseInt(a.id)).map((order) => (
                         <Card key={order.id}>
-                        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                            <div>
-                            <CardTitle className="text-base">Order #{order.id}</CardTitle>
-                            <CardDescription className="text-xs">
-                                Date: {order.date} | Status: <span className={`font-medium ${order.status === 'Delivered' ? 'text-green-600' : order.status === 'Shipped' ? 'text-blue-600' : 'text-yellow-600'}`}>{order.status}</span>
-                            </CardDescription>
-                            </div>
-                            <p className="text-lg font-semibold text-primary self-start sm:self-center">₹{order.totalAmount.toFixed(2)}</p>
-                        </CardHeader>
-                        <CardContent>
-                            <h4 className="font-medium mb-2 text-sm">Items:</h4>
-                            <ul className="space-y-2 text-sm text-muted-foreground">
-                            {order.items.map((item: OrderItem, index: number) => ( 
-                                <li key={`${order.id}-item-${index}`} className="flex items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2">
-                                    <Image src={item.imageUrl} alt={item.name} width={40} height={40} className="rounded object-cover aspect-square" data-ai-hint={item.imageHint || "product order"} />
-                                    <span>{item.name} (x{item.quantity})</span>
-                                  </div>
-                                  <span>₹{(item.price * item.quantity).toFixed(2)}</span>
-                                </li>
-                            ))}
-                            </ul>
-                        </CardContent>
+                            <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                <div>
+                                <CardTitle className="text-base">Order #{order.id}</CardTitle>
+                                <CardDescription className="text-xs">
+                                    Date: {order.date} | Status: <span className={cn("font-medium", getStatusColor(order.status))}>{order.status}</span>
+                                </CardDescription>
+                                </div>
+                                <p className="text-lg font-semibold text-primary self-start sm:self-center">₹{order.totalAmount.toFixed(2)}</p>
+                            </CardHeader>
+                            <CardContent>
+                                <h4 className="font-medium mb-2 text-sm">Items:</h4>
+                                <ul className="space-y-3 text-sm text-muted-foreground mb-4">
+                                {order.items.map((item: OrderItem, index: number) => ( 
+                                    <li key={`${order.id}-item-${index}`} className="flex items-center justify-between gap-2 border-b pb-2 last:border-b-0 last:pb-0">
+                                    <div className="flex items-center gap-2">
+                                        <Image src={item.imageUrl} alt={item.name} width={50} height={50} className="rounded object-cover aspect-square border" data-ai-hint={item.imageHint || "product order"} />
+                                        <div>
+                                            <p className="font-medium text-foreground">{item.name}</p>
+                                            <p>Qty: {item.quantity}</p>
+                                            <p>Price: ₹{item.price.toFixed(2)}</p>
+                                        </div>
+                                    </div>
+                                    <p className="font-semibold text-foreground">₹{(item.price * item.quantity).toFixed(2)}</p>
+                                    </li>
+                                ))}
+                                </ul>
+                                <Separator className="my-3" />
+                                <h4 className="font-medium mb-2 text-sm">Shipping To:</h4>
+                                <div className="text-xs text-muted-foreground">
+                                    <p>{order.shippingDetails.firstName} {order.shippingDetails.lastName}</p>
+                                    <p>{order.shippingDetails.address}</p>
+                                    <p>{order.shippingDetails.city}, {order.shippingDetails.state} - {order.shippingDetails.pincode}</p>
+                                    <p>{order.shippingDetails.country}</p>
+                                    <p>Phone: {order.shippingDetails.phoneCountryCode}{order.shippingDetails.phoneNumber}</p>
+                                </div>
+                            </CardContent>
+                             <CardFooter className="flex flex-wrap gap-2 justify-end pt-4">
+                                {order.status === 'Processing' && (
+                                <Button variant="destructive" size="sm" onClick={() => handleCancelOrderInProfile(order.id)}>
+                                    <XCircle className="mr-2 h-4 w-4" /> Cancel Order
+                                </Button>
+                                )}
+                                <Button variant="outline" size="sm" onClick={() => handleTrackPackageInProfile(order.id)}>
+                                    <Truck className="mr-2 h-4 w-4" /> Track Package
+                                </Button>
+                                <Button variant="secondary" size="sm" onClick={() => handleReorderInProfile(order)}>
+                                    <RotateCcw className="mr-2 h-4 w-4" /> Reorder Items
+                                </Button>
+                            </CardFooter>
                         </Card>
                     ))}
                     </div>

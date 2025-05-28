@@ -30,5 +30,5 @@ export interface Order {
   items: OrderItem[]; // Array of items included in the order
   totalAmount: number; // Total cost of the order
   shippingDetails: ShippingDetails; // Shipping information for the order
-  status: 'Processing' | 'Shipped' | 'Delivered'; // Current status of the order
+  status: 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled'; // Current status of the order
 }

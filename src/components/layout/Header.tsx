@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, User, Heart, Search, Menu, UserCircle, LogOut, ListOrdered } from "lucide-react";
+import { ShoppingBag, User, Heart, Search, Menu, UserCircle, LogOut, ListOrdered, Package, HomeIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
@@ -41,19 +41,19 @@ export function Header() {
   const pathname = usePathname();
   const { toast } = useToast();
   
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false); // Default to not logged in
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
-    setHasMounted(true); // Step 1: Indicate component has mounted on the client
-  }, []); // Runs only once after initial client-side render
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
-    if (hasMounted) { // Step 2: Only after mounting, access localStorage
+    if (hasMounted) {
       const storedLoginStatus = localStorage.getItem("isLoggedInPrototype") === "true";
       setIsLoggedIn(storedLoginStatus);
     }
-  }, [hasMounted, pathname]); // Re-check login status if hasMounted changes or pathname (navigation) changes
+  }, [hasMounted, pathname]);
 
   const handleMobileSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -67,17 +67,18 @@ export function Header() {
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedInPrototype");
-    // setIsLoggedIn(false); // State will update via useEffect reacting to localStorage change after navigation
+    localStorage.removeItem("userProfilePrototype"); // Also clear profile
+    // No need to setIsLoggedIn(false) here; useEffect will handle it after navigation
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
     setMobileMenuOpen(false); 
     router.push("/"); 
-    // After router.push, the useEffect depending on pathname will re-evaluate isLoggedIn
   };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center">
+        <Link href="/" className="flex items-center gap-2">
+          <Package className="h-7 w-7 text-primary" />
           <span className="text-2xl font-bold tracking-tight text-primary">Earth Puran</span>
         </Link>
 
@@ -94,7 +95,6 @@ export function Header() {
         </nav>
 
         <div className="flex items-center space-x-1 sm:space-x-3">
-          {/* Mobile Search Sheet Trigger */}
           <div className="sm:hidden">
             <Sheet open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
               <SheetTrigger asChild>
@@ -123,18 +123,15 @@ export function Header() {
             </Sheet>
           </div>
 
-          {/* Desktop Search Button (Placeholder functionality) */}
           <Button variant="ghost" size="icon" aria-label="Search" className="hidden sm:inline-flex">
             <Search className="h-5 w-5" />
           </Button>
 
-          {/* Wishlist Button */}
           <Link href="/wishlist" passHref>
             <Button variant="ghost" size="icon" aria-label="Wishlist">
               <Heart className="h-5 w-5" />
             </Button>
           </Link>
-          {/* Cart Button */}
           <Link href="/cart" passHref>
             <Button variant="ghost" size="icon" aria-label="Shopping Bag">
               <ShoppingBag className="h-5 w-5" />
@@ -173,14 +170,12 @@ export function Header() {
               <ThemeToggle />
             </>
           ) : (
-            // Static placeholders for server and initial client render
             <>
-              <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" /> {/* Approx space for Login button / UserMenu trigger */}
-              <div style={{ width: '40px', height: '40px' }} aria-hidden="true" /> {/* Approx space for ThemeToggle icon button */}
+              <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" />
+              <div style={{ width: '40px', height: '40px' }} aria-hidden="true" />
             </>
           )}
 
-          {/* Mobile Menu Trigger */}
           <div className="md:hidden">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -190,7 +185,8 @@ export function Header() {
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                  <div className="p-4">
-                    <Link href="/" className="flex items-center mb-6" onClick={() => setMobileMenuOpen(false)}>
+                    <Link href="/" className="flex items-center gap-2 mb-6" onClick={() => setMobileMenuOpen(false)}>
+                        <Package className="h-6 w-6 text-primary" />
                         <span className="text-xl font-bold tracking-tight text-primary">Earth Puran</span>
                     </Link>
                     <nav className="flex flex-col space-y-3">
@@ -214,7 +210,7 @@ export function Header() {
                               <Link href="/orders" className="text-base font-medium text-foreground transition-colors hover:text-primary flex items-center" onClick={() => setMobileMenuOpen(false)}>
                                  <ListOrdered className="mr-2 h-4 w-4" /> Order History
                               </Link>
-                              <Button variant="outline" onClick={handleLogout} className="mt-4 flex items-center justify-center">
+                              <Button variant="outline" onClick={handleLogout} className="mt-4 flex items-center justify-center w-full">
                                   <LogOut className="mr-2 h-4 w-4" /> Log Out
                               </Button>
                           </>
@@ -224,7 +220,7 @@ export function Header() {
                            </Button>
                         )
                     ) : (
-                       <div className="h-10 mt-4" aria-hidden="true" /> // Placeholder for mobile auth section
+                       <div className="h-10 mt-4" aria-hidden="true" />
                     )}
                     </nav>
                 </div>
