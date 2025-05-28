@@ -37,9 +37,11 @@ const addressSchema = z.object({
 
 type AddressFormValues = z.infer<typeof addressSchema>;
 
+const ADDRESS_STORAGE_KEY = 'earthPuranUserAddresses';
+
 export function AddressManagement() {
   const { toast } = useToast();
-  const [addresses, setAddresses] = useState<Address[]>([]); // Initialize with empty array
+  const [addresses, setAddresses] = useState<Address[]>([]);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
 
@@ -50,54 +52,98 @@ export function AddressManagement() {
       city: "",
       state: "",
       zipCode: "",
-      country: "USA", // Default country
+      country: "India", // Default country
       isDefault: false,
     },
   });
+
+  // Load addresses from localStorage on mount
+  useEffect(() => {
+    try {
+      const storedAddresses = localStorage.getItem(ADDRESS_STORAGE_KEY);
+      if (storedAddresses) {
+        setAddresses(JSON.parse(storedAddresses));
+      }
+    } catch (error) {
+        console.error("Failed to parse addresses from localStorage", error);
+        setAddresses([]);
+    }
+  }, []);
 
   useEffect(() => {
     if (editingAddress) {
       form.reset(editingAddress);
       setIsFormVisible(true);
     } else {
-      form.reset({ street: "", city: "", state: "", zipCode: "", country: "USA", isDefault: false });
+      form.reset({ street: "", city: "", state: "", zipCode: "", country: "India", isDefault: false });
     }
   }, [editingAddress, form]);
 
   function onSubmit(values: AddressFormValues) {
-    console.log("Address form submitted:", values);
+    let updatedAddresses: Address[];
+
     if (editingAddress) {
-      // Update existing address
-      setAddresses(addresses.map(addr => 
-        addr.id === editingAddress.id ? { ...addr, ...values, isDefault: values.isDefault || false } : 
-        (values.isDefault ? { ...addr, isDefault: false } : addr) // Unset other defaults if this one is set
-      ));
+      updatedAddresses = addresses.map(addr =>
+        addr.id === editingAddress.id ? { ...addr, ...values, isDefault: values.isDefault || false } :
+        (values.isDefault ? { ...addr, isDefault: false } : addr)
+      );
       toast({ title: "Address Updated", description: "Your address has been successfully updated." });
     } else {
-      // Add new address
       const newAddress = { ...values, id: Date.now().toString(), isDefault: values.isDefault || false };
-       setAddresses(prev => values.isDefault ? 
-        [...prev.map(a => ({...a, isDefault: false})), newAddress] :
-        [...prev, newAddress]
-      );
+      if (values.isDefault) {
+        updatedAddresses = [...addresses.map(a => ({ ...a, isDefault: false })), newAddress];
+      } else {
+         // If adding a non-default address and no default exists, make this new one default
+        const hasDefault = addresses.some(addr => addr.isDefault);
+        if (!hasDefault && addresses.length === 0) { // Make first address default if no default exists
+             newAddress.isDefault = true;
+        }
+        updatedAddresses = [...addresses, newAddress];
+      }
       toast({ title: "Address Added", description: "New address has been successfully added." });
     }
+
+    try {
+        localStorage.setItem(ADDRESS_STORAGE_KEY, JSON.stringify(updatedAddresses));
+    } catch (error) {
+        console.error("Failed to save addresses to localStorage", error);
+        // Optionally: inform user that changes might not be saved
+    }
+    setAddresses(updatedAddresses);
     setEditingAddress(null);
     setIsFormVisible(false);
     form.reset();
   }
 
   const handleDeleteAddress = (id: string) => {
-    setAddresses(addresses.filter(addr => addr.id !== id));
+    const newAddresses = addresses.filter(addr => addr.id !== id);
+    // If the deleted address was default, and there are other addresses, make the first one default
+    const deletedAddressWasDefault = addresses.find(addr => addr.id === id)?.isDefault;
+    if (deletedAddressWasDefault && newAddresses.length > 0) {
+      newAddresses[0].isDefault = true;
+    }
+
+    try {
+        localStorage.setItem(ADDRESS_STORAGE_KEY, JSON.stringify(newAddresses));
+    } catch (error) {
+        console.error("Failed to save addresses to localStorage", error);
+    }
+    setAddresses(newAddresses);
     toast({ title: "Address Deleted", description: "The address has been removed." });
   };
   
   const handleSetDefault = (id: string) => {
-    setAddresses(addresses.map(addr => ({
+    const newAddresses = addresses.map(addr => ({
       ...addr,
       isDefault: addr.id === id
-    })));
-     toast({ title: "Default Address Set", description: "Primary shipping address updated." });
+    }));
+    try {
+        localStorage.setItem(ADDRESS_STORAGE_KEY, JSON.stringify(newAddresses));
+    } catch (error) {
+        console.error("Failed to save addresses to localStorage", error);
+    }
+    setAddresses(newAddresses);
+    toast({ title: "Default Address Set", description: "Primary shipping address updated." });
   };
 
   return (
@@ -162,7 +208,7 @@ export function AddressManagement() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>City</FormLabel>
-                        <FormControl><Input placeholder="New York" {...field} /></FormControl>
+                        <FormControl><Input placeholder="Mumbai" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -173,7 +219,7 @@ export function AddressManagement() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>State / Province</FormLabel>
-                        <FormControl><Input placeholder="NY" {...field} /></FormControl>
+                        <FormControl><Input placeholder="Maharashtra" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -186,7 +232,7 @@ export function AddressManagement() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>ZIP / Postal Code</FormLabel>
-                        <FormControl><Input placeholder="10001" {...field} /></FormControl>
+                        <FormControl><Input placeholder="400001" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -197,7 +243,7 @@ export function AddressManagement() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Country</FormLabel>
-                        <FormControl><Input placeholder="USA" {...field} /></FormControl>
+                        <FormControl><Input placeholder="India" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -212,12 +258,16 @@ export function AddressManagement() {
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
+                            disabled={editingAddress?.isDefault && addresses.filter(a => a.id !== editingAddress.id).every(a => !a.isDefault) && addresses.length === 1} // Disable unchecking if it's the only address and default
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel>
                             Set as default shipping address
                           </FormLabel>
+                           <FormDescription>
+                            Your primary address for deliveries.
+                          </FormDescription>
                         </div>
                       </FormItem>
                     )}
