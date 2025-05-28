@@ -1,3 +1,4 @@
+
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/types/product";
@@ -60,7 +61,7 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
       </CardContent>
       <CardFooter className="p-4 pt-0 flex items-center justify-between">
-        <p className="text-xl font-bold text-primary">${product.price.toFixed(2)}</p>
+        <p className="text-xl font-bold text-primary">₹{product.price.toFixed(2)}</p>
         <Button size="sm" variant="outline" className="hover:bg-primary hover:text-primary-foreground">
           <ShoppingCart className="mr-2 h-4 w-4" />
           Add to Cart

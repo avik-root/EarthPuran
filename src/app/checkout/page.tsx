@@ -11,8 +11,8 @@ export default function CheckoutPage() {
   // and cart items would be fetched dynamically.
   const subtotal = 0; // Placeholder, actual calculation would depend on cart state
   const shipping = 0; // Placeholder
-  const taxes = 0; // Placeholder
-  const total = 0; // Placeholder
+  const taxes = 0;    // Placeholder
+  const total = 0;    // Placeholder
 
   return (
     <div className="space-y-8">
@@ -57,15 +57,13 @@ export default function CheckoutPage() {
               <CardTitle>Order Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Order items list - This would be dynamically populated from the cart */}
-              {/* Removed static mock items */}
               {subtotal > 0 ? (
                 <>
-                  <div className="flex justify-between text-sm"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-                  <div className="flex justify-between text-sm"><span>Shipping</span><span>${shipping.toFixed(2)}</span></div>
-                  <div className="flex justify-between text-sm"><span>Taxes</span><span>${taxes.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-sm"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-sm"><span>Shipping</span><span>₹{shipping.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-sm"><span>Taxes</span><span>₹{taxes.toFixed(2)}</span></div>
                   <Separator />
-                  <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>${total.toFixed(2)}</span></div>
+                  <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">Your cart is empty.</p>

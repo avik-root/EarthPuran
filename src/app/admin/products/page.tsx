@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { getProducts } from "@/app/actions/productActions";
 import { Button } from "@/components/ui/button";
@@ -64,7 +65,7 @@ export default async function AdminProductsPage() {
                       {product.stock > 0 ? "In Stock" : "Out of Stock"}
                     </Badge>
                   </TableCell>
-                  <TableCell>${product.price.toFixed(2)}</TableCell>
+                  <TableCell>₹{product.price.toFixed(2)}</TableCell>
                   <TableCell className="hidden md:table-cell">{product.stock}</TableCell>
                   <TableCell className="hidden md:table-cell">{product.category}</TableCell>
                   <TableCell>

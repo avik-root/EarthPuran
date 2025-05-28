@@ -1,3 +1,4 @@
+
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getProductById, getProducts } from "@/app/actions/productActions";
@@ -81,11 +82,11 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 </div>
               )}
 
-              <p className="text-3xl font-bold text-accent">${product.price.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-accent">₹{product.price.toFixed(2)}</p>
              
               <div className="flex items-center space-x-2">
                 <Truck className="h-5 w-5 text-primary" />
-                <span className="text-sm text-muted-foreground">Free shipping on orders over $50</span>
+                <span className="text-sm text-muted-foreground">Free shipping on orders over ₹5000</span>
               </div>
                <p className={`text-sm font-medium ${product.stock > 0 ? 'text-green-600' : 'text-destructive'}`}>
                 {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}

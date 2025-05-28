@@ -40,15 +40,15 @@ export default function OrdersPage() {
                   <CardTitle>Order #{order.id}</CardTitle>
                   <CardDescription>Date: {order.date} | Status: <span className={`font-medium ${order.status === 'Delivered' ? 'text-green-600' : order.status === 'Shipped' ? 'text-blue-600' : 'text-yellow-600'}`}>{order.status}</span></CardDescription>
                 </div>
-                <p className="text-xl font-semibold text-primary">${order.total.toFixed(2)}</p>
+                <p className="text-xl font-semibold text-primary">₹{order.total.toFixed(2)}</p>
               </CardHeader>
               <CardContent>
                 <h4 className="font-medium mb-2 text-sm">Items:</h4>
                 <ul className="space-y-1 text-sm text-muted-foreground">
-                  {order.items.map((item: any, index: number) => ( // Added type for item
+                  {order.items.map((item: any, index: number) => ( 
                     <li key={index} className="flex justify-between">
                       <span>{item.name} (x{item.quantity})</span>
-                      <span>${(item.price * item.quantity).toFixed(2)}</span>
+                      <span>₹{(item.price * item.quantity).toFixed(2)}</span>
                     </li>
                   ))}
                 </ul>
