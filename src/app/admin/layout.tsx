@@ -15,12 +15,12 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar";
-import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert, KeyRound } from "lucide-react";
+import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert, KeyRound, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation'; // Import usePathname
+import { useRouter, usePathname } from 'next/navigation';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -30,33 +30,40 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname(); // Get current pathname
+  const pathname = usePathname();
   const [isAuthorizedForProtectedRoutes, setIsAuthorizedForProtectedRoutes] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const gatePassed = localStorage.getItem("adminAccessGranted") === "true";
+    const adminConfigured = localStorage.getItem("adminCredentialsConfigured") === "true";
     const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
 
-    const isFullyAuthenticated = gatePassed && isAdmin && isLoggedIn;
+    const isFullyAuthenticatedForDashboard = gatePassed && adminConfigured && isAdmin && isLoggedIn;
 
     if (pathname === '/admin/access-gate' || pathname === '/admin/login') {
-      // If on public admin pages but already fully authenticated, redirect to dashboard
-      if (isFullyAuthenticated && pathname !== '/admin/dashboard') {
+      // If on public admin auth pages but already fully authenticated for dashboard, redirect
+      if (isFullyAuthenticatedForDashboard && pathname !== '/admin/dashboard') {
         router.push('/admin/dashboard');
       }
-      // These pages don't require isAuthorizedForProtectedRoutes to be true to be visible
-      // The layout will just render {children} for them.
+      // These pages are part of the auth flow, allow rendering them.
+      // The pages themselves might have further checks (e.g., login page checks gate).
     } else {
-      // These are protected admin routes like /admin/dashboard, /admin/products
+      // Protected admin routes (e.g., /admin/dashboard, /admin/products)
       if (!gatePassed) {
         router.push('/admin/access-gate');
         setIsAuthorizedForProtectedRoutes(false);
+      } else if (!adminConfigured) {
+        // If gate passed but admin not configured, redirect to login page which handles setup
+        router.push('/admin/login');
+        setIsAuthorizedForProtectedRoutes(false);
       } else if (!isLoggedIn || !isAdmin) {
+        // If gate passed, admin configured, but not logged in as admin, redirect to login
         router.push('/admin/login');
         setIsAuthorizedForProtectedRoutes(false);
       } else {
+        // All checks passed for protected routes
         setIsAuthorizedForProtectedRoutes(true);
       }
     }
@@ -76,7 +83,7 @@ export default function AdminLayout({
     );
   }
 
-  // If the current path is the access gate or login page, render its content directly.
+  // If current path is part of the auth flow (access gate or login/setup), render its content directly.
   // These pages manage their own UI and don't need the full admin sidebar layout.
   if (pathname === '/admin/access-gate' || pathname === '/admin/login') {
     return <>{children}</>;
@@ -85,6 +92,14 @@ export default function AdminLayout({
   // For all other /admin/* routes (e.g., /admin/dashboard, /admin/products):
   // These are protected. If not authorized, show Access Denied card.
   if (!isAuthorizedForProtectedRoutes) {
+    // Determine correct link based on what's missing
+    let missingStepLink = "/admin/access-gate";
+    if (localStorage.getItem("adminAccessGranted") === "true" && localStorage.getItem("adminCredentialsConfigured") !== "true") {
+        missingStepLink = "/admin/login"; // This will show create admin form
+    } else if (localStorage.getItem("adminAccessGranted") === "true" && localStorage.getItem("adminCredentialsConfigured") === "true") {
+        missingStepLink = "/admin/login"; // This will show login form
+    }
+
     return (
         <div className="flex h-screen items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md text-center">
@@ -94,9 +109,9 @@ export default function AdminLayout({
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-muted-foreground mb-6">You do not have permission to view this page.</p>
+                    <p className="text-muted-foreground mb-6">You do not have permission to view this page or need to complete setup.</p>
                     <Button asChild>
-                        <Link href="/admin/access-gate">Verify Access</Link>
+                        <Link href={missingStepLink}>Verify Access / Complete Setup</Link>
                     </Button>
                 </CardContent>
             </Card>

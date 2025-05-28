@@ -1,3 +1,4 @@
+
 // src/app/admin/access-gate/page.tsx
 "use client";
 
@@ -22,16 +23,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { PinInput } from "@/components/ui/pin-input";
-import { Eye, EyeOff, ShieldAlert, KeyRound, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, KeyRound, ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import bcrypt from 'bcryptjs';
 import Link from "next/link";
 
-// IMPORTANT: This hash corresponds to the 8-digit PIN.
-// For the prototype, it's hardcoded here. In a real app, manage this securely.
-const ADMIN_GATE_PIN_HASH = "$2a$20$KuFzQzevqXrkru82XJB61et1l/xcrTAh0hzP9aYYn9K4mJRN8E4ja";
+// This is the bcrypt hash of the 8-digit master PIN (e.g., "12345678")
+const MASTER_ADMIN_GATE_PIN_HASH = "$2a$20$KuFzQzevqXrkru82XJB61et1l/xcrTAh0hzP9aYYn9K4mJRN8E4ja"; // Keep this secure
 
 const accessGateSchema = z.object({
   gatePin: z.string().length(8, { message: "PIN must be 8 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }),
@@ -42,7 +42,7 @@ type AccessGateFormValues = z.infer<typeof accessGateSchema>;
 export default function AdminAccessGatePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [showGatePin, setShowGatePin] = useState(true); // Default to visible for ease of prototype
+  const [showGatePin, setShowGatePin] = useState(true); 
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -50,12 +50,16 @@ export default function AdminAccessGatePage() {
   }, []);
 
   useEffect(() => {
-    // If user somehow gets here but already passed the gate AND is logged in as admin, redirect to dashboard
+    // If user somehow gets here but already passed the gate AND has admin credentials configured AND is logged in as admin, redirect to dashboard
     if (hasMounted && 
         localStorage.getItem("adminAccessGranted") === "true" &&
+        localStorage.getItem("adminCredentialsConfigured") === "true" && // New check
         localStorage.getItem("isAdminPrototype") === "true" &&
         localStorage.getItem("isLoggedInPrototype") === "true") {
       router.push("/admin/dashboard");
+    } else if (hasMounted && localStorage.getItem("adminAccessGranted") === "true") {
+      // If gate passed but other conditions not met, go to login/setup page
+      router.push("/admin/login");
     }
   }, [hasMounted, router]);
 
@@ -67,14 +71,14 @@ export default function AdminAccessGatePage() {
   });
 
   async function onSubmit(values: AccessGateFormValues) {
-    const isPinCorrect = bcrypt.compareSync(values.gatePin, ADMIN_GATE_PIN_HASH);
+    const isPinCorrect = bcrypt.compareSync(values.gatePin, MASTER_ADMIN_GATE_PIN_HASH);
     
     if (isPinCorrect) {
       localStorage.setItem("adminAccessGranted", "true");
-      toast({ title: "Access Granted", description: "Proceed to Admin Login." });
-      router.push("/admin/login");
+      toast({ title: "Access Granted", description: "Proceed to Admin Setup or Login." });
+      router.push("/admin/login"); // This page will handle if it's setup or login
     } else {
-      toast({ title: "Access Denied", description: "Incorrect PIN.", variant: "destructive" });
+      toast({ title: "Access Denied", description: "Incorrect master access PIN.", variant: "destructive" });
       form.resetField("gatePin");
     }
   }
@@ -88,8 +92,8 @@ export default function AdminAccessGatePage() {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <KeyRound className="mx-auto h-12 w-12 text-primary mb-2" />
-          <CardTitle className="text-3xl font-bold text-primary">Admin Area Access</CardTitle>
-          <CardDescription>Enter the 8-digit security PIN to proceed.</CardDescription>
+          <CardTitle className="text-3xl font-bold text-primary">Admin Area Gate</CardTitle>
+          <CardDescription>Enter the 8-digit master security PIN to proceed.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -100,7 +104,7 @@ export default function AdminAccessGatePage() {
                 render={({ field }) => (
                   <FormItem>
                     <div className="flex items-center justify-between">
-                      <FormLabel>8-Digit Access PIN</FormLabel>
+                      <FormLabel>8-Digit Master Access PIN</FormLabel>
                        <Button
                           type="button"
                           variant="ghost"
@@ -114,7 +118,7 @@ export default function AdminAccessGatePage() {
                     </div>
                     <FormControl>
                       <PinInput
-                        length={8} // Ensure PinInput supports 8 digits
+                        length={8}
                         value={field.value}
                         onChange={field.onChange}
                         name={field.name}
@@ -128,7 +132,7 @@ export default function AdminAccessGatePage() {
                 )}
               />
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" size="lg">
-                Verify PIN
+                Verify Master PIN
               </Button>
             </form>
           </Form>
