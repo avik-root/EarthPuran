@@ -7,19 +7,20 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PinInput } from "@/components/ui/pin-input";
-import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Eye, EyeOff, ShieldCheck, UserPlus, AlertTriangle, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import bcrypt from 'bcryptjs';
 import { cn } from "@/lib/utils";
 import { getEarthPuranAdminCredentials, createEarthPuranAdminAccount } from "@/app/actions/userActions";
-import type { UserProfile } from "@/types/userData";
+import type { UserProfile } from "@/types/userData"; // Ensure this type is available or adjust if not used directly
+import { Progress } from "@/components/ui/progress";
+
 
 const passwordStrengthSchema = z.string()
   .min(8, "Password must be at least 8 characters long.")
@@ -70,15 +71,15 @@ export default function AdminAuthPage() {
   const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [showConfirmCreatePassword, setShowConfirmCreatePassword] = useState(false);
   const [createPasswordStrength, setCreatePasswordStrength] = useState(0);
-  const [showCreateLoginPin, setShowCreateLoginPin] = useState(true);
-  const [showConfirmCreateLoginPin, setShowConfirmCreateLoginPin] = useState(true);
+  const [showCreateLoginPin, setShowCreateLoginPin] = useState(false); // Default to masked
+  const [showConfirmCreateLoginPin, setShowConfirmCreateLoginPin] = useState(false); // Default to masked
 
   // States for Login Admin Form
   const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [showLoginPinInput, setShowLoginPinInput] = useState(true);
+  const [showLoginPinInput, setShowLoginPinInput] = useState(false); // Default to masked
 
 
-  const fetchAdminConfig = async () => {
+  const fetchAdminConfig = useCallback(async () => {
     setUiMode('loading');
     setConfigErrorMessage(null);
     try {
@@ -89,7 +90,7 @@ export default function AdminAuthPage() {
           passwordHash: result.passwordHash,
           pinHash: result.pinHash,
         });
-        adminLoginForm.setValue("email", result.email); 
+        // adminLoginForm.setValue("email", result.email); // No longer pre-filling email
         setUiMode('loginAdmin');
       } else {
         setStoredAdminCredentials(null);
@@ -101,12 +102,11 @@ export default function AdminAuthPage() {
         setConfigErrorMessage("Could not check admin configuration. Please try again or create an account.");
         setUiMode('createAdmin');
     }
-  };
+  }, []);
   
   useEffect(() => {
     fetchAdminConfig();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchAdminConfig]);
 
 
   const createAdminForm = useForm<CreateAdminFormValues>({
@@ -139,8 +139,7 @@ export default function AdminAuthPage() {
         setTimeout(() => {
           toast({ title: "Admin Account Created", description: result.message });
         }, 0);
-        // After successful creation, refresh config to switch to login mode
-        await fetchAdminConfig(); 
+        await fetchAdminConfig(); // Refresh config to switch to login mode
       } else {
         setTimeout(() => {
           toast({ title: "Creation Failed", description: result.message || "Could not create admin account.", variant: "destructive" });
@@ -188,13 +187,12 @@ export default function AdminAuthPage() {
     localStorage.setItem("isLoggedInPrototype", "true");
     localStorage.setItem("isAdminPrototype", "true");
     localStorage.setItem('currentUserEmail', storedAdminCredentials.email);
-    // For prototype, store a generic admin profile. A real app might fetch more details.
     const adminProfileForStorage: UserProfile = {
         firstName: "Admin",
         lastName: "User",
         email: storedAdminCredentials.email,
-        countryCode: "N/A", // Not relevant for admin
-        phoneNumber: "N/A", // Not relevant for admin
+        countryCode: "N/A", 
+        phoneNumber: "N/A", 
         isAdmin: true,
     };
     localStorage.setItem('userProfilePrototype', JSON.stringify(adminProfileForStorage));
@@ -275,7 +273,7 @@ export default function AdminAuthPage() {
             <ShieldCheck className="mx-auto h-10 w-10 text-primary" />
             <CardTitle className="mt-2 text-3xl font-bold text-primary">Admin Panel Login</CardTitle>
             <CardDescription>Enter your administrator credentials for Earth Puran.</CardDescription>
-             {configErrorMessage && !storedAdminCredentials && ( // Show this only if login mode is active but creds are bad
+             {configErrorMessage && !storedAdminCredentials && ( 
                 <Alert variant="destructive" className="mt-4">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Configuration Error!</AlertTitle>
@@ -287,7 +285,11 @@ export default function AdminAuthPage() {
             <Form {...adminLoginForm}>
               <form onSubmit={adminLoginForm.handleSubmit(onAdminLoginSubmit)} className="space-y-6">
                 <FormField control={adminLoginForm.control} name="email" render={({ field }) => (
-                  <FormItem><FormLabel>Admin Email</FormLabel><FormControl><Input placeholder="admin@earthpuran.com" {...field} readOnly={!!storedAdminCredentials?.email} /></FormControl><FormMessage /></FormItem>
+                  <FormItem>
+                    <FormLabel>Admin Email</FormLabel>
+                    <FormControl><Input placeholder="admin@earthpuran.com" {...field} /></FormControl> 
+                    <FormMessage />
+                  </FormItem>
                 )} />
                 <FormField control={adminLoginForm.control} name="password" render={({ field }) => (
                   <FormItem>
@@ -309,7 +311,7 @@ export default function AdminAuthPage() {
           </CardContent>
            <CardFooter className="flex-col items-center space-y-2 pt-6">
             <p className="text-xs text-muted-foreground text-center">This panel is for authorized administrators only.</p>
-            {uiMode === 'loginAdmin' && !storedAdminCredentials && ( // If login mode but no creds, means file issue
+            {uiMode === 'loginAdmin' && !storedAdminCredentials && ( 
                 <Button variant="link" onClick={fetchAdminConfig} className="text-xs">
                    Problem loading credentials? Recheck Configuration
                 </Button>
