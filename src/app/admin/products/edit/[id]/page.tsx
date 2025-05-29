@@ -1,4 +1,3 @@
-
 // src/app/admin/products/edit/[id]/page.tsx
 "use client"
 
@@ -278,7 +277,7 @@ export default function EditProductPage() {
                   <FormItem>
                     <FormLabel>Additional Image URLs (Optional)</FormLabel>
                     <FormControl><Textarea placeholder="Enter one URL per line for additional images..." {...field} rows={4} /></FormControl>
-                    <FormDescription>Provide direct links to other product images, each on a new line. Ensure these are valid URLs.</FormDescription>
+                    <FormDescription>Provide direct links for the 2nd, 3rd, and 4th product images, each on a new line. Ensure these are valid URLs.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

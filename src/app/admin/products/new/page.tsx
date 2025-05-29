@@ -1,4 +1,3 @@
-
 // src/app/admin/products/new/page.tsx
 "use client"
 
@@ -204,7 +203,7 @@ export default function NewProductPage() {
                   <FormItem>
                     <FormLabel>Additional Image URLs (Optional)</FormLabel>
                     <FormControl><Textarea placeholder="Enter one URL per line for additional images..." {...field} rows={4} /></FormControl>
-                    <FormDescription>Provide direct links to other product images, each on a new line.</FormDescription>
+                    <FormDescription>Provide direct links for the 2nd, 3rd, and 4th product images, each on a new line.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

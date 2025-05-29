@@ -1,43 +1,77 @@
-
 [
   {
     "id": "1",
     "name": "Velvet Matte Lipstick",
     "category": "Lips",
     "brand": "Earth Puran",
-    "price": 28.00,
+    "price": 28,
     "description": "A luxurious, long-wearing matte lipstick with a velvety finish. Infused with nourishing oils for comfortable wear. Experience intense color payoff and a smooth, non-drying feel. Exclusively from Earth Puran.",
     "imageUrl": "https://placehold.co/600x600.png",
     "imageHint": "lipstick beauty",
     "additionalImageUrls": [],
     "colors": [
-      { "name": "Ruby Red", "link": "", "image": "" },
-      { "name": "Dusty Rose", "link": "", "image": "" },
-      { "name": "Nude Beige", "link": "", "image": "" },
-      { "name": "Deep Plum", "link": "", "image": "" }
+      {
+        "name": "Ruby Red",
+        "link": "",
+        "image": ""
+      },
+      {
+        "name": "Dusty Rose",
+        "link": "",
+        "image": ""
+      },
+      {
+        "name": "Nude Beige",
+        "link": "",
+        "image": ""
+      },
+      {
+        "name": "Deep Plum",
+        "link": "",
+        "image": ""
+      }
     ],
     "rating": 0,
     "reviews": 0,
     "productReviews": [],
     "stock": 50,
-    "tags": ["matte", "long-wearing", "lipstick", "velvet", "natural"]
+    "tags": [
+      "matte",
+      "long-wearing",
+      "lipstick",
+      "velvet",
+      "natural"
+    ]
   },
   {
     "id": "2",
     "name": "Radiant Glow Foundation",
     "category": "Face",
     "brand": "Earth Puran",
-    "price": 45.00,
+    "price": 45,
     "description": "Achieve a flawless, radiant complexion with this lightweight foundation. Provides buildable coverage and a natural, dewy finish. Enriched with hyaluronic acid for all-day hydration. Discover Earth Puran's commitment to quality.",
     "imageUrl": "https://placehold.co/600x600.png",
     "imageHint": "foundation makeup",
     "additionalImageUrls": [],
-    "shades": ["Porcelain", "Ivory", "Sand", "Beige", "Tan", "Mocha"],
+    "shades": [
+      "Porcelain",
+      "Ivory",
+      "Sand",
+      "Beige",
+      "Tan",
+      "Mocha"
+    ],
     "rating": 0,
     "reviews": 0,
     "productReviews": [],
     "stock": 30,
-    "tags": ["foundation", "radiant", "dewy", "hydrating", "organic"],
+    "tags": [
+      "foundation",
+      "radiant",
+      "dewy",
+      "hydrating",
+      "organic"
+    ],
     "colors": []
   },
   {
@@ -45,17 +79,32 @@
     "name": "Midnight Sparkle Eyeshadow Palette",
     "category": "Eyes",
     "brand": "Earth Puran",
-    "price": 55.00,
+    "price": 55,
     "description": "Unleash your inner artist with this versatile eyeshadow palette. Features 12 highly pigmented shades in matte, shimmer, and glitter finishes. Perfect for creating day-to-night looks. Part of the Earth Puran collection.",
     "imageUrl": "https://placehold.co/600x600.png",
     "imageHint": "eyeshadow palette",
     "additionalImageUrls": [],
     "paletteName": "Midnight Sparkle",
-    "rating": 0,
-    "reviews": 0,
-    "productReviews": [],
+    "rating": 4,
+    "reviews": 1,
+    "productReviews": [
+      {
+        "userEmail": "a@gmail.com",
+        "userName": "A B",
+        "rating": 4,
+        "comment": "Great Product",
+        "id": "1748520912266bzjyd",
+        "date": "2025-05-29T12:15:12.267Z"
+      }
+    ],
     "stock": 40,
-    "tags": ["eyeshadow", "palette", "sparkle", "pigmented", "natural-minerals"],
+    "tags": [
+      "eyeshadow",
+      "palette",
+      "sparkle",
+      "pigmented",
+      "natural-minerals"
+    ],
     "colors": []
   },
   {
@@ -63,7 +112,7 @@
     "name": "Silk Finish Primer",
     "category": "Face",
     "brand": "Earth Puran",
-    "price": 32.00,
+    "price": 32,
     "description": "Create a smooth canvas for makeup application with this silk-finish primer. Minimizes pores, blurs imperfections, and extends makeup wear. Lightweight and non-greasy formula. Experience the Earth Puran difference.",
     "imageUrl": "https://placehold.co/600x600.png",
     "imageHint": "makeup primer",
@@ -72,7 +121,13 @@
     "reviews": 0,
     "productReviews": [],
     "stock": 60,
-    "tags": ["primer", "face", "smoothing", "pore-minimizing", "organic-extracts"],
+    "tags": [
+      "primer",
+      "face",
+      "smoothing",
+      "pore-minimizing",
+      "organic-extracts"
+    ],
     "colors": []
   },
   {
@@ -80,16 +135,28 @@
     "name": "Volumizing Lash Mascara",
     "category": "Eyes",
     "brand": "Earth Puran",
-    "price": 24.00,
+    "price": 24,
     "description": "Get dramatic, voluminous lashes with this intense black mascara. The specially designed brush coats every lash for maximum impact. Smudge-proof and long-lasting. A signature product from Earth Puran.",
     "imageUrl": "https://placehold.co/600x600.png",
     "imageHint": "mascara product",
     "additionalImageUrls": [],
-    "colors": [{ "name": "Intense Black", "link": "", "image": "" }],
+    "colors": [
+      {
+        "name": "Intense Black",
+        "link": "",
+        "image": ""
+      }
+    ],
     "rating": 0,
     "reviews": 0,
     "productReviews": [],
     "stock": 70,
-    "tags": ["mascara", "volumizing", "lashes", "smudge-proof", "natural-waxes"]
+    "tags": [
+      "mascara",
+      "volumizing",
+      "lashes",
+      "smudge-proof",
+      "natural-waxes"
+    ]
   }
 ]
