@@ -74,8 +74,7 @@ export default function ProductDetailPage() {
         setProduct(fetchedProduct);
         const allProducts = await getProducts();
         const filteredRelated = allProducts
-          .filter(p => p.category === fetchedProduct.category && p.id !== fetchedProduct.id)
-          .slice(0, 4);
+          .filter(p => p.category === fetchedProduct.category && p.id !== fetchedProduct.id);
         setRelatedProducts(filteredRelated);
       }
     } catch (error) {
@@ -423,5 +422,3 @@ export default function ProductDetailPage() {
     </div>
   );
 }
-
-    
