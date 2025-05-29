@@ -38,7 +38,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isAuthorizedForProtectedRoutes, setIsAuthorizedForProtectedRoutes] = useState(false);
   const [loading, setLoading] = useState(true);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
 
@@ -48,22 +48,29 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const gatePassed = localStorage.getItem("adminAccessGranted") === "true";
+    const credsConfigured = localStorage.getItem("adminCredentialsConfigured") === "true";
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
     const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
     const currentAdminEmail = localStorage.getItem("currentUserEmail");
     setAdminEmail(currentAdminEmail);
 
+    setLoading(true); // Reset loading for each path change check
+
     if (pathname === '/admin/login') {
-      if (isLoggedIn && isAdmin) {
+      if (!gatePassed) {
+        // router.push('/admin/access-gate'); // Should be handled by access-gate page itself if needed
+        // Allow access to /admin/login regardless of gate for now, as login page checks gate.
+      } else if (isLoggedIn && isAdmin) {
         router.push('/admin/dashboard'); // Already logged in as admin, go to dashboard
       }
-      setIsAuthorized(true); // Always allow access to login page itself
-    } else { // For any other admin route
+      setIsAuthorizedForProtectedRoutes(false); // Login page is not a "protected route" in this context
+    } else { // For any other admin route (e.g., /admin/dashboard, /admin/products)
       if (!isLoggedIn || !isAdmin) {
-        router.push(`/admin/login?redirect=${pathname}`); // Not logged in or not admin, redirect to admin login
-        setIsAuthorized(false);
+        router.push(`/admin/login?redirect=${pathname}`);
+        setIsAuthorizedForProtectedRoutes(false);
       } else {
-        setIsAuthorized(true); // Logged in and is admin
+        setIsAuthorizedForProtectedRoutes(true);
       }
     }
     setLoading(false);
@@ -73,7 +80,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("isLoggedInPrototype");
     localStorage.removeItem("isAdminPrototype");
     localStorage.removeItem("currentUserEmail");
-    setAdminEmail(null); // Clear admin email state
+    // localStorage.removeItem("adminAccessGranted"); // Optional: re-gate on next login
+    // localStorage.removeItem("adminCredentialsConfigured"); // Should not be removed on logout
+    setAdminEmail(null);
     toast({ title: "Admin Logged Out", description: "You have been successfully logged out." });
     router.push("/admin/login");
   };
@@ -91,8 +100,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // If trying to access a protected route (/admin/* other than /admin/login) without authorization
-  if (pathname !== '/admin/login' && !isAuthorized && !loading) {
+  if (pathname !== '/admin/login' && !isAuthorizedForProtectedRoutes && !loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md text-center">
@@ -115,12 +123,10 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If on the login page, just render the children (the login page content)
   if (pathname === '/admin/login') {
-    return <main className="flex-grow bg-muted/40">{children}</main>;
+    return <main className="flex-grow bg-background">{children}</main>;
   }
 
-  // Authorized and not on login page, render full admin layout
   return (
     <>
       <Sidebar collapsible="icon">
@@ -155,12 +161,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton href="/admin/orders" tooltip="Orders (coming soon)" isActive={pathname.startsWith('/admin/orders')}>
+                <SidebarMenuButton href="/admin/orders" tooltip="Orders" isActive={pathname.startsWith('/admin/orders')}>
                   <Users /> <span>Orders</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton href="/admin/users" tooltip="Users (coming soon)" isActive={pathname.startsWith('/admin/users')}>
+                <SidebarMenuButton href="/admin/users" tooltip="Customers" isActive={pathname.startsWith('/admin/users')}>
                   <Users /> <span>Customers</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -229,4 +235,3 @@ export default function AdminLayout({
     </SidebarProvider>
   );
 }
-
