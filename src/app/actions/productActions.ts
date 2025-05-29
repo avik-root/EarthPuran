@@ -14,7 +14,14 @@ async function readProductsFile(): Promise<Product[]> {
       console.warn("products.json is empty, returning empty array.");
       return [];
     }
-    return JSON.parse(jsonData) as Product[];
+    // Add more detailed error logging for JSON parsing
+    try {
+      return JSON.parse(jsonData) as Product[];
+    } catch (parseError) {
+      console.error("Failed to parse products.json. File content may be corrupted. Content snippet (first 500 chars):", jsonData.substring(0, 500), "Error:", parseError);
+      console.warn("Returning empty array due to products.json parse error. Please check the file content. Consider backing up and deleting/re-initializing products.json if the issue persists.");
+      return []; // Return empty array or throw custom error if preferred
+    }
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
     if (nodeError.code === 'ENOENT') {
@@ -47,8 +54,8 @@ export async function getProductById(id: string): Promise<Product | null> {
 
 export async function getFeaturedProducts(limit: number = 4): Promise<Product[]> {
   const products = await readProductsFile();
-  // Sort by rating if available, otherwise just take first few
-  return products.sort((a,b) => (b.rating || 0) - (a.rating || 0)).slice(0, limit);
+  // Sort by ID descending (newer products first, assuming IDs are time-based or sequential)
+  return products.sort((a,b) => b.id.localeCompare(a.id)).slice(0, limit);
 }
 
 export type NewReviewData = Omit<Review, 'id' | 'date'>;
@@ -150,8 +157,8 @@ export async function addProduct(
       tags: [] // Default, can be expanded later or via edit
     };
 
-    products.push(newProduct);
-    await writeProductsFile(products);
+    products.push(newProduct); // Add to the end
+    await writeProductsFile(products); // Save the updated list
     return { success: true, product: newProduct };
   } catch (error) {
     console.error("Error adding product in action:", error);

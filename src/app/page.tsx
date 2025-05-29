@@ -9,7 +9,7 @@ import { ArrowRight } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function HomePage() {
-  const featuredProducts = await getFeaturedProducts(4);
+  const newArrivals = await getFeaturedProducts(4); // This now fetches newest products
 
   const shopCategories = [
     { name: "Makeup", href: "/products?category=Makeup", image: "https://placehold.co/300x200.png", imageHint: "makeup collection", description: "Explore our vibrant range of makeup essentials." },
@@ -49,17 +49,17 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Featured Products Section */}
-      {featuredProducts.length > 0 && (
+      {/* New Arrivals Section (Previously Featured Products) */}
+      {newArrivals.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground">Featured Products</h2>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground">New Arrivals</h2>
             <Button variant="link" asChild className="text-primary hover:text-primary/80">
-              <Link href="/products">View All <ArrowRight className="ml-1 h-4 w-4" /></Link>
+              <Link href="/products?sort=newest">View All <ArrowRight className="ml-1 h-4 w-4" /></Link>
             </Button>
           </div>
           <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4 xl:gap-x-8">
-            {featuredProducts.map((product) => (
+            {newArrivals.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
