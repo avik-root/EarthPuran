@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge"; // Added this import
 
 const countriesMap: { [key: string]: string } = {
   "US": "+1", "CA": "+1", "GB": "+44", "AU": "+61", "IN": "+91",
@@ -109,7 +110,7 @@ export default function AdminUsersPage() {
       {users.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
-            <Users className="mx-auto h-12 w-12 text-muted-foreground" />
+            <User className="mx-auto h-12 w-12 text-muted-foreground" /> {/* Changed icon to singular User */}
             <p className="mt-4 text-muted-foreground">No customers found.</p>
           </CardContent>
         </Card>
@@ -152,7 +153,7 @@ export default function AdminUsersPage() {
                     </div>
                   </>
                 )}
-                 {user.isAdmin && (
+                 {user.profile.isAdmin && ( // Check profile.isAdmin
                     <Badge variant="outline" className="mt-2 border-primary text-primary">ADMIN</Badge>
                 )}
               </CardContent>
