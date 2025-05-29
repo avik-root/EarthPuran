@@ -8,15 +8,16 @@ import type { AllUsersData, UserData, UserProfile, UserAddress, WishlistProduct,
 import type { Product } from '@/types/product';
 import type { Order } from '@/types/order';
 
-const dataFilePath = path.join(process.cwd(), 'src', 'data', 'users.json');
+const usersDataFilePath = path.join(process.cwd(), 'src', 'data', 'users.json');
+const adminDataFilePath = path.join(process.cwd(), 'src', 'data', 'admin.json');
 const saltRounds = 10;
 
 async function readUsersFile(): Promise<AllUsersData> {
   try {
-    const jsonData = await fs.readFile(dataFilePath, 'utf-8');
+    const jsonData = await fs.readFile(usersDataFilePath, 'utf-8');
     if (!jsonData.trim()) {
       console.log("users.json is empty, initializing with {}.");
-      await fs.writeFile(dataFilePath, JSON.stringify({}, null, 2), 'utf-8');
+      await fs.writeFile(usersDataFilePath, JSON.stringify({}, null, 2), 'utf-8');
       return {};
     }
     try {
@@ -30,7 +31,7 @@ async function readUsersFile(): Promise<AllUsersData> {
     const nodeError = error as NodeJS.ErrnoException;
     if (nodeError.code === 'ENOENT') {
       console.log("users.json not found, creating it with {}.");
-      await fs.writeFile(dataFilePath, JSON.stringify({}, null, 2), 'utf-8');
+      await fs.writeFile(usersDataFilePath, JSON.stringify({}, null, 2), 'utf-8');
       return {};
     }
     console.error("Failed to read users.json:", nodeError);
@@ -40,7 +41,7 @@ async function readUsersFile(): Promise<AllUsersData> {
 
 async function writeUsersFile(data: AllUsersData): Promise<void> {
   try {
-    await fs.writeFile(dataFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    await fs.writeFile(usersDataFilePath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (error) {
     console.error("Failed to write to users.json:", error);
     throw new Error("Could not save user data.");
@@ -50,14 +51,14 @@ async function writeUsersFile(data: AllUsersData): Promise<void> {
 function getDefaultUserData(profile: Omit<UserProfile, 'hashedPassword' | 'hashedPin' | 'isAdmin'>, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string, makeAdmin: boolean = false): UserData {
     const hashedPassword = bcrypt.hashSync(plaintextPassword_prototype_only, saltRounds);
     const hashedPin = bcrypt.hashSync(plaintextPin_prototype_only, saltRounds);
-    
+
     const userProfileWithHashes: UserProfile = {
         ...profile,
         hashedPassword,
         hashedPin,
         isAdmin: makeAdmin,
     };
-    
+
     return {
         profile: userProfileWithHashes,
         addresses: [],
@@ -82,7 +83,6 @@ export async function initializeUserAccount(profile: Omit<UserProfile, 'hashedPa
     if (allUsers[normalizedEmail]) {
         throw new Error(`User with email ${profile.email} already exists.`);
     }
-    // No longer automatically making the first user an admin. Admin is handled via /admin/login flow.
     allUsers[normalizedEmail] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, false);
     await writeUsersFile(allUsers);
     return allUsers[normalizedEmail];
@@ -96,9 +96,9 @@ export async function updateUserProfile(email: string, profileData: Partial<Pick
       console.error(`Attempted to update profile for non-existent user: ${email}`);
       return false;
     }
-    
-    allUsers[normalizedEmail].profile = { 
-        ...allUsers[normalizedEmail].profile, 
+
+    allUsers[normalizedEmail].profile = {
+        ...allUsers[normalizedEmail].profile,
         ...profileData,
      };
     await writeUsersFile(allUsers);
@@ -139,12 +139,11 @@ export async function updateUserPinAction(email: string, currentPlaintextPin_pro
     if (!isCurrentPinValid) {
         return {success: false, message: "Current PIN does not match."};
     }
-    
+
     userData.profile.hashedPin = bcrypt.hashSync(newPlaintextPin_prototype_only, saltRounds);
     await writeUsersFile(allUsers);
     return {success: true, message: "PIN updated successfully."};
 }
-
 
 export async function updateUserAddresses(email: string, addresses: UserAddress[]): Promise<boolean> {
     if (!email) return false;
@@ -168,7 +167,7 @@ export async function addOrder(email: string, newOrder: Order): Promise<boolean>
       return false;
     }
     allUsers[normalizedEmail].orders.push(newOrder);
-    allUsers[normalizedEmail].orders.sort((a, b) => parseInt(b.id) - parseInt(a.id)); 
+    allUsers[normalizedEmail].orders.sort((a, b) => parseInt(b.id) - parseInt(a.id));
     await writeUsersFile(allUsers);
     return true;
 }
@@ -195,6 +194,9 @@ export async function addProductToWishlistAction(email: string, product: Product
     console.error(`Wishlist: User ${email} not found.`);
     return { success: false };
   }
+  if (!allUsers[normalizedEmail].wishlist) {
+    allUsers[normalizedEmail].wishlist = [];
+  }
   if (!allUsers[normalizedEmail].wishlist.find(p => p.id === product.id)) {
     allUsers[normalizedEmail].wishlist.push(product);
     await writeUsersFile(allUsers);
@@ -206,8 +208,8 @@ export async function removeProductFromWishlistAction(email: string, productId: 
   if (!email) return { success: false };
   const allUsers = await readUsersFile();
   const normalizedEmail = email.toLowerCase();
-  if (!allUsers[normalizedEmail]) {
-    console.error(`Wishlist: User ${email} not found.`);
+  if (!allUsers[normalizedEmail] || !allUsers[normalizedEmail].wishlist) {
+    console.error(`Wishlist: User ${email} not found or wishlist missing.`);
     return { success: false };
   }
   const initialLength = allUsers[normalizedEmail].wishlist.length;
@@ -240,6 +242,9 @@ export async function addItemToUserCartAction(email: string, product: Product, q
     console.error(`Cart: User ${email} not found.`);
     return { success: false };
   }
+  if (!allUsers[normalizedEmail].cart) {
+    allUsers[normalizedEmail].cart = [];
+  }
   const existingItemIndex = allUsers[normalizedEmail].cart.findIndex(item => item.product.id === product.id);
   if (existingItemIndex > -1) {
     const newQuantity = allUsers[normalizedEmail].cart[existingItemIndex].quantity + quantity;
@@ -255,8 +260,8 @@ export async function removeItemFromUserCartAction(email: string, productId: str
   if (!email) return { success: false };
   const allUsers = await readUsersFile();
   const normalizedEmail = email.toLowerCase();
-  if (!allUsers[normalizedEmail]) {
-    console.error(`Cart: User ${email} not found.`);
+  if (!allUsers[normalizedEmail] || !allUsers[normalizedEmail].cart) {
+    console.error(`Cart: User ${email} not found or cart missing.`);
     return { success: false };
   }
   const initialLength = allUsers[normalizedEmail].cart.length;
@@ -271,14 +276,14 @@ export async function updateUserItemQuantityInCartAction(email: string, productI
   if (!email) return { success: false };
   const allUsers = await readUsersFile();
   const normalizedEmail = email.toLowerCase();
-  if (!allUsers[normalizedEmail]) {
-    console.error(`Cart: User ${email} not found.`);
+  if (!allUsers[normalizedEmail] || !allUsers[normalizedEmail].cart) {
+    console.error(`Cart: User ${email} not found or cart missing.`);
     return { success: false };
   }
   const itemIndex = allUsers[normalizedEmail].cart.findIndex(item => item.product.id === productId);
   if (itemIndex > -1) {
     if (newQuantity <= 0) {
-      allUsers[normalizedEmail].cart.splice(itemIndex, 1); 
+      allUsers[normalizedEmail].cart.splice(itemIndex, 1);
     } else {
       allUsers[normalizedEmail].cart[itemIndex].quantity = Math.min(newQuantity, allUsers[normalizedEmail].cart[itemIndex].product.stock);
     }
@@ -298,4 +303,48 @@ export async function clearUserCartAction(email: string): Promise<{ success: boo
   allUsers[normalizedEmail].cart = [];
   await writeUsersFile(allUsers);
   return { success: true, cart: allUsers[normalizedEmail].cart };
+}
+
+
+// --- Admin Actions ---
+interface AdminCredentials {
+  email?: string;
+  passwordHash?: string;
+  pinHash?: string;
+}
+
+export async function getAdminCredentialsFromFile(): Promise<{
+  configured: boolean;
+  email?: string;
+  passwordHash?: string;
+  pinHash?: string;
+  error?: string;
+}> {
+  try {
+    const jsonData = await fs.readFile(adminDataFilePath, 'utf-8');
+    const creds = JSON.parse(jsonData) as AdminCredentials;
+
+    if (
+      creds.email && !creds.email.startsWith("REPLACE_WITH_ADMIN_EMAIL") &&
+      creds.passwordHash && !creds.passwordHash.startsWith("REPLACE_WITH_BCRYPT_HASH") &&
+      creds.pinHash && !creds.pinHash.startsWith("REPLACE_WITH_BCRYPT_HASH")
+    ) {
+      return {
+        configured: true,
+        email: creds.email,
+        passwordHash: creds.passwordHash,
+        pinHash: creds.pinHash,
+      };
+    }
+    return { configured: false, error: "Admin credentials use placeholder values." };
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code === 'ENOENT') {
+      return { configured: false, error: "admin.json not found. Please create and configure it." };
+    } else if (error instanceof SyntaxError) {
+      return { configured: false, error: "admin.json is not valid JSON. Please check its format." };
+    }
+    console.error("Failed to read or parse admin.json:", error);
+    return { configured: false, error: "Could not read admin credentials." };
+  }
 }

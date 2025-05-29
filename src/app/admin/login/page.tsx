@@ -1,3 +1,4 @@
+
 // src/app/admin/login/page.tsx
 "use client";
 
@@ -10,35 +11,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PinInput } from "@/components/ui/pin-input";
-import { Eye, EyeOff, ShieldCheck, UserPlus, Copy } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, UserPlus, Copy, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import bcrypt from 'bcryptjs';
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-
-// Attempt to import admin credentials. If admin.json doesn't exist or is invalid, this might throw or return undefined.
-let adminCredentialsData: { email: string; passwordHash: string; pinHash: string; } | null = null;
-try {
-  // In a real app, this would be a server-side fetch or environment variable for security.
-  // For this prototype, we directly import.
-  const importedData = require('@/data/admin.json');
-  if (
-    importedData &&
-    importedData.email &&
-    importedData.passwordHash &&
-    importedData.pinHash &&
-    !importedData.email.startsWith("REPLACE_WITH_ADMIN_EMAIL") &&
-    !importedData.passwordHash.startsWith("REPLACE_WITH_BCRYPT_HASH") &&
-    !importedData.pinHash.startsWith("REPLACE_WITH_BCRYPT_HASH")
-  ) {
-    adminCredentialsData = importedData;
-  }
-} catch (error) {
-  console.warn("admin.json not found or not configured. Admin account creation will be shown.", error);
-  adminCredentialsData = null;
-}
+import { getAdminCredentialsFromFile } from "@/app/actions/userActions"; // Import the new server action
 
 const passwordStrengthSchema = z.string()
   .min(8, "Password must be at least 8 characters long.")
@@ -75,11 +55,19 @@ interface GeneratedAdminConfig {
   pinHash: string;
 }
 
+interface StoredAdminCredentials {
+  email?: string;
+  passwordHash?: string;
+  pinHash?: string;
+}
+
 export default function AdminAuthPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [uiMode, setUiMode] = useState<'loading' | 'createAdmin' | 'loginAdmin' | 'showConfigInstructions'>('loading');
+  const [uiMode, setUiMode] = useState<'loading' | 'createAdmin' | 'loginAdmin' | 'showConfigInstructions' | 'configError'>('loading');
+  const [configErrorMessage, setConfigErrorMessage] = useState<string | null>(null);
+  const [storedAdminCredentials, setStoredAdminCredentials] = useState<StoredAdminCredentials | null>(null);
   const [generatedConfig, setGeneratedConfig] = useState<GeneratedAdminConfig | null>(null);
 
   const [showPassword, setShowPassword] = useState(false);
@@ -88,12 +76,39 @@ export default function AdminAuthPage() {
   const [showConfirmLoginPin, setShowConfirmLoginPin] = useState(true);
   const [passwordStrength, setPasswordStrength] = useState(0);
 
-  useEffect(() => {
-    if (adminCredentialsData) {
+  const fetchAdminConfig = async () => {
+    setUiMode('loading');
+    const result = await getAdminCredentialsFromFile();
+    if (result.configured && result.email && result.passwordHash && result.pinHash) {
+      setStoredAdminCredentials({
+        email: result.email,
+        passwordHash: result.passwordHash,
+        pinHash: result.pinHash,
+      });
+      adminLoginForm.setValue("email", result.email); // Pre-fill email for login form
       setUiMode('loginAdmin');
     } else {
-      setUiMode('createAdmin');
+      setStoredAdminCredentials(null);
+      if (result.error) {
+          console.warn("Admin config error:", result.error);
+          // Keep in createAdmin mode if admin.json is not found or uses placeholders
+          // This allows the "Create Admin Account" flow to proceed
+          if (result.error.includes("not found") || result.error.includes("placeholder values")) {
+             setUiMode('createAdmin');
+          } else {
+            // For other errors (e.g., malformed JSON), show a specific error message
+            setConfigErrorMessage(result.error);
+            setUiMode('configError');
+          }
+      } else {
+        setUiMode('createAdmin'); // Default to create if not configured and no specific error
+      }
     }
+  };
+
+  useEffect(() => {
+    fetchAdminConfig();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const createAdminForm = useForm<CreateAdminFormValues>({
@@ -103,15 +118,8 @@ export default function AdminAuthPage() {
 
   const adminLoginForm = useForm<AdminLoginFormValues>({
     resolver: zodResolver(adminLoginSchema),
-    defaultValues: { email: adminCredentialsData?.email || "", password: "", loginPin: "" },
+    defaultValues: { email: "", password: "", loginPin: "" },
   });
-  
-  useEffect(() => {
-    if(adminCredentialsData?.email) {
-        adminLoginForm.setValue("email", adminCredentialsData.email);
-    }
-  }, [adminCredentialsData, adminLoginForm]);
-
 
   const currentPassword = createAdminForm.watch("password");
   useEffect(() => {
@@ -126,7 +134,7 @@ export default function AdminAuthPage() {
   }, [currentPassword]);
 
   async function onCreateAdminSubmit(values: CreateAdminFormValues) {
-    const saltRounds = 10;
+    const saltRounds = 10; // Consistent with userActions
     const hashedPassword = bcrypt.hashSync(values.password, saltRounds);
     const hashedLoginPin = bcrypt.hashSync(values.loginPin, saltRounds);
 
@@ -144,19 +152,19 @@ export default function AdminAuthPage() {
   }
 
   async function onAdminLoginSubmit(values: AdminLoginFormValues) {
-    if (!adminCredentialsData) {
-      toast({ title: "Login Failed", description: "Admin credentials not configured. Please update admin.json or create an admin account if this is the first setup.", variant: "destructive", duration: 7000 });
-      setUiMode('createAdmin'); // Guide to creation if config is missing
+    if (!storedAdminCredentials || !storedAdminCredentials.email || !storedAdminCredentials.passwordHash || !storedAdminCredentials.pinHash) {
+      toast({ title: "Login Failed", description: "Admin credentials not configured correctly. Please update admin.json or use the create admin flow if this is the first setup.", variant: "destructive", duration: 7000 });
+      fetchAdminConfig(); // Re-check config and potentially switch to 'createAdmin' mode
       return;
     }
 
-    if (values.email.toLowerCase() !== adminCredentialsData.email.toLowerCase()) {
+    if (values.email.toLowerCase() !== storedAdminCredentials.email.toLowerCase()) {
       toast({ title: "Login Failed", description: "Invalid admin email.", variant: "destructive" });
       return;
     }
 
-    const isPasswordCorrect = bcrypt.compareSync(values.password, adminCredentialsData.passwordHash);
-    const isPinCorrect = bcrypt.compareSync(values.loginPin, adminCredentialsData.pinHash);
+    const isPasswordCorrect = bcrypt.compareSync(values.password, storedAdminCredentials.passwordHash);
+    const isPinCorrect = bcrypt.compareSync(values.loginPin, storedAdminCredentials.pinHash);
 
     if (!isPasswordCorrect || !isPinCorrect) {
       toast({ title: "Login Failed", description: "Invalid admin password or login PIN.", variant: "destructive" });
@@ -165,18 +173,16 @@ export default function AdminAuthPage() {
 
     localStorage.setItem("isLoggedInPrototype", "true");
     localStorage.setItem("isAdminPrototype", "true");
-    localStorage.setItem('currentUserEmail', adminCredentialsData.email); // Store admin email as current user
-    // Store a simple admin profile for consistency if needed by other parts
+    localStorage.setItem('currentUserEmail', storedAdminCredentials.email);
     const adminProfileForStorage = {
         firstName: "Admin",
         lastName: "User",
-        email: adminCredentialsData.email,
-        countryCode: "N/A", // Or some default
+        email: storedAdminCredentials.email,
+        countryCode: "N/A",
         phoneNumber: "N/A",
         isAdmin: true,
     };
     localStorage.setItem('userProfilePrototype', JSON.stringify(adminProfileForStorage));
-
 
     toast({ title: "Admin Login Successful", description: "Welcome, Administrator!" });
     router.push("/admin/dashboard");
@@ -194,6 +200,29 @@ export default function AdminAuthPage() {
   if (uiMode === 'loading') {
     return <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4"><p>Loading admin configuration...</p></div>;
   }
+
+  if (uiMode === 'configError' && configErrorMessage) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
+         <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center">
+            <AlertTriangle className="mx-auto h-10 w-10 text-destructive" />
+            <CardTitle className="mt-2 text-3xl font-bold text-destructive">Configuration Error</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-sm text-muted-foreground mb-2">Could not load admin credentials:</p>
+            <p className="text-sm text-destructive font-medium mb-4">{configErrorMessage}</p>
+            <p className="text-xs text-muted-foreground">Please check your `src/data/admin.json` file or proceed to create admin credentials if this is the first setup.</p>
+            <Button onClick={() => setUiMode('createAdmin')} className="mt-4">Create Admin Account</Button>
+          </CardContent>
+        </Card>
+         <Button variant="link" asChild className="mt-6">
+          <Link href="/">Back to Store</Link>
+        </Button>
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
@@ -281,7 +310,7 @@ export default function AdminAuthPage() {
             <CardTitle className="mt-2 text-3xl font-bold text-primary">ACTION REQUIRED: Configure Admin</CardTitle>
             <CardDescription>
               To complete admin setup, create or update the file <code>src/data/admin.json</code> in your project with the following content.
-              Then, refresh this page or click "Proceed to Login".
+              Then, click "Proceed to Login".
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
@@ -295,11 +324,7 @@ export default function AdminAuthPage() {
               </code>
             </pre>
             <Button onClick={() => {
-              adminCredentialsData = generatedConfig; // Temporarily set for immediate login attempt
-              setUiMode('loginAdmin');
-              // Force re-fetch of admin.json logic would ideally be a page refresh
-              // For prototype, we optimistically switch to login mode
-              router.refresh(); // Try to force re-evaluation of admin.json import
+              fetchAdminConfig(); // Re-fetch to see if admin.json was updated
             }} className="w-full" size="lg">
               I've Updated admin.json, Proceed to Login
             </Button>
@@ -307,7 +332,7 @@ export default function AdminAuthPage() {
         </Card>
       )}
 
-      {uiMode === 'loginAdmin' && (
+      {uiMode === 'loginAdmin' && storedAdminCredentials && (
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="text-center">
             <ShieldCheck className="mx-auto h-10 w-10 text-primary" />
@@ -320,7 +345,7 @@ export default function AdminAuthPage() {
                 <FormField control={adminLoginForm.control} name="email" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Admin Email</FormLabel>
-                    <FormControl><Input placeholder="admin@earthpuran.com" {...field} readOnly={!!adminCredentialsData?.email} /></FormControl>
+                    <FormControl><Input placeholder="admin@earthpuran.com" {...field} readOnly={!!storedAdminCredentials?.email} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -352,6 +377,20 @@ export default function AdminAuthPage() {
               </form>
             </Form>
           </CardContent>
+           <CardFooter className="flex-col items-center space-y-2 pt-6">
+            <p className="text-xs text-muted-foreground">
+              Not seeing the login form after creating an admin? Ensure `src/data/admin.json` is correctly updated with non-placeholder values.
+            </p>
+            <Button variant="link" size="sm" onClick={() => {
+              // This offers a way to "reset" the flow if admin.json is misconfigured
+              // by forcing the Create Admin flow again.
+              // In a real app, you'd have a more robust recovery mechanism.
+              setUiMode('createAdmin');
+              setStoredAdminCredentials(null); // Clear any cached/stale credentials
+            }}>
+              Re-run Admin Setup / Create Admin
+            </Button>
+          </CardFooter>
         </Card>
       )}
        <Button variant="link" asChild className="mt-6">
@@ -360,4 +399,3 @@ export default function AdminAuthPage() {
     </div>
   );
 }
-
