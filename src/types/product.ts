@@ -15,8 +15,9 @@ export interface Product {
   brand: string;
   price: number;
   description: string;
-  imageUrl: string;
+  imageUrl: string; // Primary image URL
   imageHint?: string;
+  additionalImageUrls?: string[]; // Array of additional image URLs
   colors?: string[];
   shades?: string[];
   paletteName?: string;

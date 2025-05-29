@@ -27,9 +27,10 @@ const productSchema = z.object({
   category: z.string().min(1, "Category is required."),
   brand: z.string().min(1, "Brand is required."),
   stock: z.coerce.number().int().min(0, "Stock cannot be negative."),
-  imageUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
+  imageUrl: z.string().url("Must be a valid URL for the primary image.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
-  colors: z.string().optional(), // Added for comma-separated colors
+  colors: z.string().optional(), // Comma-separated colors
+  additionalImageUrlsString: z.string().optional(), // For textarea input
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -56,7 +57,8 @@ export default function EditProductPage() {
       stock: 0,
       imageUrl: "",
       imageHint: "",
-      colors: "", // Default empty string for colors
+      colors: "",
+      additionalImageUrlsString: "",
     },
   });
 
@@ -79,7 +81,8 @@ export default function EditProductPage() {
           stock: fetchedProduct.stock,
           imageUrl: fetchedProduct.imageUrl,
           imageHint: fetchedProduct.imageHint || "",
-          colors: fetchedProduct.colors ? fetchedProduct.colors.join(', ') : "", // Join colors array for form input
+          colors: fetchedProduct.colors ? fetchedProduct.colors.join(', ') : "",
+          additionalImageUrlsString: fetchedProduct.additionalImageUrls ? fetchedProduct.additionalImageUrls.join('\n') : "",
         });
       } else {
         console.error("Product not found for ID:", productId);
@@ -93,11 +96,17 @@ export default function EditProductPage() {
 
   function onSubmit(values: ProductFormValues) {
     // TODO: Implement actual product update logic
+    const additionalImageUrls = values.additionalImageUrlsString
+      ? values.additionalImageUrlsString.split('\n').map(url => url.trim()).filter(url => url && z.string().url().safeParse(url).success)
+      : [];
+
     const processedValues = {
       ...values,
-      // Process comma-separated colors string into an array
       colorsArray: values.colors ? values.colors.split(',').map(c => c.trim()).filter(c => c) : [],
+      additionalImageUrls: additionalImageUrls,
     };
+    delete (processedValues as any).additionalImageUrlsString;
+
     console.log("Updated product data for ID", productId, ":", processedValues);
     toast({ title: "Product Updated (Simulated)", description: `${values.name} has been updated. (Data logged to console)` });
   }
@@ -109,7 +118,7 @@ export default function EditProductPage() {
         <Card>
           <CardHeader><Skeleton className="h-8 w-1/2" /><Skeleton className="h-4 w-3/4 mt-2" /></CardHeader>
           <CardContent className="space-y-8">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)} {/* Increased skeleton count */}
+            {[...Array(7)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
             <div className="flex justify-end gap-2">
               <Skeleton className="h-10 w-24" />
               <Skeleton className="h-10 w-32" />
@@ -247,9 +256,9 @@ export default function EditProductPage() {
                 name="imageUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Image URL</FormLabel>
-                    <FormControl><Input placeholder="https://placehold.co/600x600.png" {...field} /></FormControl>
-                     <FormDescription>Use a placeholder like https://placehold.co/WIDTHxHEIGHT.png if needed.</FormDescription>
+                    <FormLabel>Primary Image URL</FormLabel>
+                    <FormControl><Input placeholder="https://your-drive-link/image.png" {...field} /></FormControl>
+                     <FormDescription>Enter a direct link to the primary product image (e.g., from Google Drive).</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -259,9 +268,21 @@ export default function EditProductPage() {
                 name="imageHint"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Image AI Hint (Optional)</FormLabel>
+                    <FormLabel>Primary Image AI Hint (Optional)</FormLabel>
                     <FormControl><Input placeholder="e.g., lipstick beauty" {...field} /></FormControl>
                     <FormDescription>One or two keywords for AI image search (max 2 words).</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="additionalImageUrlsString"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Additional Image URLs (Optional)</FormLabel>
+                    <FormControl><Textarea placeholder="Enter one URL per line for additional images..." {...field} rows={4} /></FormControl>
+                    <FormDescription>Provide direct links to other product images, each on a new line. Ensure these are valid URLs.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -22,9 +22,10 @@ const productSchema = z.object({
   category: z.string().min(1, "Category is required."),
   brand: z.string().min(1, "Brand is required."),
   stock: z.coerce.number().int().min(0, "Stock cannot be negative."),
-  imageUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
+  imageUrl: z.string().url("Must be a valid URL for the primary image.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
-  colors: z.string().optional(), // Added for comma-separated colors
+  colors: z.string().optional(), // Comma-separated colors
+  additionalImageUrlsString: z.string().optional(), // For textarea input
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -45,20 +46,26 @@ export default function NewProductPage() {
       stock: 0,
       imageUrl: "",
       imageHint: "",
-      colors: "", // Default empty string for colors
+      colors: "",
+      additionalImageUrlsString: "",
     },
   });
 
   function onSubmit(values: ProductFormValues) {
     // TODO: Implement actual product creation logic (e.g., call server action)
+    const additionalImageUrls = values.additionalImageUrlsString
+      ? values.additionalImageUrlsString.split('\n').map(url => url.trim()).filter(url => url && z.string().url().safeParse(url).success)
+      : [];
+
     const processedValues = {
       ...values,
-      // Process comma-separated colors string into an array
       colorsArray: values.colors ? values.colors.split(',').map(c => c.trim()).filter(c => c) : [],
+      additionalImageUrls: additionalImageUrls, // Parsed array
     };
+    delete (processedValues as any).additionalImageUrlsString; // Remove the temporary string field
+
     console.log("New product data:", processedValues);
     toast({ title: "Product Created (Simulated)", description: `${values.name} has been added. (Data logged to console)` });
-    // Potentially redirect or clear form
     // form.reset(); // Uncomment to clear form after submission
   }
 
@@ -174,9 +181,9 @@ export default function NewProductPage() {
                 name="imageUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Image URL</FormLabel>
-                    <FormControl><Input placeholder="https://placehold.co/600x600.png" {...field} /></FormControl>
-                    <FormDescription>Use a placeholder like https://placehold.co/WIDTHxHEIGHT.png if needed.</FormDescription>
+                    <FormLabel>Primary Image URL</FormLabel>
+                    <FormControl><Input placeholder="https://your-drive-link/image.png" {...field} /></FormControl>
+                    <FormDescription>Enter a direct link to the primary product image (e.g., from Google Drive).</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -186,9 +193,21 @@ export default function NewProductPage() {
                 name="imageHint"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Image AI Hint (Optional)</FormLabel>
+                    <FormLabel>Primary Image AI Hint (Optional)</FormLabel>
                     <FormControl><Input placeholder="e.g., lipstick beauty" {...field} /></FormControl>
                     <FormDescription>One or two keywords for AI image search (max 2 words).</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="additionalImageUrlsString"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Additional Image URLs (Optional)</FormLabel>
+                    <FormControl><Textarea placeholder="Enter one URL per line for additional images..." {...field} rows={4} /></FormControl>
+                    <FormDescription>Provide direct links to other product images, each on a new line.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
