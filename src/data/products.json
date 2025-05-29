@@ -10,7 +10,12 @@
     "imageUrl": "https://placehold.co/600x600.png",
     "imageHint": "lipstick beauty",
     "additionalImageUrls": [],
-    "colors": ["Ruby Red", "Dusty Rose", "Nude Beige", "Deep Plum"],
+    "colors": [
+      { "name": "Ruby Red", "link": "", "image": "" },
+      { "name": "Dusty Rose", "link": "", "image": "" },
+      { "name": "Nude Beige", "link": "", "image": "" },
+      { "name": "Deep Plum", "link": "", "image": "" }
+    ],
     "rating": 0,
     "reviews": 0,
     "productReviews": [],
@@ -32,7 +37,8 @@
     "reviews": 0,
     "productReviews": [],
     "stock": 30,
-    "tags": ["foundation", "radiant", "dewy", "hydrating", "organic"]
+    "tags": ["foundation", "radiant", "dewy", "hydrating", "organic"],
+    "colors": []
   },
   {
     "id": "3",
@@ -49,7 +55,8 @@
     "reviews": 0,
     "productReviews": [],
     "stock": 40,
-    "tags": ["eyeshadow", "palette", "sparkle", "pigmented", "natural-minerals"]
+    "tags": ["eyeshadow", "palette", "sparkle", "pigmented", "natural-minerals"],
+    "colors": []
   },
   {
     "id": "4",
@@ -65,7 +72,8 @@
     "reviews": 0,
     "productReviews": [],
     "stock": 60,
-    "tags": ["primer", "face", "smoothing", "pore-minimizing", "organic-extracts"]
+    "tags": ["primer", "face", "smoothing", "pore-minimizing", "organic-extracts"],
+    "colors": []
   },
   {
     "id": "5",
@@ -77,7 +85,7 @@
     "imageUrl": "https://placehold.co/600x600.png",
     "imageHint": "mascara product",
     "additionalImageUrls": [],
-    "color": "Intense Black",
+    "colors": [{ "name": "Intense Black", "link": "", "image": "" }],
     "rating": 0,
     "reviews": 0,
     "productReviews": [],

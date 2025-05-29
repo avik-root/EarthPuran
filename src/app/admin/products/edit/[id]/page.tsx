@@ -3,7 +3,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,13 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, PlusCircle, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getProductById } from "@/app/actions/productActions";
-import type { Product } from "@/types/product";
+import type { Product, ColorVariant } from "@/types/product";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
 
 const productSchema = z.object({
   name: z.string().min(3, "Product name must be at least 3 characters."),
@@ -29,8 +30,12 @@ const productSchema = z.object({
   stock: z.coerce.number().int().min(0, "Stock cannot be negative."),
   imageUrl: z.string().url("Must be a valid URL for the primary image.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
-  colors: z.string().optional(), // Comma-separated colors
   additionalImageUrlsString: z.string().optional(), // For textarea input
+  colors: z.array(z.object({
+    name: z.string().min(1, "Color name is required."),
+    link: z.string().url({ message: "Must be a valid URL if provided." }).optional().or(z.literal('')),
+    image: z.string().url({ message: "Must be a valid URL if provided." }).optional().or(z.literal('')),
+  })).optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -57,9 +62,14 @@ export default function EditProductPage() {
       stock: 0,
       imageUrl: "",
       imageHint: "",
-      colors: "",
       additionalImageUrlsString: "",
+      colors: [],
     },
+  });
+
+  const { fields: colorFields, append: appendColor, remove: removeColor } = useFieldArray({
+    control: form.control,
+    name: "colors",
   });
 
   useEffect(() => {
@@ -81,8 +91,8 @@ export default function EditProductPage() {
           stock: fetchedProduct.stock,
           imageUrl: fetchedProduct.imageUrl,
           imageHint: fetchedProduct.imageHint || "",
-          colors: fetchedProduct.colors ? fetchedProduct.colors.join(', ') : "",
           additionalImageUrlsString: fetchedProduct.additionalImageUrls ? fetchedProduct.additionalImageUrls.join('\n') : "",
+          colors: fetchedProduct.colors || [],
         });
       } else {
         console.error("Product not found for ID:", productId);
@@ -95,14 +105,12 @@ export default function EditProductPage() {
 
 
   function onSubmit(values: ProductFormValues) {
-    // TODO: Implement actual product update logic
     const additionalImageUrls = values.additionalImageUrlsString
       ? values.additionalImageUrlsString.split('\n').map(url => url.trim()).filter(url => url && z.string().url().safeParse(url).success)
       : [];
 
     const processedValues = {
       ...values,
-      colorsArray: values.colors ? values.colors.split(',').map(c => c.trim()).filter(c => c) : [],
       additionalImageUrls: additionalImageUrls,
     };
     delete (processedValues as any).additionalImageUrlsString;
@@ -118,7 +126,7 @@ export default function EditProductPage() {
         <Card>
           <CardHeader><Skeleton className="h-8 w-1/2" /><Skeleton className="h-4 w-3/4 mt-2" /></CardHeader>
           <CardContent className="space-y-8">
-            {[...Array(7)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+            {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
             <div className="flex justify-end gap-2">
               <Skeleton className="h-10 w-24" />
               <Skeleton className="h-10 w-32" />
@@ -142,7 +150,6 @@ export default function EditProductPage() {
        </div>
      );
   }
-
 
   return (
     <div className="space-y-6">
@@ -239,18 +246,7 @@ export default function EditProductPage() {
                   )}
                 />
               </div>
-              <FormField
-                control={form.control}
-                name="colors"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Available Colors (comma-separated)</FormLabel>
-                    <FormControl><Input placeholder="e.g., Ruby Red, Dusty Rose, Nude Beige" {...field} /></FormControl>
-                    <FormDescription>Enter color names separated by commas.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              
               <FormField
                 control={form.control}
                 name="imageUrl"
@@ -287,6 +283,70 @@ export default function EditProductPage() {
                   </FormItem>
                 )}
               />
+
+              <Separator />
+              <div>
+                <FormLabel className="text-lg font-medium">Color Variants</FormLabel>
+                <FormDescription className="mb-4">Add specific links or images for different color variants of this product.</FormDescription>
+                {colorFields.map((field, index) => (
+                  <Card key={field.id} className="mb-4 p-4 space-y-3 relative">
+                     <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => removeColor(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Remove color variant</span>
+                      </Button>
+                    <FormField
+                      control={form.control}
+                      name={`colors.${index}.name`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Color Name</FormLabel>
+                          <FormControl><Input placeholder="e.g., Ruby Red" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`colors.${index}.link`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Link for this Color (Optional)</FormLabel>
+                          <FormControl><Input placeholder="https://example.com/product/item-red" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`colors.${index}.image`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Image URL for this Color (Optional)</FormLabel>
+                          <FormControl><Input placeholder="https://your-drive-link/image-red.png" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </Card>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => appendColor({ name: "", link: "", image: "" })}
+                  className="mt-2"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Color Variant
+                </Button>
+              </div>
+              <Separator />
+
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" asChild>
                   <Link href="/admin/products">Cancel</Link>
