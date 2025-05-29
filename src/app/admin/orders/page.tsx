@@ -5,13 +5,13 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { getAllUsers, updateOrderStatus } from "@/app/actions/userActions";
 import type { UserData } from "@/types/userData";
-import type { Order as BaseOrder } from "@/types/order"; // Renamed to avoid conflict
+import type { Order as BaseOrder } from "@/types/order";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, MoreHorizontal, PackageCheck, FileText, Printer } from "lucide-react";
+import { Search, MoreHorizontal, PackageCheck, FileText, Printer, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { PrintableInvoice } from "@/components/admin/PrintableInvoice";
 
@@ -29,10 +30,14 @@ export interface EnrichedOrder extends BaseOrder {
   customerEmail: string;
 }
 
+type SortOption = "newest" | "oldest" | "status-processing" | "status-shipped" | "status-delivered" | "status-cancelled";
+
+
 export default function AdminOrdersPage() {
   const [allOrders, setAllOrders] = useState<EnrichedOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState<SortOption>("newest");
   const { toast } = useToast();
   const [orderToInvoice, setOrderToInvoice] = useState<EnrichedOrder | null>(null);
 
@@ -51,7 +56,8 @@ export default function AdminOrdersPage() {
           collectedOrders = collectedOrders.concat(userOrders);
         }
       });
-      collectedOrders.sort((a, b) => b.id.localeCompare(a.id)); // Newest first
+      // Initial sort by newest, specific sorting will be applied in useMemo
+      collectedOrders.sort((a, b) => b.id.localeCompare(a.id)); 
       setAllOrders(collectedOrders);
     } catch (error) {
       console.error("Failed to fetch all orders:", error);
@@ -71,15 +77,10 @@ export default function AdminOrdersPage() {
   
   useEffect(() => {
     if (orderToInvoice) {
-      // The CSS @media print rules will handle showing/hiding elements.
-      // We just need to trigger the browser's print dialog.
       const timer = setTimeout(() => {
         window.print();
-        // Resetting state after print dialog is initiated.
-        // The actual closing of the dialog is handled by the user.
         setOrderToInvoice(null); 
-      }, 250); // Delay to allow component to render with new order data
-
+      }, 250); 
       return () => clearTimeout(timer);
     }
   }, [orderToInvoice]);
@@ -114,16 +115,40 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const filteredOrders = useMemo(() => {
-    if (!searchTerm) {
-      return allOrders;
+  const filteredAndSortedOrders = useMemo(() => {
+    let processedOrders = [...allOrders];
+
+    if (searchTerm) {
+      processedOrders = processedOrders.filter(order =>
+        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
-    return allOrders.filter(order =>
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [allOrders, searchTerm]);
+
+    switch (sortOption) {
+      case "oldest":
+        processedOrders.sort((a, b) => a.id.localeCompare(b.id));
+        break;
+      case "status-processing":
+        processedOrders = processedOrders.filter(o => o.status === 'Processing').sort((a,b) => b.id.localeCompare(a.id));
+        break;
+      case "status-shipped":
+        processedOrders = processedOrders.filter(o => o.status === 'Shipped').sort((a,b) => b.id.localeCompare(a.id));
+        break;
+      case "status-delivered":
+        processedOrders = processedOrders.filter(o => o.status === 'Delivered').sort((a,b) => b.id.localeCompare(a.id));
+        break;
+      case "status-cancelled":
+        processedOrders = processedOrders.filter(o => o.status === 'Cancelled').sort((a,b) => b.id.localeCompare(a.id));
+        break;
+      case "newest":
+      default:
+        processedOrders.sort((a, b) => b.id.localeCompare(a.id));
+        break;
+    }
+    return processedOrders;
+  }, [allOrders, searchTerm, sortOption]);
 
   if (loading) {
     return (
@@ -148,25 +173,46 @@ export default function AdminOrdersPage() {
       <h1 className="text-3xl font-bold tracking-tight">Manage Orders</h1>
       <CardDescription>View and manage all customer orders.</CardDescription>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by Order ID, Customer Name or Email..."
-          className="pl-10 w-full sm:w-1/2 lg:w-1/3"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="relative flex-grow w-full sm:w-auto">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search Orders..."
+            className="pl-10 w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full sm:w-auto">
+              Sort By <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setSortOption("newest")}>Newest</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortOption("oldest")}>Oldest</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setSortOption("status-processing")}>Status: Processing</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortOption("status-shipped")}>Status: Shipped</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortOption("status-delivered")}>Status: Delivered</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortOption("status-cancelled")}>Status: Cancelled</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
 
       <Card>
         <CardHeader>
           <CardTitle>Order List</CardTitle>
           <CardDescription>
-            A comprehensive list of all customer orders. Newest orders are shown first.
+            A comprehensive list of all customer orders.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {filteredOrders.length === 0 ? (
+          {filteredAndSortedOrders.length === 0 ? (
             <div className="text-center py-12">
               <Search className="mx-auto h-12 w-12 text-muted-foreground" />
               <p className="mt-4 text-muted-foreground">
@@ -186,7 +232,7 @@ export default function AdminOrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrders.map((order) => (
+                {filteredAndSortedOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-mono text-xs">{order.id}</TableCell>
                     <TableCell>
@@ -234,7 +280,6 @@ export default function AdminOrdersPage() {
         </CardContent>
       </Card>
       
-      {/* This div will be targeted by print styles to be the only visible content when printing */}
       <div className="printable-invoice-container">
         <PrintableInvoice order={orderToInvoice} />
       </div>
