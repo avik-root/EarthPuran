@@ -20,7 +20,7 @@ import bcrypt from 'bcryptjs';
 
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }).refine(val => val.endsWith('@gmail.com'), { message: "Only Gmail addresses are allowed." }),
+  email: z.string().email({ message: "Invalid email address." }).refine(val => val.toLowerCase().endsWith('@gmail.com'), { message: "Only Gmail addresses are allowed." }),
   password: z.string().min(1, { message: "Password is required." }),
   pin: z.string().length(6, { message: "PIN must be 6 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }),
 });
@@ -43,7 +43,13 @@ export default function LoginPage() {
   useEffect(() => {
     if (hasMounted) {
       if (localStorage.getItem("isLoggedInPrototype") === "true") {
-        router.push(searchParams.get('redirect') || "/");
+        // If already logged in, redirect unless on an admin page redirect from admin layout
+        const redirectUrl = searchParams.get('redirect');
+        if (redirectUrl && redirectUrl.startsWith('/admin')) {
+          // Let admin layout handle if user is admin or not
+        } else {
+          router.push(redirectUrl || "/");
+        }
       }
     }
   }, [hasMounted, searchParams, router, pathname]);
@@ -59,10 +65,11 @@ export default function LoginPage() {
 
   async function onSubmit(values: LoginFormValues) {
     console.log("Login form submitted:", values);
+    const normalizedEmail = values.email.toLowerCase();
 
     let userData: UserData | null = null;
     try {
-      userData = await getUserData(values.email);
+      userData = await getUserData(normalizedEmail);
     } catch (e) {
       console.error("Error fetching user data for login:", e);
       setTimeout(() => {
@@ -88,7 +95,7 @@ export default function LoginPage() {
       return;
     }
     
-    // Set admin status based on user data
+    // Set admin status based on user data from users.json
     if (userData.profile.isAdmin) {
       localStorage.setItem("isAdminPrototype", "true");
     } else {
@@ -96,14 +103,14 @@ export default function LoginPage() {
     }
 
     localStorage.setItem("isLoggedInPrototype", "true");
-    localStorage.setItem('currentUserEmail', values.email); 
+    localStorage.setItem('currentUserEmail', normalizedEmail); 
     localStorage.setItem('userProfilePrototype', JSON.stringify(userData.profile));
 
 
     setTimeout(() => {
       toast({ title: "Login Successful", description: "Welcome back!" });
     },0);
-    const redirectUrl = searchParams.get('redirect') || "/";
+    const redirectUrl = searchParams.get('redirect') || (userData.profile.isAdmin ? "/admin/dashboard" : "/");
     router.push(redirectUrl);
     if (redirectUrl === pathname) { 
         router.refresh();
@@ -115,7 +122,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center py-12">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold text-primary">Welcome Back!</CardTitle>
@@ -216,5 +223,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    

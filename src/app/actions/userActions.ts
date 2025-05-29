@@ -4,7 +4,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import type { AllUsersData, UserData, UserProfile, Product as WishlistProduct, FullCartItem } from '@/types/userData';
+import type { AllUsersData, UserData, UserProfile, UserAddress, WishlistProduct, FullCartItem } from '@/types/userData';
 import type { Product } from '@/types/product';
 import type { Order } from '@/types/order';
 
@@ -47,7 +47,7 @@ async function writeUsersFile(data: AllUsersData): Promise<void> {
   }
 }
 
-function getDefaultUserData(profile: UserProfile, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string, makeAdmin: boolean = false): UserData {
+function getDefaultUserData(profile: Omit<UserProfile, 'hashedPassword' | 'hashedPin' | 'isAdmin'>, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string, makeAdmin: boolean = false): UserData {
     const hashedPassword = bcrypt.hashSync(plaintextPassword_prototype_only, saltRounds);
     const hashedPin = bcrypt.hashSync(plaintextPin_prototype_only, saltRounds);
     
@@ -55,7 +55,7 @@ function getDefaultUserData(profile: UserProfile, plaintextPassword_prototype_on
         ...profile,
         hashedPassword,
         hashedPin,
-        isAdmin: makeAdmin, 
+        isAdmin: makeAdmin,
     };
     
     return {
@@ -73,31 +73,32 @@ export async function getUserData(email: string): Promise<UserData | null> {
     return null;
   }
   const allUsers = await readUsersFile();
-  return allUsers[email] || null;
+  return allUsers[email.toLowerCase()] || null;
 }
 
-export async function initializeUserAccount(profile: UserProfile, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string): Promise<UserData> {
+export async function initializeUserAccount(profile: Omit<UserProfile, 'hashedPassword' | 'hashedPin' | 'isAdmin'>, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string): Promise<UserData> {
     const allUsers = await readUsersFile();
-    if (allUsers[profile.email]) {
+    const normalizedEmail = profile.email.toLowerCase();
+    if (allUsers[normalizedEmail]) {
         throw new Error(`User with email ${profile.email} already exists.`);
     }
-    // Check if this is the first user account being created
-    const isFirstUser = Object.keys(allUsers).length === 0;
-    allUsers[profile.email] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, isFirstUser);
+    // No longer automatically making the first user an admin. Admin is handled via /admin/login flow.
+    allUsers[normalizedEmail] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, false);
     await writeUsersFile(allUsers);
-    return allUsers[profile.email];
+    return allUsers[normalizedEmail];
 }
 
 export async function updateUserProfile(email: string, profileData: Partial<Pick<UserProfile, 'firstName' | 'lastName' | 'countryCode' | 'phoneNumber'>>): Promise<boolean> {
     if (!email) return false;
     const allUsers = await readUsersFile();
-    if (!allUsers[email]) {
+    const normalizedEmail = email.toLowerCase();
+    if (!allUsers[normalizedEmail]) {
       console.error(`Attempted to update profile for non-existent user: ${email}`);
       return false;
     }
     
-    allUsers[email].profile = { 
-        ...allUsers[email].profile, 
+    allUsers[normalizedEmail].profile = { 
+        ...allUsers[normalizedEmail].profile, 
         ...profileData,
      };
     await writeUsersFile(allUsers);
@@ -107,7 +108,8 @@ export async function updateUserProfile(email: string, profileData: Partial<Pick
 export async function updateUserPasswordAction(email: string, currentPlaintextPassword_prototype_only: string, newPlaintextPassword_prototype_only: string): Promise<{success: boolean, message: string}> {
     if (!email) return {success: false, message: "Email not provided."};
     const allUsers = await readUsersFile();
-    const userData = allUsers[email];
+    const normalizedEmail = email.toLowerCase();
+    const userData = allUsers[normalizedEmail];
 
     if (!userData || !userData.profile.hashedPassword) {
       return {success: false, message: "User not found or no password set."};
@@ -126,7 +128,8 @@ export async function updateUserPasswordAction(email: string, currentPlaintextPa
 export async function updateUserPinAction(email: string, currentPlaintextPin_prototype_only: string, newPlaintextPin_prototype_only: string): Promise<{success: boolean, message: string}> {
     if (!email) return {success: false, message: "Email not provided."};
     const allUsers = await readUsersFile();
-    const userData = allUsers[email];
+    const normalizedEmail = email.toLowerCase();
+    const userData = allUsers[normalizedEmail];
 
     if (!userData || !userData.profile.hashedPin) {
       return {success: false, message: "User not found or no PIN set."};
@@ -146,11 +149,12 @@ export async function updateUserPinAction(email: string, currentPlaintextPin_pro
 export async function updateUserAddresses(email: string, addresses: UserAddress[]): Promise<boolean> {
     if (!email) return false;
     const allUsers = await readUsersFile();
-     if (!allUsers[email]) {
+    const normalizedEmail = email.toLowerCase();
+     if (!allUsers[normalizedEmail]) {
       console.error(`Attempted to update addresses for non-existent user: ${email}`);
       return false;
     }
-    allUsers[email].addresses = addresses;
+    allUsers[normalizedEmail].addresses = addresses;
     await writeUsersFile(allUsers);
     return true;
 }
@@ -158,12 +162,13 @@ export async function updateUserAddresses(email: string, addresses: UserAddress[
 export async function addOrder(email: string, newOrder: Order): Promise<boolean> {
     if (!email) return false;
     const allUsers = await readUsersFile();
-    if (!allUsers[email]) {
+    const normalizedEmail = email.toLowerCase();
+    if (!allUsers[normalizedEmail]) {
       console.error(`Attempted to add order for non-existent user: ${email}`);
       return false;
     }
-    allUsers[email].orders.push(newOrder);
-    allUsers[email].orders.sort((a, b) => parseInt(b.id) - parseInt(a.id)); // Sort by newest first
+    allUsers[normalizedEmail].orders.push(newOrder);
+    allUsers[normalizedEmail].orders.sort((a, b) => parseInt(b.id) - parseInt(a.id)); 
     await writeUsersFile(allUsers);
     return true;
 }
@@ -171,11 +176,12 @@ export async function addOrder(email: string, newOrder: Order): Promise<boolean>
 export async function updateUserOrders(email: string, updatedOrders: Order[]): Promise<boolean> {
     if (!email) return false;
     const allUsers = await readUsersFile();
-    if (!allUsers[email]) {
+    const normalizedEmail = email.toLowerCase();
+    if (!allUsers[normalizedEmail]) {
         console.error(`Attempted to update orders for non-existent user: ${email}`);
         return false;
     }
-    allUsers[email].orders = updatedOrders;
+    allUsers[normalizedEmail].orders = updatedOrders;
     await writeUsersFile(allUsers);
     return true;
 }
@@ -184,107 +190,112 @@ export async function updateUserOrders(email: string, updatedOrders: Order[]): P
 export async function addProductToWishlistAction(email: string, product: Product): Promise<{ success: boolean; wishlist?: Product[] }> {
   if (!email) return { success: false };
   const allUsers = await readUsersFile();
-  if (!allUsers[email]) {
+  const normalizedEmail = email.toLowerCase();
+  if (!allUsers[normalizedEmail]) {
     console.error(`Wishlist: User ${email} not found.`);
     return { success: false };
   }
-  if (!allUsers[email].wishlist.find(p => p.id === product.id)) {
-    allUsers[email].wishlist.push(product);
+  if (!allUsers[normalizedEmail].wishlist.find(p => p.id === product.id)) {
+    allUsers[normalizedEmail].wishlist.push(product);
     await writeUsersFile(allUsers);
   }
-  return { success: true, wishlist: allUsers[email].wishlist };
+  return { success: true, wishlist: allUsers[normalizedEmail].wishlist };
 }
 
 export async function removeProductFromWishlistAction(email: string, productId: string): Promise<{ success: boolean; wishlist?: Product[] }> {
   if (!email) return { success: false };
   const allUsers = await readUsersFile();
-  if (!allUsers[email]) {
+  const normalizedEmail = email.toLowerCase();
+  if (!allUsers[normalizedEmail]) {
     console.error(`Wishlist: User ${email} not found.`);
     return { success: false };
   }
-  const initialLength = allUsers[email].wishlist.length;
-  allUsers[email].wishlist = allUsers[email].wishlist.filter(p => p.id !== productId);
-  if (allUsers[email].wishlist.length < initialLength) {
+  const initialLength = allUsers[normalizedEmail].wishlist.length;
+  allUsers[normalizedEmail].wishlist = allUsers[normalizedEmail].wishlist.filter(p => p.id !== productId);
+  if (allUsers[normalizedEmail].wishlist.length < initialLength) {
     await writeUsersFile(allUsers);
   }
-  return { success: true, wishlist: allUsers[email].wishlist };
+  return { success: true, wishlist: allUsers[normalizedEmail].wishlist };
 }
 
 export async function clearUserWishlistAction(email: string): Promise<{ success: boolean; wishlist?: Product[] }> {
     if (!email) return { success: false };
     const allUsers = await readUsersFile();
-    if (!allUsers[email]) {
+    const normalizedEmail = email.toLowerCase();
+    if (!allUsers[normalizedEmail]) {
         console.error(`Wishlist: User ${email} not found.`);
         return { success: false };
     }
-    allUsers[email].wishlist = [];
+    allUsers[normalizedEmail].wishlist = [];
     await writeUsersFile(allUsers);
-    return { success: true, wishlist: allUsers[email].wishlist };
+    return { success: true, wishlist: allUsers[normalizedEmail].wishlist };
 }
 
 // --- Cart Actions ---
 export async function addItemToUserCartAction(email: string, product: Product, quantity: number): Promise<{ success: boolean; cart?: FullCartItem[] }> {
   if (!email || quantity <= 0) return { success: false };
   const allUsers = await readUsersFile();
-  if (!allUsers[email]) {
+  const normalizedEmail = email.toLowerCase();
+  if (!allUsers[normalizedEmail]) {
     console.error(`Cart: User ${email} not found.`);
     return { success: false };
   }
-  const existingItemIndex = allUsers[email].cart.findIndex(item => item.product.id === product.id);
+  const existingItemIndex = allUsers[normalizedEmail].cart.findIndex(item => item.product.id === product.id);
   if (existingItemIndex > -1) {
-    const newQuantity = allUsers[email].cart[existingItemIndex].quantity + quantity;
-    allUsers[email].cart[existingItemIndex].quantity = Math.min(newQuantity, product.stock);
+    const newQuantity = allUsers[normalizedEmail].cart[existingItemIndex].quantity + quantity;
+    allUsers[normalizedEmail].cart[existingItemIndex].quantity = Math.min(newQuantity, product.stock);
   } else {
-    allUsers[email].cart.push({ product, quantity: Math.min(quantity, product.stock) });
+    allUsers[normalizedEmail].cart.push({ product, quantity: Math.min(quantity, product.stock) });
   }
   await writeUsersFile(allUsers);
-  return { success: true, cart: allUsers[email].cart };
+  return { success: true, cart: allUsers[normalizedEmail].cart };
 }
 
 export async function removeItemFromUserCartAction(email: string, productId: string): Promise<{ success: boolean; cart?: FullCartItem[] }> {
   if (!email) return { success: false };
   const allUsers = await readUsersFile();
-  if (!allUsers[email]) {
+  const normalizedEmail = email.toLowerCase();
+  if (!allUsers[normalizedEmail]) {
     console.error(`Cart: User ${email} not found.`);
     return { success: false };
   }
-  const initialLength = allUsers[email].cart.length;
-  allUsers[email].cart = allUsers[email].cart.filter(item => item.product.id !== productId);
-  if (allUsers[email].cart.length < initialLength) {
+  const initialLength = allUsers[normalizedEmail].cart.length;
+  allUsers[normalizedEmail].cart = allUsers[normalizedEmail].cart.filter(item => item.product.id !== productId);
+  if (allUsers[normalizedEmail].cart.length < initialLength) {
     await writeUsersFile(allUsers);
   }
-  return { success: true, cart: allUsers[email].cart };
+  return { success: true, cart: allUsers[normalizedEmail].cart };
 }
 
 export async function updateUserItemQuantityInCartAction(email: string, productId: string, newQuantity: number): Promise<{ success: boolean; cart?: FullCartItem[] }> {
   if (!email) return { success: false };
   const allUsers = await readUsersFile();
-  if (!allUsers[email]) {
+  const normalizedEmail = email.toLowerCase();
+  if (!allUsers[normalizedEmail]) {
     console.error(`Cart: User ${email} not found.`);
     return { success: false };
   }
-  const itemIndex = allUsers[email].cart.findIndex(item => item.product.id === productId);
+  const itemIndex = allUsers[normalizedEmail].cart.findIndex(item => item.product.id === productId);
   if (itemIndex > -1) {
     if (newQuantity <= 0) {
-      allUsers[email].cart.splice(itemIndex, 1); // Remove item if quantity is 0 or less
+      allUsers[normalizedEmail].cart.splice(itemIndex, 1); 
     } else {
-      allUsers[email].cart[itemIndex].quantity = Math.min(newQuantity, allUsers[email].cart[itemIndex].product.stock);
+      allUsers[normalizedEmail].cart[itemIndex].quantity = Math.min(newQuantity, allUsers[normalizedEmail].cart[itemIndex].product.stock);
     }
     await writeUsersFile(allUsers);
   }
-  return { success: true, cart: allUsers[email].cart };
+  return { success: true, cart: allUsers[normalizedEmail].cart };
 }
 
 export async function clearUserCartAction(email: string): Promise<{ success: boolean; cart?: FullCartItem[] }> {
   if (!email) return { success: false };
   const allUsers = await readUsersFile();
-  if (!allUsers[email]) {
+  const normalizedEmail = email.toLowerCase();
+  if (!allUsers[normalizedEmail]) {
     console.error(`Cart: User ${email} not found.`);
     return { success: false };
   }
-  allUsers[email].cart = [];
+  allUsers[normalizedEmail].cart = [];
   await writeUsersFile(allUsers);
-  return { success: true, cart: allUsers[email].cart };
+  return { success: true, cart: allUsers[normalizedEmail].cart };
 }
-
-    

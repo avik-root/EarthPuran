@@ -1,4 +1,4 @@
-
+// src/app/admin/layout.tsx
 'use client';
 
 import Link from "next/link";
@@ -24,11 +24,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -36,63 +32,79 @@ export default function AdminLayout({
 
   useEffect(() => {
     if (typeof window === 'undefined') {
-        setLoading(false); 
-        return;
+      setLoading(false);
+      return;
     }
 
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
     const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
 
-    if (!isLoggedIn) {
-      router.push(`/login?redirect=${pathname}`); // Redirect to main login
-      setIsAuthorized(false);
-    } else if (!isAdmin) {
-      setIsAuthorized(false); // User is logged in but not an admin
+    // If trying to access a protected admin route (not the login page itself)
+    if (pathname !== '/admin/login') {
+      if (!isLoggedIn || !isAdmin) {
+        router.push(`/admin/login?redirect=${pathname}`); // Redirect to admin login
+        setIsAuthorized(false);
+      } else {
+        setIsAuthorized(true);
+      }
     } else {
-      setIsAuthorized(true); // User is logged in and is an admin
+      // If on /admin/login, we don't need to authorize here; the page handles its own logic.
+      // However, if already logged in as admin, redirect to dashboard.
+      if (isLoggedIn && isAdmin) {
+        router.push('/admin/dashboard');
+        setIsAuthorized(true); // Should be true if redirecting to dashboard
+      } else {
+        setIsAuthorized(true); // Allow access to login page if not logged in
+      }
     }
     setLoading(false);
   }, [router, pathname]);
 
-  if (loading) {
+  if (loading && pathname !== '/admin/login') { // Only show loading skeleton for protected routes
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
-            <LayoutDashboard className="h-12 w-12 text-primary animate-pulse" />
-            <p className="text-muted-foreground">Verifying Admin Access...</p>
-            <Skeleton className="h-4 w-[250px]" />
-            <Skeleton className="h-4 w-[200px]" />
+          <LayoutDashboard className="h-12 w-12 text-primary animate-pulse" />
+          <p className="text-muted-foreground">Verifying Admin Access...</p>
+          <Skeleton className="h-4 w-[250px]" />
+          <Skeleton className="h-4 w-[200px]" />
         </div>
       </div>
     );
   }
 
-  if (!isAuthorized && !loading) { // Check loading to avoid flashing access denied
+  // If trying to access a protected route AND not authorized AND not loading
+  if (pathname !== '/admin/login' && !isAuthorized && !loading) {
     return (
-        <div className="flex h-screen items-center justify-center bg-background p-4">
-            <Card className="w-full max-w-md text-center">
-                <CardHeader>
-                    <CardTitle className="text-2xl text-destructive flex items-center justify-center gap-2">
-                        <ShieldAlert className="h-8 w-8" /> Access Denied
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground mb-6">You do not have permission to view this admin area. Please log in as an administrator.</p>
-                    <Button asChild>
-                        <Link href="/login">Go to Login</Link>
-                    </Button>
-                     <Button variant="link" asChild className="mt-2 text-sm">
-                        <Link href="/">Back to Store</Link>
-                    </Button>
-                </CardContent>
-            </Card>
-        </div>
+      <div className="flex h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle className="text-2xl text-destructive flex items-center justify-center gap-2">
+              <ShieldAlert className="h-8 w-8" /> Access Denied
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-6">You do not have permission to view this admin area. Please log in as an administrator.</p>
+            <Button asChild>
+              <Link href="/admin/login">Go to Admin Login</Link>
+            </Button>
+            <Button variant="link" asChild className="mt-2 text-sm">
+              <Link href="/">Back to Store</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
-  // If authorized for admin routes, render the admin sidebar layout.
+  // If on admin/login page, or authorized for other admin routes, render layout or just children.
+  if (pathname === '/admin/login') {
+    return <main>{children}</main>; // Render login page content directly without admin sidebar
+  }
+
+  // Render full admin layout for authorized users on protected admin routes
   return (
-    <SidebarProvider defaultOpen>
+    <>
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center justify-between p-2">
@@ -137,12 +149,12 @@ export default function AdminLayout({
             </SidebarGroup>
             <SidebarGroup>
               <SidebarGroupLabel>Settings</SidebarGroupLabel>
-               <SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton href="/admin/settings" tooltip="Settings (coming soon)" isActive={pathname.startsWith('/admin/settings')}>
                   <Settings /> <span>Settings</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-               <SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton href="/" tooltip="View Store">
                   <Home /> <span>View Store</span>
                 </SidebarMenuButton>
@@ -157,7 +169,7 @@ export default function AdminLayout({
           <div className="ml-auto flex items-center gap-4">
             <ThemeToggle />
             <Avatar>
-              <AvatarImage src="https://placehold.co/40x40.png" alt="Admin" data-ai-hint="user avatar"/>
+              <AvatarImage src="https://placehold.co/40x40.png" alt="Admin" data-ai-hint="user avatar" />
               <AvatarFallback>AD</AvatarFallback>
             </Avatar>
           </div>
@@ -166,8 +178,19 @@ export default function AdminLayout({
           {children}
         </main>
       </SidebarInset>
-    </SidebarProvider>
+    </>
   );
 }
 
-    
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <SidebarProvider defaultOpen>
+        <AdminLayoutContent>{children}</AdminLayoutContent>
+    </SidebarProvider>
+  );
+}
