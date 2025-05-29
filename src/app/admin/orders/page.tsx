@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, MoreHorizontal, PackageCheck, FileText, Printer, ChevronDown } from "lucide-react";
+import { Search, MoreHorizontal, PackageCheck, FileText, Printer, ChevronDown, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,8 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { PrintableInvoice } from "@/components/admin/PrintableInvoice";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 export interface EnrichedOrder extends BaseOrder {
   customerName: string;
@@ -169,120 +171,133 @@ export default function AdminOrdersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Manage Orders</h1>
-      <CardDescription>View and manage all customer orders.</CardDescription>
+    <TooltipProvider>
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold tracking-tight">Manage Orders</h1>
+        <CardDescription>View and manage all customer orders.</CardDescription>
 
-      <div className="flex flex-col sm:flex-row items-center gap-4">
-        <div className="relative flex-grow w-full sm:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search Orders..."
-            className="pl-10 w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="relative flex-grow w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search Orders..."
+              className="pl-10 w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-auto">
+                Sort By <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setSortOption("newest")}>Newest</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortOption("oldest")}>Oldest</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setSortOption("status-processing")}>Status: Processing</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortOption("status-shipped")}>Status: Shipped</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortOption("status-delivered")}>Status: Delivered</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortOption("status-cancelled")}>Status: Cancelled</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-auto">
-              Sort By <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setSortOption("newest")}>Newest</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption("oldest")}>Oldest</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setSortOption("status-processing")}>Status: Processing</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption("status-shipped")}>Status: Shipped</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption("status-delivered")}>Status: Delivered</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption("status-cancelled")}>Status: Cancelled</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
 
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Order List</CardTitle>
-          <CardDescription>
-            A comprehensive list of all customer orders.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {filteredAndSortedOrders.length === 0 ? (
-            <div className="text-center py-12">
-              <Search className="mx-auto h-12 w-12 text-muted-foreground" />
-              <p className="mt-4 text-muted-foreground">
-                No orders found{searchTerm && " matching your search"}.
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead className="hidden md:table-cell">Date</TableHead>
-                  <TableHead>Total (₹)</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAndSortedOrders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-mono text-xs">{order.id}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">{order.customerName}</div>
-                      <div className="text-xs text-muted-foreground">{order.customerEmail}</div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{order.date}</TableCell>
-                    <TableCell className="text-right">₹{order.totalAmount.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={cn("text-xs", getStatusColor(order.status))}>
-                        {order.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Order Actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                           <DropdownMenuItem asChild>
-                            <Link href={`/orders/${order.id}`} className="flex items-center">
-                                <FileText className="mr-2 h-4 w-4" /> View Details
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setOrderToInvoice(order)} className="flex items-center">
-                            <Printer className="mr-2 h-4 w-4" /> Generate Invoice
-                          </DropdownMenuItem>
-                          {(order.status === 'Processing' || order.status === 'Shipped') && (
-                            <DropdownMenuItem onClick={() => handleMarkAsDelivered(order)} className="flex items-center">
-                              <PackageCheck className="mr-2 h-4 w-4" /> Mark as Delivered
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+        <Card>
+          <CardHeader>
+            <CardTitle>Order List</CardTitle>
+            <CardDescription>
+              A comprehensive list of all customer orders.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {filteredAndSortedOrders.length === 0 ? (
+              <div className="text-center py-12">
+                <Search className="mx-auto h-12 w-12 text-muted-foreground" />
+                <p className="mt-4 text-muted-foreground">
+                  No orders found{searchTerm && " matching your search"}.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Order ID</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead className="hidden md:table-cell">Date</TableHead>
+                    <TableHead>Total (₹)</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-      
-      <div className="printable-invoice-container">
-        <PrintableInvoice order={orderToInvoice} />
+                </TableHeader>
+                <TableBody>
+                  {filteredAndSortedOrders.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-mono text-xs">{order.id}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{order.customerName}</div>
+                        <div className="text-xs text-muted-foreground">{order.customerEmail}</div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{order.date}</TableCell>
+                      <TableCell className="text-right">₹{order.totalAmount.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={cn("text-xs", getStatusColor(order.status))}>
+                          {order.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                         <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Order Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                             <DropdownMenuItem asChild>
+                              <Link href={`/orders/${order.id}`} className="flex items-center">
+                                  <FileText className="mr-2 h-4 w-4" /> View Details
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setOrderToInvoice(order)} className="flex items-center">
+                              <Printer className="mr-2 h-4 w-4" /> Generate Invoice
+                            </DropdownMenuItem>
+                            {(order.status === 'Processing' || order.status === 'Shipped') && (
+                              <DropdownMenuItem onClick={() => handleMarkAsDelivered(order)} className="flex items-center">
+                                <PackageCheck className="mr-2 h-4 w-4" /> Mark as Delivered
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                             <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <DropdownMenuItem disabled className="flex items-center text-destructive hover:text-destructive focus:text-destructive focus:bg-destructive/10 w-full">
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Order (Admin)
+                                  </DropdownMenuItem>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">
+                                  <p className="text-xs max-w-xs">Admin-only order deletion/archival is not yet implemented. Please use 'Cancel Order' on the order detail page for cancellable orders.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+        
+        <div className="printable-invoice-container">
+          <PrintableInvoice order={orderToInvoice} />
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
