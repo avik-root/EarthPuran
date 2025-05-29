@@ -1,8 +1,0 @@
-// IMPORTANT: Replace the placeholder hash values above with actual bcrypt hashes.
-// You can generate these using a script like the one provided in the explanation.
-// Example generation:
-// const bcrypt = require('bcryptjs');
-// const saltRounds = 10;
-// const passwordHash = bcrypt.hashSync("Agtg@2005", saltRounds);
-// const pinHash = bcrypt.hashSync("092011", saltRounds);
-// console.log(passwordHash, pinHash);
