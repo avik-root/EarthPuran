@@ -159,3 +159,26 @@ export async function addProduct(
     return { success: false, error: `Could not add product to file. ${errorMessage}` };
   }
 }
+
+export async function deleteProductById(productId: string): Promise<{ success: boolean; message: string }> {
+  if (!productId) {
+    return { success: false, message: "Product ID is required." };
+  }
+
+  try {
+    let products = await readProductsFile();
+    const initialLength = products.length;
+    products = products.filter(product => product.id !== productId);
+
+    if (products.length === initialLength) {
+      return { success: false, message: "Product not found." };
+    }
+
+    await writeProductsFile(products);
+    return { success: true, message: "Product deleted successfully." };
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while deleting product.";
+    return { success: false, message: errorMessage };
+  }
+}
