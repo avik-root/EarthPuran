@@ -1,7 +1,7 @@
 
 "use client";
 
-import { ShoppingCart, Trash2, Minus, Plus } from "lucide-react";
+import { ShoppingCart, Trash2, Minus, Plus, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,12 +10,92 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { useCart, type CartItem } from "@/hooks/useCart";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+interface StoredCoupon {
+  id: string;
+  code: string;
+  discountType: 'percentage' | 'fixed'; // For now, we only implement 'fixed'
+  value: number;
+  expiryDate?: string;
+  minSpend?: number;
+  usageLimit?: number;
+}
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, subtotal, clearCart } = useCart();
+  const { toast } = useToast();
+
+  const [couponCodeInput, setCouponCodeInput] = useState<string>("");
+  const [appliedCoupon, setAppliedCoupon] = useState<StoredCoupon | null>(null);
+  const [couponMessage, setCouponMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  const [availableCoupons, setAvailableCoupons] = useState<StoredCoupon[]>([]);
+
+  useEffect(() => {
+    const storedCoupons = localStorage.getItem("earthPuranAdminCoupons");
+    if (storedCoupons) {
+      try {
+        setAvailableCoupons(JSON.parse(storedCoupons));
+      } catch (e) {
+        console.error("Failed to parse coupons from localStorage", e);
+        setAvailableCoupons([]);
+      }
+    }
+  }, []);
+
+  const handleApplyCoupon = () => {
+    setCouponMessage(null);
+    if (!couponCodeInput.trim()) {
+      setCouponMessage({ text: "Please enter a coupon code.", type: 'error' });
+      return;
+    }
+
+    const matchedCoupon = availableCoupons.find(
+      (coupon) => coupon.code.toUpperCase() === couponCodeInput.trim().toUpperCase()
+    );
+
+    if (matchedCoupon) {
+      // For now, only fixed discounts are handled
+      if (matchedCoupon.discountType === 'fixed') {
+        setAppliedCoupon(matchedCoupon);
+        setCouponMessage({ text: `Coupon "${matchedCoupon.code}" applied! You save ₹${matchedCoupon.value.toFixed(2)}.`, type: 'success' });
+        toast({ title: "Coupon Applied", description: `Discount of ₹${matchedCoupon.value.toFixed(2)} applied.` });
+      } else {
+        setCouponMessage({ text: `Coupon "${matchedCoupon.code}" is not a fixed discount type (not yet supported).`, type: 'error' });
+        setAppliedCoupon(null);
+        toast({ title: "Coupon Error", description: "This coupon type is not yet supported.", variant: "destructive" });
+      }
+    } else {
+      setAppliedCoupon(null);
+      setCouponMessage({ text: "Invalid or expired coupon code.", type: 'error' });
+      toast({ title: "Invalid Coupon", description: "The entered coupon code is not valid.", variant: "destructive" });
+    }
+    setCouponCodeInput("");
+  };
+
+  const removeAppliedCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponMessage({ text: "Coupon removed.", type: 'error' }); // Using error style for removal message
+    toast({ title: "Coupon Removed" });
+  };
 
   const shipping = cartItems.length > 0 ? 50.00 : 0; // Example shipping in INR
-  const total = subtotal + shipping;
+  const discountAmount = appliedCoupon && appliedCoupon.discountType === 'fixed' ? appliedCoupon.value : 0;
+  
+  let calculatedTotal = subtotal - discountAmount + shipping;
+  if (calculatedTotal < 0) {
+    calculatedTotal = 0; // Ensure total doesn't go below zero
+  }
+  // If subtotal itself is 0 after discount, shipping should still apply if cart isn't empty
+  // However, if discount makes subtotal negative, then total should just be shipping (if items exist)
+  if (subtotal - discountAmount < 0 && cartItems.length > 0) {
+    calculatedTotal = shipping;
+  } else if (subtotal - discountAmount < 0 && cartItems.length === 0) {
+    calculatedTotal = 0;
+  }
+
 
   const handleQuantityChange = (item: CartItem, newQuantity: number) => {
     const quantity = Math.max(1, Math.min(newQuantity, item.product.stock)); // Ensure quantity is within bounds
@@ -52,8 +132,8 @@ export default function CartPage() {
                 <Image 
                   src={item.product.imageUrl} 
                   alt={item.product.name} 
-                  width={100} // Increased size
-                  height={100} // Increased size
+                  width={100}
+                  height={100}
                   className="rounded-md object-cover aspect-square" 
                   data-ai-hint={item.product.imageHint || "product item"} 
                 />
@@ -97,10 +177,39 @@ export default function CartPage() {
               <CardTitle>Order Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  placeholder="Enter Coupon Code"
+                  value={couponCodeInput}
+                  onChange={(e) => setCouponCodeInput(e.target.value)}
+                  className="flex-grow"
+                  disabled={!!appliedCoupon}
+                />
+                {!appliedCoupon ? (
+                    <Button onClick={handleApplyCoupon}><Ticket className="mr-2 h-4 w-4" />Apply</Button>
+                ) : (
+                    <Button variant="outline" onClick={removeAppliedCoupon} className="text-destructive hover:text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" />Remove
+                    </Button>
+                )}
+              </div>
+              {couponMessage && (
+                <p className={cn("text-xs", couponMessage.type === 'success' ? 'text-green-600' : 'text-destructive')}>
+                  {couponMessage.text}
+                </p>
+              )}
+              <Separator />
               <div className="flex justify-between text-sm">
                 <span>Subtotal</span>
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Discount <span className="text-xs">({appliedCoupon?.code})</span></span>
+                  <span>- ₹{discountAmount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span>Shipping</span>
                 <span>₹{shipping.toFixed(2)}</span>
@@ -108,14 +217,19 @@ export default function CartPage() {
               <Separator />
               <div className="flex justify-between font-semibold text-lg">
                 <span>Total</span>
-                <span>₹{total.toFixed(2)}</span>
+                <span>₹{calculatedTotal.toFixed(2)}</span>
               </div>
             </CardContent>
             <CardFooter>
-              <Button asChild size="lg" className="w-full" disabled={cartItems.length === 0}>
+              <Button asChild size="lg" className="w-full" disabled={cartItems.length === 0 || cartItems.some(item => item.quantity > item.product.stock)}>
                 <Link href="/checkout">Proceed to Checkout</Link>
               </Button>
             </CardFooter>
+            {cartItems.some(item => item.quantity > item.product.stock) && (
+                <p className="text-xs text-destructive text-center p-2">
+                    Please resolve stock issues before proceeding.
+                </p>
+            )}
           </Card>
         </div>
       )}
