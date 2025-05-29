@@ -3,19 +3,3 @@
   "passwordHash": "REPLACE_WITH_BCRYPT_HASH_OF_ADMIN_PASSWORD",
   "pinHash": "REPLACE_WITH_BCRYPT_HASH_OF_ADMIN_6_DIGIT_LOGIN_PIN"
 }
-// INSTRUCTIONS FOR THE DEVELOPER (YOU):
-// 1. After using the "Create Admin Account" form on the /admin/login page,
-//    it will display the email, a hashed password, and a hashed 6-digit PIN.
-// 2. You MUST manually create this file (src/data/admin.json) in your project
-//    and copy those exact values here.
-//
-// EXAMPLE (DO NOT USE THESE EXACT VALUES FOR PRODUCTION, GENERATE YOUR OWN):
-// {
-//   "email": "admin@earthpuran.com",
-//   "passwordHash": "$2a$10$abcdefghijklmnopqrstuv", // Replace with actual hash
-//   "pinHash": "$2a$10$wxyzabcdefghijklmnopqr"      // Replace with actual hash
-// }
-//
-// IMPORTANT: If this file is missing, not parsable, or contains these placeholder
-// values, the /admin/login page will show the "Create Admin Account" form.
-// Once correctly configured with real hashes, it will show the "Admin Panel Login" form.
