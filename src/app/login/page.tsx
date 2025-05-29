@@ -97,7 +97,6 @@ export default function LoginPage() {
 
     localStorage.setItem("isLoggedInPrototype", "true");
     localStorage.setItem('currentUserEmail', values.email); 
-    // Store the fetched profile (which now includes isAdmin flag)
     localStorage.setItem('userProfilePrototype', JSON.stringify(userData.profile));
 
 
@@ -106,7 +105,7 @@ export default function LoginPage() {
     },0);
     const redirectUrl = searchParams.get('redirect') || "/";
     router.push(redirectUrl);
-    if (redirectUrl === pathname) { // If redirecting to the same page, force a refresh for header to update
+    if (redirectUrl === pathname) { 
         router.refresh();
     }
   }

@@ -16,7 +16,6 @@ async function readUsersFile(): Promise<AllUsersData> {
     const jsonData = await fs.readFile(dataFilePath, 'utf-8');
     if (!jsonData.trim()) {
       console.log("users.json is empty, initializing with {}.");
-      // If the file is empty, we still write an empty JSON object to ensure it's valid for next read.
       await fs.writeFile(dataFilePath, JSON.stringify({}, null, 2), 'utf-8');
       return {};
     }
@@ -48,22 +47,19 @@ async function writeUsersFile(data: AllUsersData): Promise<void> {
   }
 }
 
-function getDefaultUserData(profile: UserProfile, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string, isFirstUser: boolean): UserData {
+function getDefaultUserData(profile: UserProfile, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string): UserData {
     const hashedPassword = bcrypt.hashSync(plaintextPassword_prototype_only, saltRounds);
     const hashedPin = bcrypt.hashSync(plaintextPin_prototype_only, saltRounds);
     
-    const userProfileWithAdminStatus: UserProfile = {
+    const userProfileWithHashes: UserProfile = {
         ...profile,
         hashedPassword,
         hashedPin,
+        isAdmin: false, // Default to not admin
     };
-
-    if (isFirstUser) {
-        userProfileWithAdminStatus.isAdmin = true;
-    }
     
     return {
-        profile: userProfileWithAdminStatus,
+        profile: userProfileWithHashes,
         addresses: [],
         orders: [],
         wishlist: [],
@@ -85,8 +81,8 @@ export async function initializeUserAccount(profile: UserProfile, plaintextPassw
     if (allUsers[profile.email]) {
         throw new Error(`User with email ${profile.email} already exists.`);
     }
-    const isFirstUser = Object.keys(allUsers).length === 0;
-    allUsers[profile.email] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, isFirstUser);
+    // Removed "first user is admin" logic. Admin status is handled by separate admin login.
+    allUsers[profile.email] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only);
     await writeUsersFile(allUsers);
     return allUsers[profile.email];
 }

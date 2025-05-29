@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -40,6 +41,8 @@ export default function AdminLayout({
     }
 
     const gatePassed = localStorage.getItem("adminAccessGranted") === "true";
+    // For this prototype, we now rely on admin.json, so `adminCredentialsConfigured` is less relevant here.
+    // The key is whether they've passed the gate and logged in as admin.
     const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
 
@@ -49,6 +52,8 @@ export default function AdminLayout({
       if (isFullyAuthenticatedForDashboard && pathname !== '/admin/dashboard') {
         router.push('/admin/dashboard');
       }
+      // Allow rendering children for gate and login pages regardless of full auth
+      setIsAuthorizedForProtectedRoutes(false); // They are not "protected" in the same way dashboard is
     } else {
       // This is a protected admin route (e.g., /admin/dashboard, /admin/products)
       if (!gatePassed) {
@@ -79,15 +84,19 @@ export default function AdminLayout({
     );
   }
 
+  // If we are on the access gate or login page, render their content directly without the admin sidebar.
   if (pathname === '/admin/access-gate' || pathname === '/admin/login') {
     return <>{children}</>;
   }
 
+  // For other admin routes, if not authorized, show the access denied message.
   if (!isAuthorizedForProtectedRoutes) {
+    // Determine the correct link for the "Access Denied" card
     let missingStepLink = "/admin/access-gate"; 
     if (typeof window !== 'undefined') { 
         const gatePassedCheck = localStorage.getItem("adminAccessGranted") === "true";
         if (gatePassedCheck) {
+            // If gate passed but other checks failed (e.g., not logged in as admin)
             missingStepLink = "/admin/login"; 
         }
     }
@@ -111,6 +120,7 @@ export default function AdminLayout({
     );
   }
 
+  // If authorized for protected routes, render the admin sidebar layout.
   return (
     <SidebarProvider defaultOpen>
       <Sidebar>

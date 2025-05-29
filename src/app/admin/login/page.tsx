@@ -1,3 +1,4 @@
+
 // src/app/admin/login/page.tsx
 "use client";
 
@@ -46,7 +47,7 @@ export default function AdminAuthPage() {
   const { toast } = useToast();
   
   const [showPassword, setShowPassword] = useState(false);
-  const [showLoginPin, setShowLoginPin] = useState(true);
+  const [showLoginPin, setShowLoginPin] = useState(true); // Default to showing PIN
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [hasMounted, setHasMounted] = useState(false);
 
@@ -62,7 +63,7 @@ export default function AdminAuthPage() {
     }
     setLoadingConfig(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]); 
+  }, [router]); // toast can be removed if stable
 
   const adminLoginForm = useForm<AdminLoginFormValues>({
     resolver: zodResolver(adminLoginSchema),
@@ -82,6 +83,7 @@ export default function AdminAuthPage() {
       return;
     }
 
+    // This check ensures admin.json is loaded and has necessary fields.
     if (!adminCredentials || !adminCredentials.email || !adminCredentials.passwordHash || !adminCredentials.pinHash) {
       setTimeout(() => {
         toast({ title: "Configuration Error", description: "admin.json is missing or not configured correctly.", variant: "destructive", duration: 10000 });
@@ -96,13 +98,14 @@ export default function AdminAuthPage() {
       return;
     }
     
+    // Check if placeholder hashes are still in admin.json
     if (adminCredentials.passwordHash.startsWith("REPLACE_WITH_BCRYPT_HASH") || adminCredentials.pinHash.startsWith("REPLACE_WITH_BCRYPT_HASH")) {
       setTimeout(() => {
         toast({
           title: "Admin Configuration Incomplete",
           description: "Admin credentials in admin.json use placeholder hashes. Please generate and update them with actual bcrypt hashes.",
           variant: "destructive",
-          duration: 15000, 
+          duration: 15000, // Longer duration for this critical message
         });
       }, 0);
       return;
@@ -114,16 +117,19 @@ export default function AdminAuthPage() {
     if (isPasswordCorrect && isPinCorrect) {
       localStorage.setItem("isLoggedInPrototype", "true");
       localStorage.setItem("isAdminPrototype", "true");
-      localStorage.setItem('currentUserEmail', values.email); 
+      localStorage.setItem('currentUserEmail', values.email); // Store admin email as current user
       
+      // Store a simple admin profile for consistency if other parts of app use userProfilePrototype
       const adminProfileForStorage: UserProfile = {
           firstName: "Admin",
           lastName: "User",
           email: values.email,
-          countryCode: "IN", 
-          phoneNumber: "0000000000",
+          countryCode: "IN", // Or any default
+          phoneNumber: "0000000000", // Placeholder
       };
       localStorage.setItem('userProfilePrototype', JSON.stringify(adminProfileForStorage));
+
+      localStorage.setItem("adminCredentialsConfigured", "true"); // Mark as configured
 
       setTimeout(() => {
         toast({ title: "Admin Login Successful", description: "Welcome, Admin!" });
@@ -146,6 +152,7 @@ export default function AdminAuthPage() {
   }
 
   if (!hasMounted || loadingConfig) {
+    // Basic loading skeleton or null to avoid flash of unstyled content
     return (
         <div className="flex h-screen items-center justify-center bg-background">
             <div className="flex flex-col items-center space-y-4">
@@ -156,9 +163,12 @@ export default function AdminAuthPage() {
     );
   }
   
+  // This check is redundant if the effect hook correctly redirects
+  // but can serve as a fallback if effect has timing issues.
   if (hasMounted && typeof window !== 'undefined' && localStorage.getItem("adminAccessGranted") !== "true") {
-      router.push('/admin/access-gate');
-      return null; 
+      // This redirect should ideally be handled by the useEffect more smoothly
+      // router.push('/admin/access-gate'); 
+      return null; // Avoid rendering form if redirection is pending
   }
 
   return (

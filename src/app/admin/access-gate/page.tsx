@@ -1,3 +1,4 @@
+
 // src/app/admin/access-gate/page.tsx
 "use client";
 
@@ -29,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import bcrypt from 'bcryptjs';
 import Link from "next/link";
 
-const MASTER_ADMIN_GATE_PIN_HASH = "$2a$20$BMfVfXJBPrHtoGLOqbJaDuNp0Q/58XXnXruaHTt.CwdErplfqMR/u"; 
+const MASTER_ADMIN_GATE_PIN_HASH = "$2a$20$BMfVfXJBPrHtoGLOqbJaDuNp0Q/58XXnXruaHTt.CwdErplfqMR/u"; // Hash for 21062005 (20 rounds)
 
 const accessGateSchema = z.object({
   gatePin: z.string().length(8, { message: "PIN must be 8 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }),
@@ -55,7 +56,10 @@ export default function AdminAccessGatePage() {
         localStorage.getItem("isLoggedInPrototype") === "true") {
       router.push("/admin/dashboard");
     } else if (hasMounted && localStorage.getItem("adminAccessGranted") === "true") {
-      router.push("/admin/login");
+      // If gate is passed, but not fully logged in as admin, let them proceed to admin/login
+      // which will decide if it needs setup or login.
+      // No immediate redirect from here to /admin/login if only gate is passed.
+      // The /admin/login page will handle this.
     }
   }, [hasMounted, router]);
 
@@ -72,7 +76,7 @@ export default function AdminAccessGatePage() {
     if (isPinCorrect) {
       localStorage.setItem("adminAccessGranted", "true");
       setTimeout(() => {
-        toast({ title: "Access Granted", description: "Proceed to Admin Setup or Login." });
+        toast({ title: "Gate Access Granted", description: "Proceed to Admin Setup or Login." });
       }, 0);
       router.push("/admin/login"); 
     } else {
