@@ -26,13 +26,18 @@ import * as z from "zod";
 import type { UserProfile } from "@/types/userData";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-
 const reviewSchema = z.object({
   rating: z.number().min(1, "Rating is required.").max(5, "Rating cannot exceed 5."),
   comment: z.string().min(10, "Comment must be at least 10 characters.").max(500, "Comment cannot exceed 500 characters."),
 });
 type ReviewFormValues = z.infer<typeof reviewSchema>;
 
+interface ShippingSettings {
+  rate: string;
+  threshold: string;
+}
+
+const DEFAULT_FREE_SHIPPING_THRESHOLD = "5000";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -44,6 +49,7 @@ export default function ProductDetailPage() {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<string>(DEFAULT_FREE_SHIPPING_THRESHOLD);
 
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [thumbnailImages, setThumbnailImages] = useState<string[]>([]);
@@ -76,7 +82,7 @@ export default function ProductDetailPage() {
         setProduct(null);
       } else {
         setProduct(fetchedProduct);
-        setSelectedImageUrl(fetchedProduct.imageUrl); // Initialize selected image
+        setSelectedImageUrl(fetchedProduct.imageUrl); 
         const allImages = [fetchedProduct.imageUrl];
         if (fetchedProduct.additionalImageUrls) {
           allImages.push(...fetchedProduct.additionalImageUrls);
@@ -118,6 +124,20 @@ export default function ProductDetailPage() {
     } else {
         setCurrentUserProfile(null); 
     }
+
+    // Load shipping settings
+    const storedShippingSettings = localStorage.getItem("earthPuranAdminShippingSettings");
+    if (storedShippingSettings) {
+      try {
+        const parsedSettings = JSON.parse(storedShippingSettings) as ShippingSettings;
+        setFreeShippingThreshold(parsedSettings.threshold || DEFAULT_FREE_SHIPPING_THRESHOLD);
+      } catch (e) {
+        setFreeShippingThreshold(DEFAULT_FREE_SHIPPING_THRESHOLD);
+      }
+    } else {
+      setFreeShippingThreshold(DEFAULT_FREE_SHIPPING_THRESHOLD);
+    }
+
     fetchProductData();
   }, [fetchProductData, pathname]); 
 
@@ -151,7 +171,7 @@ export default function ProductDetailPage() {
       <div className="space-y-12">
         <Card className="overflow-hidden">
           <div className="grid md:grid-cols-2 gap-8">
-            <div> {/* Image gallery skeleton */}
+            <div> 
               <Skeleton className="w-full h-[400px] md:h-[500px] lg:h-[600px] rounded-lg aspect-square" />
               <div className="mt-4 flex space-x-2">
                 {[...Array(3)].map((_, i) => (
@@ -257,7 +277,7 @@ export default function ProductDetailPage() {
     <div className="space-y-12">
       <Card className="overflow-hidden">
         <div className="grid md:grid-cols-2 gap-8">
-          <div className="p-4"> {/* Container for image gallery */}
+          <div className="p-4"> 
             {selectedImageUrl && (
               <Image
                 src={selectedImageUrl}
@@ -269,7 +289,7 @@ export default function ProductDetailPage() {
                 priority
               />
             )}
-            {!selectedImageUrl && ( // Fallback for initial load before state is set
+            {!selectedImageUrl && ( 
               <Image
                 src={product.imageUrl}
                 alt={product.name}
@@ -333,7 +353,6 @@ export default function ProductDetailPage() {
                       <Badge key={colorVariant.name} variant="secondary" className="cursor-pointer hover:bg-primary/20"
                         onClick={() => {
                           if (colorVariant.image) setSelectedImageUrl(colorVariant.image);
-                          // If you want to navigate to colorVariant.link, handle that here
                         }}
                       >
                         {colorVariant.name}
@@ -355,7 +374,7 @@ export default function ProductDetailPage() {
 
               <div className="flex items-center space-x-2">
                 <Truck className="h-5 w-5 text-primary" />
-                <span className="text-sm text-muted-foreground">Free shipping on orders over ₹5000</span>
+                <span className="text-sm text-muted-foreground">Free shipping on orders over ₹{parseFloat(freeShippingThreshold).toLocaleString('en-IN')}</span>
               </div>
                <p className={`text-sm font-medium ${product.stock > 0 ? 'text-green-600' : 'text-destructive'}`}>
                 {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
