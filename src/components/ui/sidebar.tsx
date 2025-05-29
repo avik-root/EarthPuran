@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/tooltip"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
+const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
@@ -47,6 +48,19 @@ function useSidebar() {
   return context
 }
 
+// Helper function to get cookie, ensuring it only runs on the client
+function getCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') {
+    return undefined;
+  }
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  if (match) {
+    return match[2];
+  }
+  return undefined;
+}
+
+
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
@@ -70,31 +84,39 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
-    // This is the internal state of the sidebar.
-    // We use openProp and setOpenProp for control from outside the component.
-    const [_open, _setOpen] = React.useState(defaultOpen)
-    const open = openProp ?? _open
+    // Initialize state from cookie or defaultOpen, ensuring this logic runs client-side
+    const [internalOpen, setInternalOpen] = React.useState(defaultOpen);
+
+    React.useEffect(() => {
+      const cookieState = getCookie(SIDEBAR_COOKIE_NAME);
+      if (cookieState !== undefined) {
+        setInternalOpen(cookieState === 'true');
+      }
+    }, []);
+
+
+    const open = openProp ?? internalOpen;
+
     const setOpen = React.useCallback(
-      (value: boolean | ((value: boolean) => boolean)) => {
-        const openState = typeof value === "function" ? value(open) : value
+      (value: boolean | ((currentOpen: boolean) => boolean)) => {
+        const newOpenState = typeof value === 'function' ? value(open) : value;
         if (setOpenProp) {
-          setOpenProp(openState)
+          setOpenProp(newOpenState);
         } else {
-          _setOpen(openState)
+          setInternalOpen(newOpenState);
         }
-
-        // This sets the cookie to keep the sidebar state.
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        if (typeof document !== 'undefined') {
+          document.cookie = `${SIDEBAR_COOKIE_NAME}=${newOpenState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+        }
       },
-      [setOpenProp, open]
-    )
-
-    // Helper to toggle the sidebar.
+      [setOpenProp, open] 
+    );
+    
     const toggleSidebar = React.useCallback(() => {
       return isMobile
-        ? setOpenMobile((open) => !open)
-        : setOpen((open) => !open)
-    }, [isMobile, setOpen, setOpenMobile])
+        ? setOpenMobile((current) => !current)
+        : setOpen((current) => !current);    
+    }, [isMobile, setOpen, setOpenMobile]);
 
     // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
@@ -549,6 +571,7 @@ const SidebarMenuButton = React.forwardRef<
       size = "default",
       tooltip,
       className,
+      href, // Added href to type
       ...props
     },
     ref
@@ -556,35 +579,35 @@ const SidebarMenuButton = React.forwardRef<
     const Comp = asChild ? Slot : "button"
     const { isMobile, state } = useSidebar()
 
-    const button = (
+    const buttonContent = (
       <Comp
         ref={ref}
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        {...props}
-      />
-    )
+        {...(Comp === "button" ? props : { ...props, href })} // Pass href if Comp is Slot (for Link)
+      >
+        {props.children}
+      </Comp>
+    );
+
 
     if (!tooltip) {
-      return button
+      return buttonContent
     }
 
-    if (typeof tooltip === "string") {
-      tooltip = {
-        children: tooltip,
-      }
-    }
+    const tooltipContentProps = typeof tooltip === "string" ? { children: tooltip } : tooltip;
+
 
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
         <TooltipContent
           side="right"
           align="center"
           hidden={state !== "collapsed" || isMobile}
-          {...tooltip}
+          {...tooltipContentProps}
         />
       </Tooltip>
     )

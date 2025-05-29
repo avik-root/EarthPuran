@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Package, DollarSign, Users, Activity } from "lucide-react";
+import { Package, CreditCard, Users, Activity } from "lucide-react"; // Changed DollarSign to CreditCard
 
 export default function AdminDashboardPage() {
   return (
@@ -11,7 +11,7 @@ export default function AdminDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CreditCard className="h-4 w-4 text-muted-foreground" /> {/* Changed Icon */}
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₹4,52,318.90</div>
