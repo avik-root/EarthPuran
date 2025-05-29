@@ -10,8 +10,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { PinInput } from "@/components/ui/pin-input";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Eye, EyeOff, Loader2, Edit } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
@@ -60,6 +60,7 @@ export default function AdminSettingsPage() {
   const router = useRouter();
   const [currentAdminEmail, setCurrentAdminEmail] = useState<string | null>(null);
   const [loadingEmail, setLoadingEmail] = useState(true);
+  const [editingSection, setEditingSection] = useState<'none' | 'email' | 'password' | 'pin'>('none');
 
   const [showCurrentPasswordForEmail, setShowCurrentPasswordForEmail] = useState(false);
   const [showCurrentPasswordForPassword, setShowCurrentPasswordForPassword] = useState(false);
@@ -75,28 +76,26 @@ export default function AdminSettingsPage() {
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
   const [isSubmittingPin, setIsSubmittingPin] = useState(false);
 
+  const fetchAdminDetails = useCallback(async () => {
+    setLoadingEmail(true);
+    const storedEmail = localStorage.getItem('currentUserEmail');
+    if (storedEmail) {
+        setCurrentAdminEmail(storedEmail);
+    } else {
+      const creds = await getEarthPuranAdminCredentials();
+      if (creds.configured && creds.email) {
+        setCurrentAdminEmail(creds.email);
+      } else {
+        toast({ title: "Error", description: "Admin email not found. Please log in again.", variant: "destructive" });
+        router.push('/admin/login');
+      }
+    }
+    setLoadingEmail(false);
+  }, [router, toast]);
 
   useEffect(() => {
-    async function fetchAdminEmail() {
-      setLoadingEmail(true);
-      const storedEmail = localStorage.getItem('currentUserEmail');
-      if (storedEmail) {
-          setCurrentAdminEmail(storedEmail);
-      } else {
-        // Fallback if localStorage somehow cleared but user is on admin page
-        const creds = await getEarthPuranAdminCredentials();
-        if (creds.configured && creds.email) {
-          setCurrentAdminEmail(creds.email);
-        } else {
-          // Should not happen if admin layout guard is working
-          toast({ title: "Error", description: "Admin email not found. Please log in again.", variant: "destructive" });
-          router.push('/admin/login');
-        }
-      }
-      setLoadingEmail(false);
-    }
-    fetchAdminEmail();
-  }, [router, toast]);
+    fetchAdminDetails();
+  }, [fetchAdminDetails]);
 
   const emailForm = useForm<ChangeEmailFormValues>({
     resolver: zodResolver(changeEmailSchema),
@@ -130,9 +129,10 @@ export default function AdminSettingsPage() {
     const result = await updateEarthPuranAdminEmail(values.newEmail, values.currentPasswordForEmail);
     if (result.success && result.newEmail) {
       toast({ title: "Admin Email Updated", description: result.message });
-      localStorage.setItem('currentUserEmail', result.newEmail); // Update localStorage
-      setCurrentAdminEmail(result.newEmail); // Update local state
+      localStorage.setItem('currentUserEmail', result.newEmail); 
+      setCurrentAdminEmail(result.newEmail); 
       emailForm.reset();
+      setEditingSection('none');
     } else {
       toast({ title: "Email Update Failed", description: result.message, variant: "destructive" });
     }
@@ -145,6 +145,7 @@ export default function AdminSettingsPage() {
     if (result.success) {
       toast({ title: "Admin Password Updated", description: result.message });
       passwordForm.reset();
+      setEditingSection('none');
     } else {
       toast({ title: "Password Update Failed", description: result.message, variant: "destructive" });
     }
@@ -157,190 +158,258 @@ export default function AdminSettingsPage() {
     if (result.success) {
       toast({ title: "Admin PIN Updated", description: result.message });
       pinForm.reset();
+      setEditingSection('none');
     } else {
       toast({ title: "PIN Update Failed", description: result.message, variant: "destructive" });
     }
     setIsSubmittingPin(false);
   }
 
+  const handleCancel = () => {
+    setEditingSection('none');
+    emailForm.reset();
+    emailForm.clearErrors();
+    passwordForm.reset();
+    passwordForm.clearErrors();
+    pinForm.reset();
+    pinForm.clearErrors();
+  };
+
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold tracking-tight">Admin Settings</h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Change Admin Email</CardTitle>
-          <CardDescription>
-            Current Email: {loadingEmail ? <Skeleton className="h-4 w-48 inline-block" /> : <span>{currentAdminEmail || "Not available"}</span>}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...emailForm}>
-            <form onSubmit={emailForm.handleSubmit(handleEmailChange)} className="space-y-6">
-              <FormField
-                control={emailForm.control}
-                name="currentPasswordForEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Current Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input type={showCurrentPasswordForEmail ? "text" : "password"} placeholder="Enter current password" {...field} />
-                        <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowCurrentPasswordForEmail(!showCurrentPasswordForEmail)}>
-                          {showCurrentPasswordForEmail ? <EyeOff /> : <Eye />}
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={emailForm.control}
-                name="newEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New Email Address</FormLabel>
-                    <FormControl><Input type="email" placeholder="newadmin@example.com" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={isSubmittingEmail}>
-                 {isSubmittingEmail ? <Loader2 className="animate-spin" /> : "Update Email"}
+      {editingSection === 'none' && (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Email</CardTitle>
+              <CardDescription>
+                Current: {loadingEmail ? <Skeleton className="h-4 w-48 inline-block" /> : <span>{currentAdminEmail || "Not available"}</span>}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => setEditingSection('email')} className="w-full">
+                <Edit className="mr-2 h-4 w-4" /> Change Email
               </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Change Admin Password</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form {...passwordForm}>
-            <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)} className="space-y-6">
-              <FormField
-                control={passwordForm.control}
-                name="currentPasswordForPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Current Password</FormLabel>
-                     <FormControl>
-                      <div className="relative">
-                        <Input type={showCurrentPasswordForPassword ? "text" : "password"} placeholder="Enter current password" {...field} />
-                        <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowCurrentPasswordForPassword(!showCurrentPasswordForPassword)}>
-                          {showCurrentPasswordForPassword ? <EyeOff /> : <Eye />}
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={passwordForm.control}
-                name="newPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input type={showNewPassword ? "text" : "password"} placeholder="Create a new strong password" {...field} />
-                        <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowNewPassword(!showNewPassword)}>
-                          {showNewPassword ? <EyeOff /> : <Eye />}
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <Progress value={newPasswordStrength} className="h-2 mt-1" indicatorClassName={cn({'bg-red-500': newPasswordStrength < 50, 'bg-yellow-500': newPasswordStrength >= 50 && newPasswordStrength < 75, 'bg-green-500': newPasswordStrength >= 75})} />
-                    <FormDescription className="text-xs">Min 8 chars, 1 uppercase, 1 number, 1 special char.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={passwordForm.control}
-                name="confirmNewPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm New Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input type={showConfirmNewPassword ? "text" : "password"} placeholder="Confirm new password" {...field} />
-                        <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}>
-                          {showConfirmNewPassword ? <EyeOff /> : <Eye />}
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={isSubmittingPassword}>
-                {isSubmittingPassword ? <Loader2 className="animate-spin" /> : "Update Password"}
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Password</CardTitle>
+              <CardDescription>Update your login password.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => setEditingSection('password')} className="w-full">
+                <Edit className="mr-2 h-4 w-4" /> Change Password
               </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Change Admin Login PIN</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form {...pinForm}>
-            <form onSubmit={pinForm.handleSubmit(handlePinChange)} className="space-y-6">
-              <FormField
-                control={pinForm.control}
-                name="currentPin"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex items-center justify-between">
-                      <FormLabel>Current 6-Digit Login PIN</FormLabel>
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowCurrentPin(!showCurrentPin)}>{showCurrentPin ? <EyeOff /> : <Eye />}</Button>
-                    </div>
-                    <FormControl><PinInput length={6} {...field} showPin={showCurrentPin} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={pinForm.control}
-                name="newPin"
-                render={({ field }) => (
-                  <FormItem>
-                     <div className="flex items-center justify-between">
-                        <FormLabel>New 6-Digit Login PIN</FormLabel>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowNewPinInput(!showNewPinInput)}>{showNewPinInput ? <EyeOff /> : <Eye />}</Button>
-                    </div>
-                    <FormControl><PinInput length={6} {...field} showPin={showNewPinInput} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={pinForm.control}
-                name="confirmNewPin"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex items-center justify-between">
-                        <FormLabel>Confirm New 6-Digit Login PIN</FormLabel>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowConfirmNewPinInput(!showConfirmNewPinInput)}>{showConfirmNewPinInput ? <EyeOff /> : <Eye />}</Button>
-                    </div>
-                    <FormControl><PinInput length={6} {...field} showPin={showConfirmNewPinInput} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={isSubmittingPin}>
-                {isSubmittingPin ? <Loader2 className="animate-spin" /> : "Update PIN"}
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Login PIN</CardTitle>
+              <CardDescription>Update your 6-digit login PIN.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => setEditingSection('pin')} className="w-full">
+                <Edit className="mr-2 h-4 w-4" /> Change PIN
               </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {editingSection === 'email' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Change Admin Email</CardTitle>
+            <CardDescription>
+              Current Email: {loadingEmail ? <Skeleton className="h-4 w-48 inline-block" /> : <span>{currentAdminEmail || "Not available"}</span>}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...emailForm}>
+              <form onSubmit={emailForm.handleSubmit(handleEmailChange)} className="space-y-6">
+                <FormField
+                  control={emailForm.control}
+                  name="currentPasswordForEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Current Password</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input type={showCurrentPasswordForEmail ? "text" : "password"} placeholder="Enter current password" {...field} />
+                          <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowCurrentPasswordForEmail(!showCurrentPasswordForEmail)}>
+                            {showCurrentPasswordForEmail ? <EyeOff /> : <Eye />}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={emailForm.control}
+                  name="newEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Email Address</FormLabel>
+                      <FormControl><Input type="email" placeholder="newadmin@example.com" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={handleCancel}>Cancel</Button>
+                    <Button type="submit" disabled={isSubmittingEmail}>
+                        {isSubmittingEmail ? <Loader2 className="animate-spin" /> : "Update Email"}
+                    </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
+
+      {editingSection === 'password' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Change Admin Password</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Form {...passwordForm}>
+              <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)} className="space-y-6">
+                <FormField
+                  control={passwordForm.control}
+                  name="currentPasswordForPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Current Password</FormLabel>
+                       <FormControl>
+                        <div className="relative">
+                          <Input type={showCurrentPasswordForPassword ? "text" : "password"} placeholder="Enter current password" {...field} />
+                          <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowCurrentPasswordForPassword(!showCurrentPasswordForPassword)}>
+                            {showCurrentPasswordForPassword ? <EyeOff /> : <Eye />}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={passwordForm.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Password</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input type={showNewPassword ? "text" : "password"} placeholder="Create a new strong password" {...field} />
+                          <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowNewPassword(!showNewPassword)}>
+                            {showNewPassword ? <EyeOff /> : <Eye />}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <Progress value={newPasswordStrength} className="h-2 mt-1" indicatorClassName={cn({'bg-red-500': newPasswordStrength < 50, 'bg-yellow-500': newPasswordStrength >= 50 && newPasswordStrength < 75, 'bg-green-500': newPasswordStrength >= 75})} />
+                      <FormDescription className="text-xs">Min 8 chars, 1 uppercase, 1 number, 1 special char.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={passwordForm.control}
+                  name="confirmNewPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm New Password</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input type={showConfirmNewPassword ? "text" : "password"} placeholder="Confirm new password" {...field} />
+                          <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}>
+                            {showConfirmNewPassword ? <EyeOff /> : <Eye />}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={handleCancel}>Cancel</Button>
+                    <Button type="submit" disabled={isSubmittingPassword}>
+                        {isSubmittingPassword ? <Loader2 className="animate-spin" /> : "Update Password"}
+                    </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
+
+      {editingSection === 'pin' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Change Admin Login PIN</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Form {...pinForm}>
+              <form onSubmit={pinForm.handleSubmit(handlePinChange)} className="space-y-6">
+                <FormField
+                  control={pinForm.control}
+                  name="currentPin"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Current 6-Digit Login PIN</FormLabel>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowCurrentPin(!showCurrentPin)}>{showCurrentPin ? <EyeOff /> : <Eye />}</Button>
+                      </div>
+                      <FormControl><PinInput length={6} {...field} showPin={showCurrentPin} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={pinForm.control}
+                  name="newPin"
+                  render={({ field }) => (
+                    <FormItem>
+                       <div className="flex items-center justify-between">
+                          <FormLabel>New 6-Digit Login PIN</FormLabel>
+                          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowNewPinInput(!showNewPinInput)}>{showNewPinInput ? <EyeOff /> : <Eye />}</Button>
+                      </div>
+                      <FormControl><PinInput length={6} {...field} showPin={showNewPinInput} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={pinForm.control}
+                  name="confirmNewPin"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                          <FormLabel>Confirm New 6-Digit Login PIN</FormLabel>
+                          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowConfirmNewPinInput(!showConfirmNewPinInput)}>{showConfirmNewPinInput ? <EyeOff /> : <Eye />}</Button>
+                      </div>
+                      <FormControl><PinInput length={6} {...field} showPin={showConfirmNewPinInput} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={handleCancel}>Cancel</Button>
+                    <Button type="submit" disabled={isSubmittingPin}>
+                        {isSubmittingPin ? <Loader2 className="animate-spin" /> : "Update PIN"}
+                    </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
