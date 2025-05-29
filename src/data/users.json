@@ -324,30 +324,37 @@
       "hashedPin": "$2a$10$XpgavIi6sRqJN3fMH6XUQO8TVEMnQ/H94OuJ2//PCa5WsMPC.quju"
     },
     "addresses": [],
-    "orders": [],
-    "wishlist": [],
-    "cart": [
+    "orders": [
       {
-        "product": {
-          "id": "1748521447311uiafrc3",
-          "name": "Morga Attar",
-          "description": "Mogra Attar by EarthPuran\nPure | Authentic | 100% Natural | Organic | Herbal\n\nImmerse yourself in the timeless fragrance of jasmine with Mogra Attar by EarthPuran—a luxurious, all-natural perfume crafted from the delicate blossoms of the Mogra flower. Made using traditional distillation methods, this attar is 100% pure, organic, and herbal, free from any synthetic additives or chemicals.\n\nIts enchanting floral aroma not only uplifts the senses but also offers calming and therapeutic benefits. Ideal for daily wear, meditation, or spiritual rituals, EarthPuran's Mogra Attar is a tribute to nature’s purity and aromatic heritage.\n\nKey Features:\n\n    Made from premium-quality Mogra (jasmine) flowers\n\n    No alcohol, no synthetic chemicals\n\n    Gentle on skin, long-lasting fragrance\n\n    Cruelty-free and environmentally friendly\n\nExperience the essence of nature—bottled with care.\n\nWould you like a shorter or more poetic version as well?\n",
-          "price": 399,
-          "category": "Fragrance",
-          "brand": "Earth Puran",
-          "stock": 10,
-          "imageUrl": "https://drive.google.com/uc?export=view&id=1Qq4v0tKcER9vNiM_f302-6NwdfRb04cm",
-          "imageHint": "Fragrance",
-          "additionalImageUrls": [],
-          "colors": [],
-          "rating": 0,
-          "reviews": 0,
-          "productReviews": [],
-          "tags": []
+        "id": "1748528794952",
+        "date": "29/05/2025",
+        "items": [
+          {
+            "productId": "1748521447311uiafrc3",
+            "name": "Morga Attar",
+            "quantity": 1,
+            "price": 399,
+            "imageUrl": "https://drive.google.com/uc?export=view&id=1Qq4v0tKcER9vNiM_f302-6NwdfRb04cm",
+            "imageHint": "Fragrance"
+          }
+        ],
+        "totalAmount": 449,
+        "shippingDetails": {
+          "firstName": "A",
+          "lastName": "B",
+          "address": "Bally Halt",
+          "city": "Bally",
+          "state": "West Bengal",
+          "pincode": "712300",
+          "country": "India",
+          "phoneNumber": "9898989898",
+          "phoneCountryCode": "+91"
         },
-        "quantity": 2
+        "status": "Processing"
       }
-    ]
+    ],
+    "wishlist": [],
+    "cart": []
   },
   "anan@gmail.com": {
     "profile": {

@@ -9,7 +9,7 @@ import type { UserData, UserAddress, Order, FullCartItem } from "@/types/userDat
 import type { Product } from "@/types/product";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { User, Mail, Phone, Home, ShoppingBag, Heart, Trash2, ArrowLeft, PackageSearch, ListOrdered, Loader2 } from "lucide-react";
+import { User, Mail, Phone, Home, ShoppingBag, Heart, Trash2, ArrowLeft, PackageSearch, ListOrdered, Loader2, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -200,8 +200,9 @@ export default function UserDetailPage() {
                         <p className="text-xs text-muted-foreground">Date: {order.date}</p>
                         <p className={cn("text-xs font-medium mt-0.5", getStatusColor(order.status))}>Status: {order.status}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex items-center">
                         <p className="font-semibold">₹{order.totalAmount.toFixed(2)}</p>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground ml-1" />
                       </div>
                     </CardContent>
                   </Card>
@@ -270,3 +271,5 @@ export default function UserDetailPage() {
     </div>
   );
 }
+
+    
