@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, PlusCircle, Edit3, LocateFixed, Loader2 } from "lucide-react";
+import { Trash2, PlusCircle, Edit3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useCallback } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,15 +28,12 @@ const addressSchema = z.object({
 
 type AddressFormValues = z.infer<typeof addressSchema>;
 
-const GEOAPIFY_API_KEY = "383ebfd82cd846f098a1b5c518acf774"; // WARNING: API Key exposed client-side. Not for production!
-
 export function AddressManagement() {
   const { toast } = useToast();
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [editingAddress, setEditingAddress] = useState<UserAddress | null>(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
   const form = useForm<AddressFormValues>({
@@ -50,7 +47,7 @@ export function AddressManagement() {
       isDefault: false,
     },
   });
-
+  
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setCurrentUserEmail(localStorage.getItem('currentUserEmail'));
@@ -89,73 +86,6 @@ export function AddressManagement() {
     }
   }, [editingAddress, form]);
 
-  const handleFetchCurrentLocation = async () => {
-    if (!navigator.geolocation) {
-      toast({ title: "Geolocation Not Supported", description: "Your browser doesn't support geolocation.", variant: "destructive" });
-      return;
-    }
-
-    setIsFetchingLocation(true);
-    toast({ title: "Fetching Location", description: "Please wait..." });
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          const response = await fetch(`https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&apiKey=${GEOAPIFY_API_KEY}`);
-          if (!response.ok) {
-            let errorDetails = `Status ${response.status} - ${response.statusText || 'No status text'}`;
-            try {
-              const errorBody = await response.json(); // Try to parse error body as JSON
-              errorDetails += ` - Body: ${JSON.stringify(errorBody)}`;
-              console.error("Geoapify error response (JSON):", errorBody);
-            } catch (e) {
-              // If JSON parsing fails, try to read as text
-              try {
-                const errorText = await response.text();
-                errorDetails += ` - Body: ${errorText}`;
-                console.error("Geoapify error response (Text):", errorText);
-              } catch (textError) {
-                console.error("Could not read Geoapify error response body.");
-              }
-            }
-            throw new Error(`Geoapify API error: ${errorDetails}`);
-          }
-          const data = await response.json();
-          
-          if (data.features && data.features.length > 0) {
-            const properties = data.features[0].properties;
-            const streetName = properties.street || '';
-            const houseNumber = properties.housenumber || '';
-            
-            form.setValue("street", `${houseNumber} ${streetName}`.trim());
-            form.setValue("city", properties.city || "");
-            form.setValue("state", properties.state || "");
-            form.setValue("zipCode", properties.postcode || "");
-            form.setValue("country", properties.country || "India");
-            toast({ title: "Location Found!", description: "Address fields have been populated." });
-          } else {
-            throw new Error("No address details found for your location.");
-          }
-        } catch (error) {
-          console.error("Error fetching address from Geoapify:", error);
-          const errorMessage = error instanceof Error ? error.message : "Could not retrieve address details.";
-          toast({ title: "Address Fetch Error", description: errorMessage, variant: "destructive" });
-        } finally {
-          setIsFetchingLocation(false);
-        }
-      },
-      (error) => {
-        console.error("Geolocation error:", error);
-        let description = "Could not get your location.";
-        if (error.code === error.PERMISSION_DENIED) {
-          description = "Geolocation permission denied. Please enable it in your browser settings.";
-        }
-        toast({ title: "Location Error", description, variant: "destructive" });
-        setIsFetchingLocation(false);
-      }
-    );
-  };
 
   async function onSubmit(values: AddressFormValues) {
     if (!currentUserEmail) {
@@ -305,28 +235,6 @@ export function AddressManagement() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {!editingAddress && ( 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleFetchCurrentLocation}
-                    disabled={isFetchingLocation}
-                    className="w-full sm:w-auto mb-4"
-                  >
-                    {isFetchingLocation ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <LocateFixed className="mr-2 h-4 w-4" />
-                    )}
-                    Use My Current Location
-                  </Button>
-                )}
-                 {GEOAPIFY_API_KEY === "383ebfd82cd846f098a1b5c518acf774" && !editingAddress && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                        Note: Geolocation API key is for prototype use. Do not use this key in production.
-                    </p>
-                 )}
-
                 <FormField
                   control={form.control}
                   name="street"
@@ -418,3 +326,5 @@ export function AddressManagement() {
     </div>
   );
 }
+
+    
