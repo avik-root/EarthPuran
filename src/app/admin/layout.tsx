@@ -1,4 +1,3 @@
-
 // src/app/admin/layout.tsx
 'use client';
 
@@ -16,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar";
-import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert, UserCircle, LogOut } from "lucide-react";
+import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert, UserCircle, LogOut, SlidersHorizontal, Truck, Percent, Ticket, BadgePercent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -50,7 +49,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
     const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
-    const currentAdminEmail = localStorage.getItem("currentUserEmail"); // This should be set on successful admin login
+    const currentAdminEmail = localStorage.getItem("currentUserEmail"); 
     setAdminEmail(currentAdminEmail);
 
     setLoading(true); 
@@ -161,6 +160,29 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               <SidebarMenuItem>
                 <SidebarMenuButton href="/admin/users" tooltip="Customers" isActive={pathname.startsWith('/admin/users')}>
                   <Users /> <span>Customers</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarGroup>
+            <SidebarGroup>
+              <SidebarGroupLabel>Customs</SidebarGroupLabel>
+              <SidebarMenuItem>
+                <SidebarMenuButton href="/admin/customs/shipping" tooltip="Shipment Charges" isActive={pathname.startsWith('/admin/customs/shipping')}>
+                  <Truck /> <span>Shipment Charges</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton href="/admin/customs/taxes" tooltip="Taxes" isActive={pathname.startsWith('/admin/customs/taxes')}>
+                  <Percent /> <span>Taxes</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton href="/admin/customs/coupons" tooltip="Coupons" isActive={pathname.startsWith('/admin/customs/coupons')}>
+                  <Ticket /> <span>Coupons</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton href="/admin/customs/discounts" tooltip="Discounts" isActive={pathname.startsWith('/admin/customs/discounts')}>
+                  <BadgePercent /> <span>Discounts</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarGroup>

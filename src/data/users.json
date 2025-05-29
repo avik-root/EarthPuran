@@ -326,6 +326,33 @@
     "addresses": [],
     "orders": [
       {
+        "id": "1748544502763",
+        "date": "30/05/2025",
+        "items": [
+          {
+            "productId": "3",
+            "name": "Midnight Sparkle Eyeshadow Palette",
+            "quantity": 1,
+            "price": 55,
+            "imageUrl": "https://placehold.co/600x600.png",
+            "imageHint": "eyeshadow palette"
+          }
+        ],
+        "totalAmount": 105,
+        "shippingDetails": {
+          "firstName": "A",
+          "lastName": "B",
+          "address": "SNU College",
+          "city": "Newtown",
+          "state": "West Bengal",
+          "pincode": "700007",
+          "country": "India",
+          "phoneNumber": "9898989898",
+          "phoneCountryCode": "+91"
+        },
+        "status": "Cancelled"
+      },
+      {
         "id": "1748528794952",
         "date": "29/05/2025",
         "items": [
