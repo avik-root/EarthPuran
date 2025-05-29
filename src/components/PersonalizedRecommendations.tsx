@@ -8,18 +8,21 @@ import type { Product } from '@/types/product';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Lightbulb } from "lucide-react";
+import { getProducts } from '@/app/actions/productActions'; // Import the server action
 
-// Mock function to fetch full product details based on names
-// In a real app, this would query your product database/API
-async function fetchProductsByNames(names: string[]): Promise<Product[]> {
-  // This is a placeholder. You'd need to implement logic to fetch actual product data.
-  // For now, returning mock products branded as Earth Puran.
-  const mockProducts: Product[] = [
-    { id: "rec1", name: "Velvet Matte Lipstick", category: "Lips", brand: "Earth Puran", price: 28.00, description: "Recommended for you! From Earth Puran.", imageUrl: "https://placehold.co/600x600.png", imageHint: "lipstick beauty", stock: 10, rating: 4.5, reviews: 10 },
-    { id: "rec2", name: "Radiant Glow Foundation", category: "Face", brand: "Earth Puran", price: 45.00, description: "A great match based on your history. From Earth Puran.", imageUrl: "https://placehold.co/600x600.png", imageHint: "foundation makeup", stock: 10, rating: 4.8, reviews: 15 },
-    { id: "rec3", name: "Midnight Sparkle Eyeshadow Palette", category: "Eyes", brand: "Earth Puran", price: 55.00, description: "Users like you loved this! From Earth Puran.", imageUrl: "https://placehold.co/600x600.png", imageHint: "eyeshadow palette", stock: 10, rating: 4.7, reviews: 20 },
-  ];
-  return mockProducts.filter(p => names.includes(p.name)).slice(0,3);
+// Function to fetch full product details based on names from products.json
+async function fetchProductsByNamesFromCatalog(names: string[]): Promise<Product[]> {
+  if (!names || names.length === 0) {
+    return [];
+  }
+  try {
+    const allProducts = await getProducts(); // Fetch all products
+    const foundProducts = allProducts.filter(p => names.includes(p.name));
+    return foundProducts.slice(0, 3); // Limit to 3 recommendations for display
+  } catch (error) {
+    console.error("Failed to fetch products by names from catalog:", error);
+    return [];
+  }
 }
 
 
@@ -35,20 +38,26 @@ export function PersonalizedRecommendations() {
         setLoading(true);
         setError(null);
         // Mock user preferences and history for demonstration
+        // The AI flow will ideally learn these over time or get them from user profile/activity
         const mockInput = {
           userPreferences: "Loves matte lipsticks and hydrating foundations. Prefers cruelty-free products from Earth Puran.",
           browsingHistory: "Viewed 'Velvet Matte Lipstick - Ruby Red' by Earth Puran, 'Silk Finish Primer' by Earth Puran, 'Organic Rosewater Toner' by Earth Puran",
-          trendingProducts: "Radiant Glow Foundation, Midnight Sparkle Eyeshadow Palette, Volumizing Lash Mascara" // These names will be matched against Earth Puran products by fetchProductsByNames
+          // The AI will suggest names. We then try to find these in products.json
+          trendingProducts: "Radiant Glow Foundation, Midnight Sparkle Eyeshadow Palette, Volumizing Lash Mascara"
         };
         const result = await getProductRecommendations(mockInput);
         setRecommendations(result);
         if (result && result.recommendedProducts.length > 0) {
-          const productDetails = await fetchProductsByNames(result.recommendedProducts);
+          // Fetch actual product details from products.json based on AI recommended names
+          const productDetails = await fetchProductsByNamesFromCatalog(result.recommendedProducts);
           setRecommendedProductsDetails(productDetails);
+        } else {
+          setRecommendedProductsDetails([]);
         }
       } catch (e) {
         console.error("Failed to get recommendations:", e);
         setError("Could not load recommendations at this time.");
+        setRecommendedProductsDetails([]);
       } finally {
         setLoading(false);
       }
@@ -84,7 +93,9 @@ export function PersonalizedRecommendations() {
   }
 
   if (!recommendations || recommendedProductsDetails.length === 0) {
-    return null; // Or a message like "No recommendations for you yet!"
+    // Optionally, display a message if no relevant products are found or if AI returns no recommendations.
+    // return <p className="text-muted-foreground">No special recommendations for you at this moment.</p>;
+    return null;
   }
 
   return (
