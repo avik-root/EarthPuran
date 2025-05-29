@@ -4,7 +4,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import type { AllUsersData, UserData, UserProfile, UserAddress, Product as WishlistProduct, FullCartItem } from '@/types/userData';
+import type { AllUsersData, UserData, UserProfile, Product as WishlistProduct, FullCartItem } from '@/types/userData';
 import type { Product } from '@/types/product';
 import type { Order } from '@/types/order';
 
@@ -47,7 +47,7 @@ async function writeUsersFile(data: AllUsersData): Promise<void> {
   }
 }
 
-function getDefaultUserData(profile: UserProfile, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string): UserData {
+function getDefaultUserData(profile: UserProfile, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string, makeAdmin: boolean = false): UserData {
     const hashedPassword = bcrypt.hashSync(plaintextPassword_prototype_only, saltRounds);
     const hashedPin = bcrypt.hashSync(plaintextPin_prototype_only, saltRounds);
     
@@ -55,7 +55,7 @@ function getDefaultUserData(profile: UserProfile, plaintextPassword_prototype_on
         ...profile,
         hashedPassword,
         hashedPin,
-        isAdmin: false, // Default to not admin
+        isAdmin: makeAdmin, 
     };
     
     return {
@@ -81,8 +81,9 @@ export async function initializeUserAccount(profile: UserProfile, plaintextPassw
     if (allUsers[profile.email]) {
         throw new Error(`User with email ${profile.email} already exists.`);
     }
-    // Removed "first user is admin" logic. Admin status is handled by separate admin login.
-    allUsers[profile.email] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only);
+    // Check if this is the first user account being created
+    const isFirstUser = Object.keys(allUsers).length === 0;
+    allUsers[profile.email] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, isFirstUser);
     await writeUsersFile(allUsers);
     return allUsers[profile.email];
 }
@@ -285,3 +286,5 @@ export async function clearUserCartAction(email: string): Promise<{ success: boo
   await writeUsersFile(allUsers);
   return { success: true, cart: allUsers[email].cart };
 }
+
+    

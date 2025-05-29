@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar";
-import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert, KeyRound } from "lucide-react";
+import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -31,7 +31,7 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isAuthorizedForProtectedRoutes, setIsAuthorizedForProtectedRoutes] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,33 +40,16 @@ export default function AdminLayout({
         return;
     }
 
-    const gatePassed = localStorage.getItem("adminAccessGranted") === "true";
-    // For this prototype, we now rely on admin.json, so `adminCredentialsConfigured` is less relevant here.
-    // The key is whether they've passed the gate and logged in as admin.
-    const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
+    const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
 
-    const isFullyAuthenticatedForDashboard = gatePassed && isAdmin && isLoggedIn;
-
-    if (pathname === '/admin/access-gate' || pathname === '/admin/login') {
-      if (isFullyAuthenticatedForDashboard && pathname !== '/admin/dashboard') {
-        router.push('/admin/dashboard');
-      }
-      // Allow rendering children for gate and login pages regardless of full auth
-      setIsAuthorizedForProtectedRoutes(false); // They are not "protected" in the same way dashboard is
+    if (!isLoggedIn) {
+      router.push(`/login?redirect=${pathname}`); // Redirect to main login
+      setIsAuthorized(false);
+    } else if (!isAdmin) {
+      setIsAuthorized(false); // User is logged in but not an admin
     } else {
-      // This is a protected admin route (e.g., /admin/dashboard, /admin/products)
-      if (!gatePassed) {
-        router.push('/admin/access-gate');
-        setIsAuthorizedForProtectedRoutes(false);
-      } else if (!isLoggedIn || !isAdmin) {
-        // If gate passed, but not logged in as admin, redirect to admin login
-        router.push('/admin/login');
-        setIsAuthorizedForProtectedRoutes(false);
-      } else {
-        // All checks passed for protected routes
-        setIsAuthorizedForProtectedRoutes(true);
-      }
+      setIsAuthorized(true); // User is logged in and is an admin
     }
     setLoading(false);
   }, [router, pathname]);
@@ -75,7 +58,7 @@ export default function AdminLayout({
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
-            <KeyRound className="h-12 w-12 text-primary animate-pulse" />
+            <LayoutDashboard className="h-12 w-12 text-primary animate-pulse" />
             <p className="text-muted-foreground">Verifying Admin Access...</p>
             <Skeleton className="h-4 w-[250px]" />
             <Skeleton className="h-4 w-[200px]" />
@@ -84,23 +67,7 @@ export default function AdminLayout({
     );
   }
 
-  // If we are on the access gate or login page, render their content directly without the admin sidebar.
-  if (pathname === '/admin/access-gate' || pathname === '/admin/login') {
-    return <>{children}</>;
-  }
-
-  // For other admin routes, if not authorized, show the access denied message.
-  if (!isAuthorizedForProtectedRoutes) {
-    // Determine the correct link for the "Access Denied" card
-    let missingStepLink = "/admin/access-gate"; 
-    if (typeof window !== 'undefined') { 
-        const gatePassedCheck = localStorage.getItem("adminAccessGranted") === "true";
-        if (gatePassedCheck) {
-            // If gate passed but other checks failed (e.g., not logged in as admin)
-            missingStepLink = "/admin/login"; 
-        }
-    }
-    
+  if (!isAuthorized && !loading) { // Check loading to avoid flashing access denied
     return (
         <div className="flex h-screen items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md text-center">
@@ -110,9 +77,12 @@ export default function AdminLayout({
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-muted-foreground mb-6">You do not have permission to view this page or need to complete authentication.</p>
+                    <p className="text-muted-foreground mb-6">You do not have permission to view this admin area. Please log in as an administrator.</p>
                     <Button asChild>
-                        <Link href={missingStepLink}>Verify Access / Log In</Link>
+                        <Link href="/login">Go to Login</Link>
+                    </Button>
+                     <Button variant="link" asChild className="mt-2 text-sm">
+                        <Link href="/">Back to Store</Link>
                     </Button>
                 </CardContent>
             </Card>
@@ -120,7 +90,7 @@ export default function AdminLayout({
     );
   }
 
-  // If authorized for protected routes, render the admin sidebar layout.
+  // If authorized for admin routes, render the admin sidebar layout.
   return (
     <SidebarProvider defaultOpen>
       <Sidebar>
@@ -199,3 +169,5 @@ export default function AdminLayout({
     </SidebarProvider>
   );
 }
+
+    

@@ -15,7 +15,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { getUserData } from "@/app/actions/userActions";
-import type { UserData, UserProfile } from "@/types/userData";
+import type { UserData } from "@/types/userData";
 import bcrypt from 'bcryptjs';
 
 
@@ -216,3 +216,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
