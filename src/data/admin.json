@@ -1,8 +1,3 @@
-{
-  "email": "anu@gmail.com",
-  "passwordHash": "REPLACE_WITH_BCRYPT_HASH_OF_Agtg@2005",
-  "pinHash": "REPLACE_WITH_BCRYPT_HASH_OF_092011"
-}
 // IMPORTANT: Replace the placeholder hash values above with actual bcrypt hashes.
 // You can generate these using a script like the one provided in the explanation.
 // Example generation:
