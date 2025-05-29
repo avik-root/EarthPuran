@@ -3,15 +3,24 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import type { Product, Review } from '@/types/product';
+import type { Product, Review, ColorVariant } from '@/types/product';
 
 const dataFilePath = path.join(process.cwd(), 'src', 'data', 'products.json');
 
 async function readProductsFile(): Promise<Product[]> {
   try {
     const jsonData = await fs.readFile(dataFilePath, 'utf-8');
+    if (!jsonData.trim()) {
+      console.warn("products.json is empty, returning empty array.");
+      return [];
+    }
     return JSON.parse(jsonData) as Product[];
   } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code === 'ENOENT') {
+        console.warn("products.json not found, returning empty array.");
+        return [];
+    }
     console.error("Failed to read products file:", error);
     return [];
   }
@@ -94,5 +103,59 @@ export async function addProductReview(
   } catch (error) {
     console.error("Error adding product review:", error);
     return { success: false, error: "Could not add review to product." };
+  }
+}
+
+// Type for the data coming from the "Add New Product" form after client-side processing
+export type ProductFormData = {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  brand: string;
+  stock: number;
+  imageUrl?: string;
+  imageHint?: string;
+  additionalImageUrls?: string[];
+  colors?: ColorVariant[];
+};
+
+export async function addProduct(
+  productInputData: ProductFormData
+): Promise<{ success: boolean; product?: Product; error?: string }> {
+  // Basic validation (more robust validation is in the Zod schema on client)
+  if (!productInputData.name || !productInputData.category || !productInputData.brand || productInputData.price === undefined || productInputData.stock === undefined) {
+    return { success: false, error: "Missing essential product data (name, category, brand, price, stock)." };
+  }
+
+  try {
+    const products = await readProductsFile();
+    const newId = Date.now().toString() + Math.random().toString(36).substring(2, 9); // More unique ID
+
+    const newProduct: Product = {
+      id: newId,
+      name: productInputData.name,
+      description: productInputData.description,
+      price: productInputData.price,
+      category: productInputData.category,
+      brand: productInputData.brand,
+      stock: productInputData.stock,
+      imageUrl: productInputData.imageUrl || "https://placehold.co/600x400.png", // Default placeholder if not provided
+      imageHint: productInputData.imageHint || "product image",
+      additionalImageUrls: productInputData.additionalImageUrls || [],
+      colors: productInputData.colors || [],
+      rating: 0, // Default for new product
+      reviews: 0, // Default for new product
+      productReviews: [], // Default for new product
+      tags: [] // Default, can be expanded later or via edit
+    };
+
+    products.push(newProduct);
+    await writeProductsFile(products);
+    return { success: true, product: newProduct };
+  } catch (error) {
+    console.error("Error adding product in action:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    return { success: false, error: `Could not add product to file. ${errorMessage}` };
   }
 }

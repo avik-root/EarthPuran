@@ -1,3 +1,4 @@
+
 // src/app/admin/products/new/page.tsx
 "use client"
 
@@ -11,9 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
-import { ArrowLeft, PlusCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, PlusCircle, Trash2, Loader2 } from "lucide-react"; // Added Loader2
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { addProduct, type ProductFormData } from "@/app/actions/productActions"; // Import addProduct
+import { useState } from "react"; // Import useState
 
 const productSchema = z.object({
   name: z.string().min(3, "Product name must be at least 3 characters."),
@@ -23,7 +26,7 @@ const productSchema = z.object({
   brand: z.string().min(1, "Brand is required."),
   stock: z.coerce.number().int().min(0, "Stock cannot be negative."),
   imageUrl: z.string().url("Must be a valid URL for the primary image.").optional().or(z.literal('')),
-  imageHint: z.string().optional(),
+  imageHint: z.string().max(20, "Hint too long (max 20 chars).").refine(val => !val || val.split(' ').length <= 2, {message: "Max 2 words for hint."}).optional(),
   additionalImageUrlsString: z.string().optional(), // For textarea input
   colors: z.array(z.object({
     name: z.string().min(1, "Color name is required."),
@@ -39,6 +42,8 @@ const brands = ["Earth Puran"];
 
 export default function NewProductPage() {
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false); // Loading state
+
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -60,20 +65,34 @@ export default function NewProductPage() {
     name: "colors",
   });
 
-  function onSubmit(values: ProductFormValues) {
+  async function onSubmit(values: ProductFormValues) {
+    setIsSubmitting(true);
     const additionalImageUrls = values.additionalImageUrlsString
       ? values.additionalImageUrlsString.split('\n').map(url => url.trim()).filter(url => url && z.string().url().safeParse(url).success)
       : [];
 
-    const processedValues = {
-      ...values,
+    const productDataForAction: ProductFormData = {
+      name: values.name,
+      description: values.description,
+      price: values.price,
+      category: values.category,
+      brand: values.brand,
+      stock: values.stock,
+      imageUrl: values.imageUrl,
+      imageHint: values.imageHint,
       additionalImageUrls: additionalImageUrls,
+      colors: values.colors,
     };
-    delete (processedValues as any).additionalImageUrlsString;
+    
+    const result = await addProduct(productDataForAction);
 
-    console.log("New product data:", processedValues);
-    toast({ title: "Product Created (Simulated)", description: `${values.name} has been added. (Data logged to console)` });
-    // form.reset(); // Uncomment to clear form after submission
+    if (result.success && result.product) {
+      toast({ title: "Product Added Successfully", description: `${result.product.name} has been added.` });
+      form.reset(); // Reset form after successful submission
+    } else {
+      toast({ title: "Failed to Add Product", description: result.error || "An unknown error occurred.", variant: "destructive" });
+    }
+    setIsSubmitting(false);
   }
 
   return (
@@ -266,6 +285,7 @@ export default function NewProductPage() {
                   size="sm"
                   onClick={() => appendColor({ name: "", link: "", image: "" })}
                   className="mt-2"
+                  disabled={isSubmitting}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Color Variant
                 </Button>
@@ -273,10 +293,13 @@ export default function NewProductPage() {
               <Separator />
 
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" asChild>
+                <Button type="button" variant="outline" asChild disabled={isSubmitting}>
                   <Link href="/admin/products">Cancel</Link>
                 </Button>
-                <Button type="submit">Save Product</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
+                  {isSubmitting ? "Saving..." : "Save Product"}
+                </Button>
               </div>
             </form>
           </Form>
@@ -285,3 +308,4 @@ export default function NewProductPage() {
     </div>
   );
 }
+
