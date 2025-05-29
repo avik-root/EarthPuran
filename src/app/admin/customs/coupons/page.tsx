@@ -25,7 +25,7 @@ interface Coupon {
 export default function AdminCouponsPage() {
   const [couponCode, setCouponCode] = useState<string>("");
   const [couponValue, setCouponValue] = useState<string>("");
-  const [coupons, setCoupons] = useState<Coupon[]>([]); // For simplicity, we'll just manage a list of codes here.
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -55,16 +55,17 @@ export default function AdminCouponsPage() {
     const updatedCoupons = [...coupons, newCoupon];
     setCoupons(updatedCoupons);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedCoupons));
-    toast({ title: "Coupon Added", description: `Coupon "${newCoupon.code}" added.` });
+    toast({ title: "Coupon Added", description: `Coupon "${newCoupon.code}" added successfully.` });
     setCouponCode("");
     setCouponValue("");
   };
 
   const handleRemoveCoupon = (idToRemove: string) => {
+    const couponToRemove = coupons.find(coupon => coupon.id === idToRemove);
     const updatedCoupons = coupons.filter(coupon => coupon.id !== idToRemove);
     setCoupons(updatedCoupons);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedCoupons));
-    toast({ title: "Coupon Removed", variant: "destructive" });
+    toast({ title: "Coupon Removed", description: `Coupon "${couponToRemove?.code}" removed.`, variant: "destructive" });
   };
 
   if (isLoading) {
@@ -80,7 +81,7 @@ export default function AdminCouponsPage() {
             <Ticket className="mr-2 h-5 w-5" /> Coupon Management
           </CardTitle>
           <CardDescription>
-            Create and manage discount coupons for your customers. (Simplified prototype)
+            Create and manage discount coupons for your customers.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

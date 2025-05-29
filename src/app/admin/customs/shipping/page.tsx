@@ -56,7 +56,7 @@ export default function AdminShippingChargesPage() {
             <Truck className="mr-2 h-5 w-5" /> Shipment Charges Configuration
           </CardTitle>
           <CardDescription>
-            Define your store's flat shipping rate. This is a simplified setting for the prototype.
+            Define your store's flat shipping rate.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

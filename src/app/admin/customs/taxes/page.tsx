@@ -56,7 +56,7 @@ export default function AdminTaxesPage() {
             <Percent className="mr-2 h-5 w-5" /> Tax Configuration
           </CardTitle>
           <CardDescription>
-            Define a default tax rate for your products. This is a simplified setting for the prototype.
+            Define a default tax rate for your products.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

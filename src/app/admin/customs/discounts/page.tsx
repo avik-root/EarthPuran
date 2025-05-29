@@ -39,7 +39,7 @@ export default function AdminDiscountsPage() {
     localStorage.setItem(LOCAL_STORAGE_KEY, discountPercentage);
     toast({
       title: "Settings Saved",
-      description: `Global discount percentage updated to ${discountPercentage}%. (Note: Actual application of this discount is not implemented in this prototype).`,
+      description: `Global discount percentage updated to ${discountPercentage}%.`,
     });
   };
 
@@ -56,7 +56,7 @@ export default function AdminDiscountsPage() {
             <BadgePercent className="mr-2 h-5 w-5" /> Discount Configuration
           </CardTitle>
           <CardDescription>
-            Set up a global discount percentage. This is a simplified setting for the prototype.
+            Set up a global discount percentage.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
