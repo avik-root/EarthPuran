@@ -25,13 +25,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PinInput } from "@/components/ui/pin-input";
-import { Eye, EyeOff, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, ShieldCheck, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import bcrypt from 'bcryptjs';
 import type { UserProfile } from "@/types/userData";
-import adminCredentialsData from '@/data/admin.json'; // Rename import to avoid conflict
+import adminCredentialsData from '@/data/admin.json';
 
 const adminLoginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -41,23 +41,16 @@ const adminLoginSchema = z.object({
 
 type AdminLoginFormValues = z.infer<typeof adminLoginSchema>;
 
-// Define a schema for the initial admin setup form
-const initialAdminSetupSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters." }),
-  loginPin: z.string().length(6, { message: "PIN must be 6 digits." }).regex(/^\d+$/, { message: "PIN must be numeric." }),
-});
-type InitialAdminSetupFormValues = z.infer<typeof initialAdminSetupSchema>;
-
 export default function AdminAuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const [showPassword, setShowPassword] = useState(false); // State for login form password
-  const [showLoginPin, setShowLoginPin] = useState(true); // Default to showing PIN
-  const [loadingConfig, setLoadingConfig] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showLoginPin, setShowLoginPin] = useState(true); // Default to showing PIN for login
+  const [loadingConfig, setLoadingConfig] = useState(true); // To manage initial checks
   const [hasMounted, setHasMounted] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
 
   useEffect(() => {
     setHasMounted(true);
@@ -67,10 +60,21 @@ export default function AdminAuthPage() {
           toast({ title: "Gate Access Required", description: "Please verify master access PIN first.", variant: "destructive" });
         }, 0);
         router.push('/admin/access-gate');
+        return; // Stop further execution if gate not passed
+      }
+      
+      // Check admin.json configuration
+      if (!adminCredentialsData || !adminCredentialsData.email || !adminCredentialsData.passwordHash || !adminCredentialsData.pinHash) {
+        setConfigError("The admin.json file is missing or not properly structured. Please ensure it exists in src/data/ and contains email, passwordHash, and pinHash fields.");
+      } else if (adminCredentialsData.passwordHash.startsWith("REPLACE_WITH_BCRYPT_HASH") || adminCredentialsData.pinHash.startsWith("REPLACE_WITH_BCRYPT_HASH")) {
+        setConfigError("Admin credentials in src/data/admin.json are placeholders. Please replace them with actual bcrypt hashes for the admin password and PIN.");
+      } else {
+        setConfigError(null); // Config is valid
       }
     }
     setLoadingConfig(false);
-  }, [router, toast]); 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, toast]); // router and toast are stable
 
   const adminLoginForm = useForm<AdminLoginFormValues>({
     resolver: zodResolver(adminLoginSchema),
@@ -80,66 +84,47 @@ export default function AdminAuthPage() {
       loginPin: "",
     },
   });
-
-  // Form for initial admin setup
-  const initialAdminSetupForm = useForm<InitialAdminSetupFormValues>({
-    resolver: zodResolver(initialAdminSetupSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      loginPin: "",
-    },
-  });
   
-  // State to control which form is displayed
-  const [showSetupForm, setShowSetupForm] = useState(false);
-
-  // Check if admin config is valid (exists and has proper hashes, not placeholders)
-  const isConfigValid = adminCredentialsData && 
-                       adminCredentialsData.email && 
-                       adminCredentialsData.passwordHash && 
-                       adminCredentialsData.pinHash &&
-                       !adminCredentialsData.passwordHash.startsWith("REPLACE_WITH_BCRYPT_HASH") && 
-                       !adminCredentialsData.pinHash.startsWith("REPLACE_WITH_BCRYPT_HASH");
-
   async function onAdminLoginSubmit(values: AdminLoginFormValues) {
     if (localStorage.getItem("adminAccessGranted") !== "true") {
-      toast({ title: "Access Denied", description: "Please verify master access PIN first.", variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Access Denied", description: "Please verify master access PIN first.", variant: "destructive" });
+      }, 0);
       router.push('/admin/access-gate');
       return;
     }
 
-    if (!isConfigValid) {
+    if (configError) { // Check if configError is set
       setTimeout(() => {
-        toast({ title: "Configuration Error", description: "admin.json is missing or not configured correctly.", variant: "destructive", duration: 10000 });
+        toast({ title: "Configuration Error", description: configError, variant: "destructive", duration: 10000 });
       },0);
       return;
     }
     
-    if (values.email !== adminCredentials.email) {
-      toast({ title: "Admin Login Failed", description: "Invalid email for admin.", variant: "destructive" });
+    // Type assertion is now safer due to the configError check above
+    const adminCredentials = adminCredentialsData as { email: string; passwordHash: string; pinHash: string };
+
+    if (values.email.toLowerCase() !== adminCredentials.email.toLowerCase()) {
+      setTimeout(() => {
+        toast({ title: "Admin Login Failed", description: "Invalid email for admin.", variant: "destructive" });
+      }, 0);
       return;
     }
     
-    // Assuming adminCredentialsData is the imported object.
-    // If it's not loaded correctly or is undefined, isConfigValid check should catch it.
-    // However, for type safety and clarity, let's use adminCredentialsData explicitly.
-    const adminCredentials = adminCredentialsData as { email: string; passwordHash: string; pinHash: string };
     const isPasswordCorrect = bcrypt.compareSync(values.password, adminCredentials.passwordHash);
     const isPinCorrect = bcrypt.compareSync(values.loginPin, adminCredentials.pinHash);
     
     if (isPasswordCorrect && isPinCorrect) {
       localStorage.setItem("isLoggedInPrototype", "true");
       localStorage.setItem("isAdminPrototype", "true");
-      localStorage.setItem('currentUserEmail', values.email); // Store admin email as current user
+      localStorage.setItem('currentUserEmail', values.email); 
       
-      // Store a simple admin profile for consistency if other parts of app use userProfilePrototype
       const adminProfileForStorage: UserProfile = {
           firstName: "Admin",
           lastName: "User",
           email: values.email,
-          countryCode: "IN", // Or any default
-          phoneNumber: "0000000000", // Placeholder
+          countryCode: "IN", 
+          phoneNumber: "0000000000", 
       };
       localStorage.setItem('userProfilePrototype', JSON.stringify(adminProfileForStorage));
 
@@ -157,65 +142,21 @@ export default function AdminAuthPage() {
       } else if (!isPinCorrect) {
         failureMessage = "Invalid admin PIN.";
       }
-      toast({ title: "Admin Login Failed", description: failureMessage, variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Admin Login Failed", description: failureMessage, variant: "destructive" });
+      }, 0);
     }
-  }
-
-  async function onInitialAdminSetupSubmit(values: InitialAdminSetupFormValues) {
-      if (localStorage.getItem("adminAccessGranted") !== "true") {
-        toast({ title: "Access Denied", description: "Please verify master access PIN first.", variant: "destructive" });
-        router.push('/admin/access-gate');
-        return;
-      }
-
-      try {
-          const passwordHash = await bcrypt.hash(values.password, 10); // 10 salt rounds
-          const pinHash = await bcrypt.hash(values.loginPin, 10); // 10 salt rounds
-
-          // In a real application, you would securely save this to a database or configuration file.
-          // For this prototype, we'll simulate saving by providing instructions.
-          console.log("Admin credentials generated:");
-          console.log("Email:", values.email);
-          console.log("Password Hash:", passwordHash);
-          console.log("PIN Hash:", pinHash);
-          
-          toast({
-              title: "Admin Config Generated",
-              description: "Please update src/data/admin.json with the generated hashes for email, passwordHash, and pinHash.",
-              variant: "success",
-              duration: 20000, // Long duration
-          });
-          // After generating and instructing, toggle back to potentially show the login form
-          setShowSetupForm(false);
-      } catch (error) {
-          toast({ title: "Setup Error", description: "Failed to generate credentials.", variant: "destructive" });
-      }
   }
 
   useEffect(() => {
-    // Check if admin config is valid after mount
-    if (hasMounted) {
-      if (!isConfigValid) {
-        setShowSetupForm(true); // Show setup form if config is invalid/missing
-        toast({ 
-          title: "Initial Admin Setup Required", 
-          description: "Admin credentials are not configured. Please create the initial admin account.", 
-          variant: "warning",
-          duration: 10000
-        });
-      } else {
-        setShowSetupForm(false); // Show login form if config is valid
-      }
+    if (hasMounted && adminCredentialsData?.email) {
+        adminLoginForm.reset({ email: adminCredentialsData.email, password: "", loginPin: "" });
     }
-  }, [hasMounted, isConfigValid, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMounted, adminCredentialsData?.email]);
 
-  // Initial loading state while checking access and config
-  if (!hasMounted || loadingConfig || (typeof window !== 'undefined' && localStorage.getItem("adminAccessGranted") !== "true")) {
-    // Basic loading skeleton or null to avoid flash of unstyled content
-    // If access is not granted, the useEffect should redirect. This is a fallback UI.
-     if (hasMounted && typeof window !== 'undefined' && localStorage.getItem("adminAccessGranted") !== "true") {
-         return null; // Avoid rendering anything if redirection is pending
-     }
+
+  if (!hasMounted || loadingConfig) {
     return (
         <div className="flex h-screen items-center justify-center bg-background">
             <div className="flex flex-col items-center space-y-4">
@@ -225,86 +166,34 @@ export default function AdminAuthPage() {
         </div>
     );
   }
-  
-  // Render Setup Form if required
-  if (showSetupForm) {
+
+  if (configError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen py-12 bg-background">
-          <Card className="w-full max-w-md shadow-xl">
-            <CardHeader className="text-center">
-              <ShieldCheck className="mx-auto h-12 w-12 text-amber-500 mb-2" />
-              <CardTitle className="text-2xl font-bold text-amber-600">Initial Admin Setup</CardTitle>
-              <CardDescription>Create the first administrator account credentials.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...initialAdminSetupForm}>
-                <form onSubmit={initialAdminSetupForm.handleSubmit(onInitialAdminSetupSubmit)} className="space-y-6">
-                  <FormField
-                    control={initialAdminSetupForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Admin Email Address</FormLabel>
-                        <FormControl><Input placeholder="admin@example.com" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={initialAdminSetupForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Admin Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            {/* Use a separate state for setup form password visibility if needed */}
-                            <Input type="password" placeholder="••••••••" {...field} /> 
-                            {/* Add a toggle button if desired */}
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={initialAdminSetupForm.control}
-                    name="loginPin"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex items-center justify-between">
-                          <FormLabel>Admin 6-Digit Login PIN</FormLabel>
-                          {/* Use a separate state for setup form PIN visibility if needed */}
-                          {/* Add a toggle button if desired */}
-                        </div>
-                        <FormControl>
-                            {/* Decide whether to show PIN by default or use toggle state */}
-                            <PinInput length={6} {...field} showPin={true} /> 
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white" size="lg">
-                    Generate Admin Credentials
-                  </Button>
-                </form>
-              </Form>
-              <p className="text-center text-sm text-muted-foreground mt-4">
-                  After generating, you will need to manually update <code>src/data/admin.json</code>.
-              </p>
-            </CardContent>
-             <CardFooter className="flex flex-col items-center space-y-2 mt-4">
-                <Button variant="link" asChild className="text-sm text-muted-foreground">
-                  <Link href="/">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Back to Store
-                  </Link>
-                </Button>
-              </CardFooter>
-          </Card>
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center">
+            <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-2" />
+            <CardTitle className="text-2xl font-bold text-destructive">Admin Configuration Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center text-sm text-foreground mb-4">{configError}</p>
+            <p className="text-center text-xs text-muted-foreground">
+              Please ensure <code>src/data/admin.json</code> exists and is correctly formatted with valid bcrypt hashes for <code>passwordHash</code> and <code>pinHash</code>.
+              You may need to restart the application after correcting the file.
+            </p>
+          </CardContent>
+          <CardFooter className="flex flex-col items-center space-y-2 mt-4">
+            <Button variant="link" asChild className="text-sm text-muted-foreground">
+              <Link href="/">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Store
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
+  
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-12 bg-background">
