@@ -1,17 +1,17 @@
 
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { getAllUsers, updateOrderStatus } from "@/app/actions/userActions";
 import type { UserData } from "@/types/userData";
-import type { Order } from "@/types/order";
+import type { Order as BaseOrder } from "@/types/order"; // Renamed to avoid conflict
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, MoreHorizontal, CheckCircle, PackageCheck } from "lucide-react"; // Added PackageCheck
+import { Search, MoreHorizontal, PackageCheck, FileText, Printer } from "lucide-react"; // Added FileText, Printer
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -23,8 +23,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
+import { PrintableInvoice } from "@/components/admin/PrintableInvoice"; // Import the new component
 
-interface EnrichedOrder extends Order {
+export interface EnrichedOrder extends BaseOrder { // Use BaseOrder
   customerName: string;
   customerEmail: string;
 }
@@ -34,6 +35,7 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const [orderToInvoice, setOrderToInvoice] = useState<EnrichedOrder | null>(null);
 
   const fetchAllOrders = useCallback(async () => {
     setLoading(true);
@@ -50,7 +52,7 @@ export default function AdminOrdersPage() {
           collectedOrders = collectedOrders.concat(userOrders);
         }
       });
-      collectedOrders.sort((a, b) => b.id.localeCompare(a.id));
+      collectedOrders.sort((a, b) => b.id.localeCompare(a.id)); // Newest first
       setAllOrders(collectedOrders);
     } catch (error) {
       console.error("Failed to fetch all orders:", error);
@@ -67,6 +69,17 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     fetchAllOrders();
   }, [fetchAllOrders]);
+  
+  useEffect(() => {
+    if (orderToInvoice) {
+      const timer = setTimeout(() => {
+        window.print();
+        setOrderToInvoice(null); // Reset after printing
+      }, 100); // Small delay to ensure component is rendered
+      return () => clearTimeout(timer);
+    }
+  }, [orderToInvoice]);
+
 
   const handleMarkAsDelivered = async (order: EnrichedOrder) => {
     const result = await updateOrderStatus(order.customerEmail, order.id, 'Delivered');
@@ -87,8 +100,7 @@ export default function AdminOrdersPage() {
     }
   };
 
-
-  const getStatusColor = (status: Order['status']) => {
+  const getStatusColor = (status: BaseOrder['status']) => {
     switch (status) {
       case 'Processing': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300';
       case 'Shipped': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300';
@@ -195,14 +207,18 @@ export default function AdminOrdersPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                            <DropdownMenuItem asChild>
-                            <Link href={`/orders/${order.id}`}>View Details</Link>
+                            <Link href={`/orders/${order.id}`} className="flex items-center">
+                                <FileText className="mr-2 h-4 w-4" /> View Details
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setOrderToInvoice(order)} className="flex items-center">
+                            <Printer className="mr-2 h-4 w-4" /> Generate Invoice
                           </DropdownMenuItem>
                           {(order.status === 'Processing' || order.status === 'Shipped') && (
-                            <DropdownMenuItem onClick={() => handleMarkAsDelivered(order)}>
+                            <DropdownMenuItem onClick={() => handleMarkAsDelivered(order)} className="flex items-center">
                               <PackageCheck className="mr-2 h-4 w-4" /> Mark as Delivered
                             </DropdownMenuItem>
                           )}
-                          {/* Future: Update Status options could go here */}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -213,9 +229,9 @@ export default function AdminOrdersPage() {
           )}
         </CardContent>
       </Card>
+      <div className="printable-invoice-container">
+        <PrintableInvoice order={orderToInvoice} />
+      </div>
     </div>
   );
 }
-
-
-    
