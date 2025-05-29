@@ -102,11 +102,24 @@ export function AddressManagement() {
       async (position) => {
         const { latitude, longitude } = position.coords;
         try {
-          // WARNING: API Key exposed client-side. In a real app, use a backend proxy.
           const response = await fetch(`https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&apiKey=${GEOAPIFY_API_KEY}`);
           if (!response.ok) {
-            console.error("Geoapify error response:", response); // Log the full response
-            throw new Error(`Geoapify API error: Status ${response.status} - ${response.statusText || 'No status text'}`);
+            let errorDetails = `Status ${response.status} - ${response.statusText || 'No status text'}`;
+            try {
+              const errorBody = await response.json(); // Try to parse error body as JSON
+              errorDetails += ` - Body: ${JSON.stringify(errorBody)}`;
+              console.error("Geoapify error response (JSON):", errorBody);
+            } catch (e) {
+              // If JSON parsing fails, try to read as text
+              try {
+                const errorText = await response.text();
+                errorDetails += ` - Body: ${errorText}`;
+                console.error("Geoapify error response (Text):", errorText);
+              } catch (textError) {
+                console.error("Could not read Geoapify error response body.");
+              }
+            }
+            throw new Error(`Geoapify API error: ${errorDetails}`);
           }
           const data = await response.json();
           
@@ -119,7 +132,7 @@ export function AddressManagement() {
             form.setValue("city", properties.city || "");
             form.setValue("state", properties.state || "");
             form.setValue("zipCode", properties.postcode || "");
-            form.setValue("country", properties.country || "India"); // Default to India if country isn't found
+            form.setValue("country", properties.country || "India");
             toast({ title: "Location Found!", description: "Address fields have been populated." });
           } else {
             throw new Error("No address details found for your location.");
@@ -152,30 +165,28 @@ export function AddressManagement() {
 
     let updatedAddresses: UserAddress[];
     const isNewAddress = !editingAddress;
+    const newAddressId = Date.now().toString();
 
     if (editingAddress) {
       updatedAddresses = addresses.map(addr =>
         addr.id === editingAddress.id ? { ...addr, ...values, isDefault: values.isDefault || false } : addr
       );
     } else {
-      const newAddress = { ...values, id: Date.now().toString(), isDefault: values.isDefault || false };
+      const newAddress = { ...values, id: newAddressId, isDefault: values.isDefault || false };
       updatedAddresses = [...addresses, newAddress];
     }
     
-    // If setting an address as default, make sure others are not default
     if (values.isDefault) {
         updatedAddresses = updatedAddresses.map(addr => 
-            (addr.id === (editingAddress ? editingAddress.id : updatedAddresses.find(a => a.id === (isNewAddress ? updatedAddresses[updatedAddresses.length -1].id : ''))?.id))
+            (addr.id === (editingAddress ? editingAddress.id : newAddressId))
             ? { ...addr, isDefault: true }
             : { ...addr, isDefault: false }
         );
     }
     
-    // Ensure at least one address is default if it's the first one or the only one
     if (updatedAddresses.length > 0 && !updatedAddresses.some(addr => addr.isDefault)) {
         updatedAddresses[0].isDefault = true;
     }
-
 
     try {
         const result = await updateUserAddresses(currentUserEmail, updatedAddresses);
@@ -294,7 +305,7 @@ export function AddressManagement() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {!editingAddress && ( // Show only for new addresses
+                {!editingAddress && ( 
                   <Button
                     type="button"
                     variant="outline"
@@ -407,4 +418,3 @@ export function AddressManagement() {
     </div>
   );
 }
-
