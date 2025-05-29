@@ -2,6 +2,7 @@
 "use client"
 
 import * as React from "react"
+import NextLink, { type LinkProps as NextLinkProps } from "next/link"; // Import NextLink
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
@@ -11,7 +12,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet" // Added SheetHeader, SheetTitle
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet" 
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -48,7 +49,6 @@ function useSidebar() {
   return context
 }
 
-// Helper function to get cookie, ensuring it only runs on the client
 function getCookie(name: string): string | undefined {
   if (typeof document === 'undefined') {
     return undefined;
@@ -83,16 +83,16 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
-
-    // Initialize state from cookie or defaultOpen, ensuring this logic runs client-side
     const [internalOpen, setInternalOpen] = React.useState(defaultOpen);
 
     React.useEffect(() => {
-      const cookieState = getCookie(SIDEBAR_COOKIE_NAME);
-      if (cookieState !== undefined) {
-        setInternalOpen(cookieState === 'true');
+      if (typeof window !== 'undefined' && !openProp) { // Only read cookie if not controlled
+        const cookieState = getCookie(SIDEBAR_COOKIE_NAME);
+        if (cookieState !== undefined) {
+          setInternalOpen(cookieState === 'true');
+        }
       }
-    }, []);
+    }, [openProp]);
 
 
     const open = openProp ?? internalOpen;
@@ -118,7 +118,6 @@ const SidebarProvider = React.forwardRef<
         : setOpen((current) => !current);    
     }, [isMobile, setOpen, setOpenMobile]);
 
-    // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
         if (
@@ -134,8 +133,6 @@ const SidebarProvider = React.forwardRef<
       return () => window.removeEventListener("keydown", handleKeyDown)
     }, [toggleSidebar])
 
-    // We add a state so that we can do data-state="expanded" or "collapsed".
-    // This makes it easier to style the sidebar with Tailwind classes.
     const state = open ? "expanded" : "collapsed"
 
     const contextValue = React.useMemo<SidebarContext>(
@@ -192,7 +189,7 @@ const Sidebar = React.forwardRef<
       side = "left",
       variant = "sidebar",
       collapsible = "offcanvas",
-      mobileTitle = "Menu", // Default title for mobile sheet
+      mobileTitle = "Menu", 
       className, 
       children,
       ...props 
@@ -230,7 +227,7 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <SheetHeader className="sr-only"> {/* Visually hidden as main title is usually in children */}
+            <SheetHeader className="p-4 border-b"> {/* Added SheetHeader and SheetTitle */}
               <SheetTitle>{mobileTitle}</SheetTitle>
             </SheetHeader>
             <div className="flex h-full w-full flex-col">{children}</div>
@@ -252,7 +249,6 @@ const Sidebar = React.forwardRef<
         data-side={side}
         {...props} 
       >
-        {/* This is what handles the sidebar gap on desktop */}
         <div
           className={cn(
             "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
@@ -269,7 +265,6 @@ const Sidebar = React.forwardRef<
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-            // Adjust the padding for floating and inset variants.
             variant === "floating" || variant === "inset"
               ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
               : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l"
@@ -490,7 +485,6 @@ const SidebarGroupAction = React.forwardRef<
       data-sidebar="group-action"
       className={cn(
         "absolute right-3 top-3.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
-        // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 after:md:hidden",
         "group-data-[collapsible=icon]:hidden",
         className
@@ -562,13 +556,20 @@ const sidebarMenuButtonVariants = cva(
   }
 )
 
+type SidebarMenuButtonProps = Omit<React.HTMLAttributes<HTMLElement>, 'onClick' | 'href'> & // Use general attributes
+  VariantProps<typeof sidebarMenuButtonVariants> & {
+  asChild?: boolean;
+  isActive?: boolean;
+  tooltip?: string | React.ComponentProps<typeof TooltipContent>;
+  href?: NextLinkProps['href']; // Use NextLinkProps['href']
+  onClick?: React.MouseEventHandler<HTMLElement>; // Make onClick general
+  // Allow other button or anchor specific props if needed, like 'type' for button
+  type?: React.ButtonHTMLAttributes<HTMLButtonElement>['type'];
+};
+
 const SidebarMenuButton = React.forwardRef<
-  HTMLButtonElement,
-  React.ComponentProps<"button"> & {
-    asChild?: boolean
-    isActive?: boolean
-    tooltip?: string | React.ComponentProps<typeof TooltipContent>
-  } & VariantProps<typeof sidebarMenuButtonVariants>
+  HTMLElement, // Can be HTMLButtonElement or HTMLAnchorElement
+  SidebarMenuButtonProps
 >(
   (
     {
@@ -578,49 +579,73 @@ const SidebarMenuButton = React.forwardRef<
       size = "default",
       tooltip,
       className,
-      href, 
+      href,
+      children,
       ...props
     },
     ref
   ) => {
-    const Comp = asChild ? Slot : "button"
-    const { isMobile, state } = useSidebar()
+    const { isMobile, state } = useSidebar();
 
-    const buttonContent = (
-      <Comp
-        ref={ref}
-        data-sidebar="menu-button"
-        data-size={size}
-        data-active={isActive}
-        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        {...(Comp === "button" ? props : { ...props, href })} 
-      >
-        {props.children}
-      </Comp>
-    );
+    const commonProps = {
+      "data-sidebar": "menu-button",
+      "data-size": size,
+      "data-active": isActive,
+      className: cn(sidebarMenuButtonVariants({ variant, size, className })),
+      ...props,
+    };
 
+    let elementToRender;
 
-    if (!tooltip) {
-      return buttonContent
+    if (asChild) {
+      // If asChild is true, render Slot and pass down props.
+      // The consumer is responsible for providing a clickable child (e.g., NextLink or button).
+      elementToRender = (
+        <Slot ref={ref as React.Ref<any>} {...commonProps}>
+          {children}
+        </Slot>
+      );
+    } else if (href) {
+      // If href is present (and asChild is false), render a Next.js Link wrapping an <a> tag.
+      elementToRender = (
+        <NextLink href={href} passHref legacyBehavior>
+          <a ref={ref as React.Ref<HTMLAnchorElement>} {...commonProps}>
+            {children}
+          </a>
+        </NextLink>
+      );
+    } else {
+      // If no href (and asChild is false), render as a button.
+      elementToRender = (
+        <button ref={ref as React.Ref<HTMLButtonElement>} type={props.type || "button"} {...commonProps}>
+          {children}
+        </button>
+      );
     }
 
-    const tooltipContentProps = typeof tooltip === "string" ? { children: tooltip } : tooltip;
-
+    if (!tooltip || (isMobile && state === "expanded")) {
+      return elementToRender;
+    }
+    
+    const tooltipContentProps =
+      typeof tooltip === "string" ? { children: tooltip } : tooltip;
 
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
+        <TooltipTrigger asChild>{elementToRender}</TooltipTrigger>
         <TooltipContent
           side="right"
           align="center"
-          hidden={state !== "collapsed" || isMobile}
-          {...tooltipContentProps}
-        />
+          hidden={!isMobile && state !== "collapsed"} // Show tooltip only if desktop and collapsed
+        >
+          {tooltipContentProps}
+        </TooltipContent>
       </Tooltip>
-    )
+    );
   }
-)
+);
 SidebarMenuButton.displayName = "SidebarMenuButton"
+
 
 const SidebarMenuAction = React.forwardRef<
   HTMLButtonElement,
@@ -637,7 +662,6 @@ const SidebarMenuAction = React.forwardRef<
       data-sidebar="menu-action"
       className={cn(
         "absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 peer-hover/menu-button:text-sidebar-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0",
-        // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 after:md:hidden",
         "peer-data-[size=sm]/menu-button:top-1",
         "peer-data-[size=default]/menu-button:top-1.5",
@@ -680,7 +704,6 @@ const SidebarMenuSkeleton = React.forwardRef<
     showIcon?: boolean
   }
 >(({ className, showIcon = false, ...props }, ref) => {
-  // Random width between 50 to 90%.
   const width = React.useMemo(() => {
     return `${Math.floor(Math.random() * 40) + 50}%`
   }, [])
