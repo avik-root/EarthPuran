@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, PlusCircle, Edit3 } from "lucide-react";
+import { Trash2, PlusCircle, Edit3, LocateFixed, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useCallback } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,15 +28,17 @@ const addressSchema = z.object({
 
 type AddressFormValues = z.infer<typeof addressSchema>;
 
+const GEOAPIFY_API_KEY = "383ebfd82cd846f098a1b5c518acf774"; // WARNING: API Key exposed client-side. Not for production!
+
 export function AddressManagement() {
   const { toast } = useToast();
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [editingAddress, setEditingAddress] = useState<UserAddress | null>(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
-  // Declare form before useEffect that depends on it
   const form = useForm<AddressFormValues>({
     resolver: zodResolver(addressSchema),
     defaultValues: {
@@ -78,7 +80,6 @@ export function AddressManagement() {
     fetchAddresses();
   }, [fetchAddresses]);
 
-
   useEffect(() => {
     if (editingAddress) {
       form.reset(editingAddress);
@@ -88,6 +89,59 @@ export function AddressManagement() {
     }
   }, [editingAddress, form]);
 
+  const handleFetchCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      toast({ title: "Geolocation Not Supported", description: "Your browser doesn't support geolocation.", variant: "destructive" });
+      return;
+    }
+
+    setIsFetchingLocation(true);
+    toast({ title: "Fetching Location", description: "Please wait..." });
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          // WARNING: API Key exposed client-side. In a real app, use a backend proxy.
+          const response = await fetch(`https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&apiKey=${GEOAPIFY_API_KEY}`);
+          if (!response.ok) {
+            throw new Error(`Geoapify API error: ${response.statusText}`);
+          }
+          const data = await response.json();
+          
+          if (data.features && data.features.length > 0) {
+            const properties = data.features[0].properties;
+            const streetName = properties.street || '';
+            const houseNumber = properties.housenumber || '';
+            
+            form.setValue("street", `${houseNumber} ${streetName}`.trim());
+            form.setValue("city", properties.city || "");
+            form.setValue("state", properties.state || "");
+            form.setValue("zipCode", properties.postcode || "");
+            form.setValue("country", properties.country || "India"); // Default to India if country isn't found
+            toast({ title: "Location Found!", description: "Address fields have been populated." });
+          } else {
+            throw new Error("No address details found for your location.");
+          }
+        } catch (error) {
+          console.error("Error fetching address from Geoapify:", error);
+          const errorMessage = error instanceof Error ? error.message : "Could not retrieve address details.";
+          toast({ title: "Address Fetch Error", description: errorMessage, variant: "destructive" });
+        } finally {
+          setIsFetchingLocation(false);
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        let description = "Could not get your location.";
+        if (error.code === error.PERMISSION_DENIED) {
+          description = "Geolocation permission denied. Please enable it in your browser settings.";
+        }
+        toast({ title: "Location Error", description, variant: "destructive" });
+        setIsFetchingLocation(false);
+      }
+    );
+  };
 
   async function onSubmit(values: AddressFormValues) {
     if (!currentUserEmail) {
@@ -96,6 +150,7 @@ export function AddressManagement() {
     }
 
     let updatedAddresses: UserAddress[];
+    let isNewAddress = false;
 
     if (editingAddress) {
       updatedAddresses = addresses.map(addr =>
@@ -103,22 +158,37 @@ export function AddressManagement() {
         (values.isDefault ? { ...addr, isDefault: false } : addr)
       );
     } else {
+      isNewAddress = true;
       const newAddress = { ...values, id: Date.now().toString(), isDefault: values.isDefault || false };
       if (values.isDefault) {
         updatedAddresses = [...addresses.map(a => ({ ...a, isDefault: false })), newAddress];
       } else {
-        const hasDefault = addresses.some(addr => addr.isDefault);
-        if (!hasDefault && addresses.length === 0) {
-             newAddress.isDefault = true;
-        }
         updatedAddresses = [...addresses, newAddress];
       }
     }
+    
+    // Ensure at least one address is default if it's the first one or the only one
+    if (updatedAddresses.length > 0 && !updatedAddresses.some(addr => addr.isDefault)) {
+        updatedAddresses[0].isDefault = true;
+    }
+     // If a new address is set as default, and it's not the only one, make sure others are not default.
+     if (isNewAddress && values.isDefault && updatedAddresses.length > 1) {
+        updatedAddresses = updatedAddresses.map(addr => 
+            addr.id === updatedAddresses.find(a => a.id === Date.now().toString())?.id // Check if current new address
+            ? { ...addr, isDefault: true }
+            : { ...addr, isDefault: false }
+        );
+    }
+
 
     try {
-        await updateUserAddresses(currentUserEmail, updatedAddresses);
-        setAddresses(updatedAddresses); 
-        toast({ title: editingAddress ? "Address Updated" : "Address Added", description: `Your address has been successfully ${editingAddress ? "updated" : "added"}.` });
+        const result = await updateUserAddresses(currentUserEmail, updatedAddresses);
+        if (result) {
+            setAddresses(updatedAddresses); 
+            toast({ title: editingAddress ? "Address Updated" : "Address Added", description: `Your address has been successfully ${editingAddress ? "updated" : "added"}.` });
+        } else {
+             toast({ title: "Save Error", description: "Could not save address changes. Server indicated failure.", variant: "destructive" });
+        }
     } catch (error) {
         console.error("Failed to save addresses:", error);
         toast({ title: "Save Error", description: "Could not save address changes.", variant: "destructive" });
@@ -138,9 +208,13 @@ export function AddressManagement() {
     }
 
     try {
-        await updateUserAddresses(currentUserEmail, newAddresses);
-        setAddresses(newAddresses);
-        toast({ title: "Address Deleted", description: "The address has been removed." });
+        const result = await updateUserAddresses(currentUserEmail, newAddresses);
+         if (result) {
+            setAddresses(newAddresses);
+            toast({ title: "Address Deleted", description: "The address has been removed." });
+        } else {
+             toast({ title: "Delete Error", description: "Could not delete address. Server indicated failure.", variant: "destructive" });
+        }
     } catch (error) {
         console.error("Failed to delete address:", error);
         toast({ title: "Delete Error", description: "Could not delete address.", variant: "destructive" });
@@ -154,9 +228,13 @@ export function AddressManagement() {
       isDefault: addr.id === id
     }));
     try {
-        await updateUserAddresses(currentUserEmail, newAddresses);
-        setAddresses(newAddresses);
-        toast({ title: "Default Address Set", description: "Primary shipping address updated." });
+        const result = await updateUserAddresses(currentUserEmail, newAddresses);
+        if (result) {
+            setAddresses(newAddresses);
+            toast({ title: "Default Address Set", description: "Primary shipping address updated." });
+        } else {
+            toast({ title: "Update Error", description: "Could not set default address. Server indicated failure.", variant: "destructive" });
+        }
     } catch (error) {
         console.error("Failed to set default address:", error);
         toast({ title: "Update Error", description: "Could not set default address.", variant: "destructive" });
@@ -209,7 +287,7 @@ export function AddressManagement() {
       )}
 
       <Button variant="outline" onClick={() => { setEditingAddress(null); setIsFormVisible(!isFormVisible); form.reset(); }} className="w-full sm:w-auto">
-        <PlusCircle className="mr-2 h-4 w-4" /> {isFormVisible && !editingAddress ? "Cancel" : "Add New Address"}
+        <PlusCircle className="mr-2 h-4 w-4" /> {isFormVisible && !editingAddress ? "Cancel Adding" : "Add New Address"}
       </Button>
 
       {isFormVisible && (
@@ -220,6 +298,29 @@ export function AddressManagement() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {!editingAddress && ( // Show only for new addresses
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleFetchCurrentLocation}
+                    disabled={isFetchingLocation}
+                    className="w-full sm:w-auto mb-4"
+                  >
+                    {isFetchingLocation ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <LocateFixed className="mr-2 h-4 w-4" />
+                    )}
+                    Use My Current Location
+                  </Button>
+                )}
+                 {/* Add a security warning about the API key if needed */}
+                 {GEOAPIFY_API_KEY === "383ebfd82cd846f098a1b5c518acf774" && !editingAddress && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                        Note: Geolocation API key is for prototype use. Do not use this key in production.
+                    </p>
+                 )}
+
                 <FormField
                   control={form.control}
                   name="street"
@@ -288,7 +389,6 @@ export function AddressManagement() {
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
-                            // Disable unchecking if it's the only address and default
                             disabled={!!editingAddress && editingAddress.isDefault && addresses.length === 1}
                           />
                         </FormControl>
