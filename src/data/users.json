@@ -327,5 +327,21 @@
     "orders": [],
     "wishlist": [],
     "cart": []
+  },
+  "anan@gmail.com": {
+    "profile": {
+      "firstName": "Anan",
+      "lastName": "Das",
+      "email": "anan@gmail.com",
+      "countryCode": "IN",
+      "phoneNumber": "9697969796",
+      "hashedPassword": "$2a$10$tgsrVQJBlM1sfZyFeE9wHu8U8.sLirK1YqEuQ6uolcY/GuFCsfnjG",
+      "hashedPin": "$2a$10$jqKdrnISkW9bu0evORUXWedXtS2L.Cp2TYsMEzP5fXGMN52e7QkO2",
+      "isAdmin": false
+    },
+    "addresses": [],
+    "orders": [],
+    "wishlist": [],
+    "cart": []
   }
 }

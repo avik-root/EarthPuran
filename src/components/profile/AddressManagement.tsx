@@ -105,7 +105,8 @@ export function AddressManagement() {
           // WARNING: API Key exposed client-side. In a real app, use a backend proxy.
           const response = await fetch(`https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&apiKey=${GEOAPIFY_API_KEY}`);
           if (!response.ok) {
-            throw new Error(`Geoapify API error: ${response.statusText}`);
+            console.error("Geoapify error response:", response); // Log the full response
+            throw new Error(`Geoapify API error: Status ${response.status} - ${response.statusText || 'No status text'}`);
           }
           const data = await response.json();
           
@@ -150,34 +151,29 @@ export function AddressManagement() {
     }
 
     let updatedAddresses: UserAddress[];
-    let isNewAddress = false;
+    const isNewAddress = !editingAddress;
 
     if (editingAddress) {
       updatedAddresses = addresses.map(addr =>
-        addr.id === editingAddress.id ? { ...addr, ...values, isDefault: values.isDefault || false } :
-        (values.isDefault ? { ...addr, isDefault: false } : addr)
+        addr.id === editingAddress.id ? { ...addr, ...values, isDefault: values.isDefault || false } : addr
       );
     } else {
-      isNewAddress = true;
       const newAddress = { ...values, id: Date.now().toString(), isDefault: values.isDefault || false };
-      if (values.isDefault) {
-        updatedAddresses = [...addresses.map(a => ({ ...a, isDefault: false })), newAddress];
-      } else {
-        updatedAddresses = [...addresses, newAddress];
-      }
+      updatedAddresses = [...addresses, newAddress];
+    }
+    
+    // If setting an address as default, make sure others are not default
+    if (values.isDefault) {
+        updatedAddresses = updatedAddresses.map(addr => 
+            (addr.id === (editingAddress ? editingAddress.id : updatedAddresses.find(a => a.id === (isNewAddress ? updatedAddresses[updatedAddresses.length -1].id : ''))?.id))
+            ? { ...addr, isDefault: true }
+            : { ...addr, isDefault: false }
+        );
     }
     
     // Ensure at least one address is default if it's the first one or the only one
     if (updatedAddresses.length > 0 && !updatedAddresses.some(addr => addr.isDefault)) {
         updatedAddresses[0].isDefault = true;
-    }
-     // If a new address is set as default, and it's not the only one, make sure others are not default.
-     if (isNewAddress && values.isDefault && updatedAddresses.length > 1) {
-        updatedAddresses = updatedAddresses.map(addr => 
-            addr.id === updatedAddresses.find(a => a.id === Date.now().toString())?.id // Check if current new address
-            ? { ...addr, isDefault: true }
-            : { ...addr, isDefault: false }
-        );
     }
 
 
@@ -314,7 +310,6 @@ export function AddressManagement() {
                     Use My Current Location
                   </Button>
                 )}
-                 {/* Add a security warning about the API key if needed */}
                  {GEOAPIFY_API_KEY === "383ebfd82cd846f098a1b5c518acf774" && !editingAddress && (
                     <p className="text-xs text-muted-foreground mt-1">
                         Note: Geolocation API key is for prototype use. Do not use this key in production.
@@ -412,3 +407,4 @@ export function AddressManagement() {
     </div>
   );
 }
+
