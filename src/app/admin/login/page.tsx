@@ -11,6 +11,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { PinInput } from "@/components/ui/pin-input";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Added import
 import { Eye, EyeOff, ShieldCheck, UserPlus, AlertTriangle, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -218,7 +219,7 @@ export default function AdminAuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40">
       {uiMode === 'createAdmin' && (
         <Card className="w-full max-w-lg shadow-xl">
           <CardHeader className="text-center">
