@@ -1,3 +1,4 @@
+
 [
   {
     "id": "1",
@@ -167,7 +168,7 @@
     "category": "Fragrance",
     "brand": "Earth Puran",
     "stock": 10,
-    "imageUrl": "https://drive.google.com/file/d/1Qq4v0tKcER9vNiM_f302-6NwdfRb04cm/view?usp=drive_link",
+    "imageUrl": "https://drive.google.com/uc?export=view&id=1Qq4v0tKcER9vNiM_f302-6NwdfRb04cm",
     "imageHint": "Fragrance",
     "additionalImageUrls": [],
     "colors": [],
@@ -177,3 +178,5 @@
     "tags": []
   }
 ]
+
+    
