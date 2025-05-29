@@ -4,6 +4,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import type { Product, Review, ColorVariant } from '@/types/product';
+import { revalidatePath } from 'next/cache'; // Import revalidatePath
 
 const dataFilePath = path.join(process.cwd(), 'src', 'data', 'products.json');
 
@@ -14,18 +15,18 @@ async function readProductsFile(): Promise<Product[]> {
       console.warn("products.json is empty, returning empty array.");
       return [];
     }
-    // Add more detailed error logging for JSON parsing
     try {
       return JSON.parse(jsonData) as Product[];
     } catch (parseError) {
       console.error("Failed to parse products.json. File content may be corrupted. Content snippet (first 500 chars):", jsonData.substring(0, 500), "Error:", parseError);
       console.warn("Returning empty array due to products.json parse error. Please check the file content. Consider backing up and deleting/re-initializing products.json if the issue persists.");
-      return []; // Return empty array or throw custom error if preferred
+      return [];
     }
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
     if (nodeError.code === 'ENOENT') {
         console.warn("products.json not found, returning empty array.");
+        await fs.writeFile(dataFilePath, JSON.stringify([], null, 2), 'utf-8'); // Create if not exists
         return [];
     }
     console.error("Failed to read products file:", error);
@@ -83,7 +84,7 @@ export async function addProductReview(
 
     const newReview: Review = {
       ...reviewData,
-      id: Date.now().toString() + Math.random().toString(36).substring(2, 7), // More unique ID
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
       date: new Date().toISOString(),
     };
 
@@ -91,9 +92,8 @@ export async function addProductReview(
       product.productReviews = [];
     }
     product.productReviews.push(newReview);
-    product.productReviews.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by newest first
+    product.productReviews.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // Recalculate average rating and review count
     if (product.productReviews.length > 0) {
       const totalRating = product.productReviews.reduce((sum, review) => sum + review.rating, 0);
       product.rating = parseFloat((totalRating / product.productReviews.length).toFixed(1));
@@ -106,6 +106,10 @@ export async function addProductReview(
     products[productIndex] = product;
     await writeProductsFile(products);
 
+    revalidatePath('/'); // Revalidate homepage for featured products/new arrivals
+    revalidatePath('/products'); // Revalidate main products page
+    revalidatePath(`/products/${productId}`); // Revalidate specific product page
+
     return { success: true, product: product };
   } catch (error) {
     console.error("Error adding product review:", error);
@@ -113,7 +117,6 @@ export async function addProductReview(
   }
 }
 
-// Type for the data coming from the "Add New Product" form after client-side processing
 export type ProductFormData = {
   name: string;
   description: string;
@@ -130,14 +133,13 @@ export type ProductFormData = {
 export async function addProduct(
   productInputData: ProductFormData
 ): Promise<{ success: boolean; product?: Product; error?: string }> {
-  // Basic validation (more robust validation is in the Zod schema on client)
   if (!productInputData.name || !productInputData.category || !productInputData.brand || productInputData.price === undefined || productInputData.stock === undefined) {
     return { success: false, error: "Missing essential product data (name, category, brand, price, stock)." };
   }
 
   try {
     const products = await readProductsFile();
-    const newId = Date.now().toString() + Math.random().toString(36).substring(2, 9); // More unique ID
+    const newId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
 
     const newProduct: Product = {
       id: newId,
@@ -147,18 +149,24 @@ export async function addProduct(
       category: productInputData.category,
       brand: productInputData.brand,
       stock: productInputData.stock,
-      imageUrl: productInputData.imageUrl || "https://placehold.co/600x400.png", // Default placeholder if not provided
+      imageUrl: productInputData.imageUrl || "https://placehold.co/600x400.png",
       imageHint: productInputData.imageHint || "product image",
       additionalImageUrls: productInputData.additionalImageUrls || [],
       colors: productInputData.colors || [],
-      rating: 0, // Default for new product
-      reviews: 0, // Default for new product
-      productReviews: [], // Default for new product
-      tags: [] // Default, can be expanded later or via edit
+      rating: 0,
+      reviews: 0,
+      productReviews: [],
+      tags: [] 
     };
 
-    products.push(newProduct); // Add to the end
-    await writeProductsFile(products); // Save the updated list
+    products.push(newProduct);
+    await writeProductsFile(products);
+
+    revalidatePath('/'); // Revalidate homepage for new arrivals
+    revalidatePath('/products'); // Revalidate main products page
+    // Optionally, revalidate specific category pages if you have them:
+    // revalidatePath(`/products?category=${newProduct.category}`);
+
     return { success: true, product: newProduct };
   } catch (error) {
     console.error("Error adding product in action:", error);
@@ -174,6 +182,7 @@ export async function deleteProductById(productId: string): Promise<{ success: b
 
   try {
     let products = await readProductsFile();
+    const productToDelete = products.find(p => p.id === productId);
     const initialLength = products.length;
     products = products.filter(product => product.id !== productId);
 
@@ -182,6 +191,15 @@ export async function deleteProductById(productId: string): Promise<{ success: b
     }
 
     await writeProductsFile(products);
+
+    revalidatePath('/'); // Revalidate homepage
+    revalidatePath('/products'); // Revalidate main products page
+    if (productToDelete) {
+      revalidatePath(`/products/${productToDelete.id}`); // Revalidate the deleted product's detail page (will 404)
+      // Optionally, revalidate specific category pages:
+      // revalidatePath(`/products?category=${productToDelete.category}`);
+    }
+    
     return { success: true, message: "Product deleted successfully." };
   } catch (error) {
     console.error("Error deleting product:", error);
