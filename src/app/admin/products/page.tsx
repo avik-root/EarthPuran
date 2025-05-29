@@ -22,7 +22,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 export default function AdminProductsPage() {
@@ -37,7 +36,9 @@ export default function AdminProductsPage() {
       setLoading(true);
       try {
         const fetchedProducts = await getProducts();
-        setProducts(fetchedProducts);
+        // Sort products by ID in descending order (newest first)
+        const sortedProducts = fetchedProducts.sort((a, b) => b.id.localeCompare(a.id));
+        setProducts(sortedProducts);
       } catch (error) {
         console.error("Failed to fetch products:", error);
         toast({
@@ -117,7 +118,7 @@ export default function AdminProductsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Product List</CardTitle>
-          <CardDescription>A list of all products currently in your store.</CardDescription>
+          <CardDescription>A list of all products currently in your store. Newest items are shown first.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
