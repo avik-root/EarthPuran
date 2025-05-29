@@ -110,63 +110,53 @@
   }
 }
 
-/* Print specific styles */
+/* Print specific styles for Invoice */
+.printable-invoice-container {
+  display: none; /* Hidden by default on screen */
+}
+
 @media print {
-  body.printing * {
-    visibility: hidden;
+  body > *:not(.printable-invoice-container) {
+    display: none !important; /* Hide everything in body except the invoice container */
   }
-  body.printing .printable-area, 
-  body.printing .printable-area * {
+
+  .printable-invoice-container {
+    display: block !important; /* Show the invoice container for print */
+    position: absolute !important; /* Take over the viewport */
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important; /* Padding will be on .printable-invoice-area */
+    background-color: white !important; /* Ensure background is white */
+  }
+
+  .printable-invoice-area {
+    /* Styles for the actual invoice content within the container */
     visibility: visible !important;
-  }
-  body.printing .printable-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: auto;
-    margin: 0;
-    padding: 0;
-    overflow: visible !important;
-  }
-  /* Styles for the new invoice */
-  body.printing-invoice .printable-invoice-area,
-  body.printing-invoice .printable-invoice-area * {
-    visibility: visible !important;
-  }
-  body.printing-invoice .printable-invoice-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 1cm; /* Standard page margin for printing */
-    font-size: 10pt; /* Base font size for print */
-    line-height: 1.2;
-    background-color: white !important; /* Ensure background is white for print */
-    color: black !important; /* Ensure text is black for print */
-    box-shadow: none !important; /* Remove shadows for print */
-    border: none !important; /* Remove borders for print */
-  }
-  body.printing-invoice *:not(.printable-invoice-area):not(.printable-invoice-area *) {
-    display: none !important; /* Hide everything else */
+    display: block !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 1cm !important; /* Standard page margin for A4 */
+    font-size: 10pt !important;
+    line-height: 1.2 !important;
+    color: black !important;
+    background-color: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    -webkit-print-color-adjust: exact !important; /* Ensure colors and backgrounds print */
+    print-color-adjust: exact !important;
+    box-sizing: border-box; /* Ensures padding is included in width */
   }
 
   /* General print improvements */
   @page {
-    size: A4; /* Or 'letter' */
-    margin: 1cm; /* Adjust margins as needed */
+    size: A4;
+    margin: 0mm; /* Let the .printable-invoice-area handle padding/margins */
   }
-  /* Hide elements not meant for print */
-  .no-print {
+
+  .no-print { /* Utility class to hide elements during any print */
     display: none !important;
-  }
-}
-.printable-invoice-container {
-  display: none; /* Hidden by default on screen */
-}
-@media print {
-  .printable-invoice-container {
-    display: block !important; /* Shown only for print */
   }
 }

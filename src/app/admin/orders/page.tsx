@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { getAllUsers, updateOrderStatus } from "@/app/actions/userActions";
 import type { UserData } from "@/types/userData";
@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, MoreHorizontal, PackageCheck, FileText, Printer } from "lucide-react"; // Added FileText, Printer
+import { Search, MoreHorizontal, PackageCheck, FileText, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -21,11 +21,10 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { PrintableInvoice } from "@/components/admin/PrintableInvoice"; // Import the new component
+import { PrintableInvoice } from "@/components/admin/PrintableInvoice";
 
-export interface EnrichedOrder extends BaseOrder { // Use BaseOrder
+export interface EnrichedOrder extends BaseOrder {
   customerName: string;
   customerEmail: string;
 }
@@ -72,10 +71,15 @@ export default function AdminOrdersPage() {
   
   useEffect(() => {
     if (orderToInvoice) {
+      // The CSS @media print rules will handle showing/hiding elements.
+      // We just need to trigger the browser's print dialog.
       const timer = setTimeout(() => {
         window.print();
-        setOrderToInvoice(null); // Reset after printing
-      }, 100); // Small delay to ensure component is rendered
+        // Resetting state after print dialog is initiated.
+        // The actual closing of the dialog is handled by the user.
+        setOrderToInvoice(null); 
+      }, 250); // Delay to allow component to render with new order data
+
       return () => clearTimeout(timer);
     }
   }, [orderToInvoice]);
@@ -229,6 +233,8 @@ export default function AdminOrdersPage() {
           )}
         </CardContent>
       </Card>
+      
+      {/* This div will be targeted by print styles to be the only visible content when printing */}
       <div className="printable-invoice-container">
         <PrintableInvoice order={orderToInvoice} />
       </div>
