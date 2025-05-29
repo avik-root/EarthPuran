@@ -48,24 +48,19 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const gatePassed = localStorage.getItem("adminAccessGranted") === "true";
-    const credsConfigured = localStorage.getItem("adminCredentialsConfigured") === "true";
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
     const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
-    const currentAdminEmail = localStorage.getItem("currentUserEmail");
+    const currentAdminEmail = localStorage.getItem("currentUserEmail"); // This should be set on successful admin login
     setAdminEmail(currentAdminEmail);
 
-    setLoading(true); // Reset loading for each path change check
+    setLoading(true); 
 
     if (pathname === '/admin/login') {
-      if (!gatePassed) {
-        // router.push('/admin/access-gate'); // Should be handled by access-gate page itself if needed
-        // Allow access to /admin/login regardless of gate for now, as login page checks gate.
-      } else if (isLoggedIn && isAdmin) {
-        router.push('/admin/dashboard'); // Already logged in as admin, go to dashboard
+      if (isLoggedIn && isAdmin) {
+        router.push('/admin/dashboard'); 
       }
-      setIsAuthorizedForProtectedRoutes(false); // Login page is not a "protected route" in this context
-    } else { // For any other admin route (e.g., /admin/dashboard, /admin/products)
+      setIsAuthorizedForProtectedRoutes(false); 
+    } else { 
       if (!isLoggedIn || !isAdmin) {
         router.push(`/admin/login?redirect=${pathname}`);
         setIsAuthorizedForProtectedRoutes(false);
@@ -80,8 +75,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("isLoggedInPrototype");
     localStorage.removeItem("isAdminPrototype");
     localStorage.removeItem("currentUserEmail");
-    // localStorage.removeItem("adminAccessGranted"); // Optional: re-gate on next login
-    // localStorage.removeItem("adminCredentialsConfigured"); // Should not be removed on logout
     setAdminEmail(null);
     toast({ title: "Admin Logged Out", description: "You have been successfully logged out." });
     router.push("/admin/login");

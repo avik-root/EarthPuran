@@ -21,6 +21,7 @@ import {
   updateEarthPuranAdminPin,
 } from "@/app/actions/userActions";
 import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const passwordStrengthSchema = z.string()
   .min(8, "Password must be at least 8 characters long.")
