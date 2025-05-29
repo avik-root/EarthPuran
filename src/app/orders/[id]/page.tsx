@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ListOrdered, PackageSearch, XCircle, Truck, ArrowLeft, CheckCircle, ShoppingBag } from "lucide-react"; // Added CheckCircle
+import { ListOrdered, PackageSearch, XCircle, Truck, ArrowLeft, CheckCircle, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -13,7 +13,7 @@ import type { Order, OrderItem } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getUserData, updateUserOrders, getAllUsers, updateOrderStatus } from "@/app/actions/userActions"; // Added updateOrderStatus
+import { getUserData, updateUserOrders, getAllUsers, updateOrderStatus } from "@/app/actions/userActions";
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -254,14 +254,13 @@ export default function OrderDetailPage() {
                <CheckCircle className="mr-2 h-4 w-4" /> Mark as Delivered
              </Button>
           )}
-          <Button variant="outline" size="sm" onClick={handleTrackPackage}>
-            <Truck className="mr-2 h-4 w-4" /> Track Package
-          </Button>
+          {(order.status === 'Processing' || order.status === 'Shipped') && (
+            <Button variant="outline" size="sm" onClick={handleTrackPackage}>
+              <Truck className="mr-2 h-4 w-4" /> Track Package
+            </Button>
+          )}
         </CardFooter>
       </Card>
     </div>
   );
 }
-
-
-    
