@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Filter, Search, ChevronDown, X } from "lucide-react";
-import { Slider } from "@/components/ui/slider";
+// import { Slider } from "@/components/ui/slider"; // Removed Slider import
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose, SheetTrigger } from "@/components/ui/sheet";
@@ -42,19 +42,14 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>("newest"); 
 
-  const [minProductPrice, setMinProductPrice] = useState(0);
-  const [maxProductPrice, setMaxProductPrice] = useState(10000);
-
   // State for filters within the sheet
   const [sheetSelectedCategory, setSheetSelectedCategory] = useState<string | null>(null);
-  const [sheetSelectedPriceRange, setSheetSelectedPriceRange] = useState<[number, number]>([0, 10000]);
   const [sheetSelectedRating, setSheetSelectedRating] = useState<string>("any");
   const [sheetSelectedTags, setSheetSelectedTags] = useState<string[]>([]);
   const [sheetFilterSearchTerm, setSheetFilterSearchTerm] = useState("");
 
   // State for applied filters
   const [appliedCategory, setAppliedCategory] = useState<string | null>(null);
-  const [appliedPriceRange, setAppliedPriceRange] = useState<[number, number]>([0, 10000]);
   const [appliedRating, setAppliedRating] = useState<string>("any");
   const [appliedTags, setAppliedTags] = useState<string[]>([]);
 
@@ -73,21 +68,6 @@ export default function ProductsPage() {
       const uniqueTags = Array.from(new Set(fetchedProducts.flatMap(p => p.tags || [])));
       setAllTags(uniqueTags.sort());
 
-      if (fetchedProducts.length > 0) {
-        const prices = fetchedProducts.map(p => p.price);
-        const newMinPrice = Math.floor(Math.min(...prices));
-        const newMaxPrice = Math.ceil(Math.max(...prices));
-        setMinProductPrice(newMinPrice);
-        setMaxProductPrice(newMaxPrice);
-        
-        // Initialize price range for sheet and applied filters
-        setSheetSelectedPriceRange([newMinPrice, newMaxPrice]);
-        setAppliedPriceRange([newMinPrice, newMaxPrice]);
-      } else {
-        setSheetSelectedPriceRange([0, 10000]);
-        setAppliedPriceRange([0, 10000]);
-      }
-
       // Check for category in URL search params
       const categoryFromUrl = searchParams.get('category');
       if (categoryFromUrl && uniqueCategories.includes(categoryFromUrl)) {
@@ -101,7 +81,6 @@ export default function ProductsPage() {
         setSortOption(sortFromUrl);
       }
 
-
       setLoading(false);
     }
     fetchProductsData();
@@ -109,20 +88,17 @@ export default function ProductsPage() {
 
   const handleApplyFilters = () => {
     setAppliedCategory(sheetSelectedCategory);
-    setAppliedPriceRange(sheetSelectedPriceRange);
     setAppliedRating(sheetSelectedRating);
     setAppliedTags(sheetSelectedTags);
   };
 
   const handleClearFilters = () => {
     setSheetSelectedCategory(null);
-    setSheetSelectedPriceRange([minProductPrice, maxProductPrice]);
     setSheetSelectedRating("any");
     setSheetSelectedTags([]);
     setSheetFilterSearchTerm("");
 
     setAppliedCategory(null);
-    setAppliedPriceRange([minProductPrice, maxProductPrice]);
     setAppliedRating("any");
     setAppliedTags([]);
   };
@@ -139,10 +115,6 @@ export default function ProductsPage() {
     if (appliedCategory) {
       tempProducts = tempProducts.filter(product => product.category === appliedCategory);
     }
-
-    tempProducts = tempProducts.filter(product =>
-      product.price >= appliedPriceRange[0] && product.price <= appliedPriceRange[1]
-    );
 
     if (appliedRating !== "any") {
       const minRating = parseInt(appliedRating);
@@ -176,7 +148,7 @@ export default function ProductsPage() {
     }
 
     return tempProducts;
-  }, [products, searchTerm, appliedCategory, appliedPriceRange, appliedRating, appliedTags, sortOption]);
+  }, [products, searchTerm, appliedCategory, appliedRating, appliedTags, sortOption]);
 
   const FilterOptionsComponent = () => {
     const filteredCategories = allCategories.filter(cat => cat.toLowerCase().includes(sheetFilterSearchTerm.toLowerCase()));
@@ -216,28 +188,31 @@ export default function ProductsPage() {
           </RadioGroup>
         </div>
         <Separator />
+        {/* Price Range Slider Removed */}
+        {/* 
         <div>
           <h3 className="text-sm font-medium mb-2 text-foreground">Price Range (₹)</h3>
-          {loading ? (
+          {loading ? ( // This loading state might need to be for min/max price calculation specifically if kept
             <Skeleton className="h-10 w-full" />
           ) : (
             <>
               <Slider
-                min={minProductPrice}
-                max={maxProductPrice}
-                step={Math.max(1, Math.floor((maxProductPrice - minProductPrice) / 100))}
-                value={sheetSelectedPriceRange}
-                onValueChange={(value) => setSheetSelectedPriceRange(value as [number, number])}
+                // min={minProductPrice} // Removed
+                // max={maxProductPrice} // Removed
+                step={1} // Example step
+                // value={sheetSelectedPriceRange} // Removed
+                // onValueChange={(value) => setSheetSelectedPriceRange(value as [number, number])} // Removed
                 className="my-4"
               />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>₹{sheetSelectedPriceRange[0]}</span>
-                <span>₹{sheetSelectedPriceRange[1]}</span>
+                <span>₹{sheetSelectedPriceRange[0]}</span> // Removed
+                <span>₹{sheetSelectedPriceRange[1]}</span> // Removed
               </div>
             </>
           )}
         </div>
-        <Separator />
+        <Separator /> 
+        */}
         <div>
           <h3 className="text-sm font-medium mb-2 text-foreground">Rating</h3>
           <RadioGroup value={sheetSelectedRating} onValueChange={setSheetSelectedRating}>
@@ -360,6 +335,4 @@ export default function ProductsPage() {
     </div>
   );
 }
-    
-
     
