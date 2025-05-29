@@ -139,14 +139,8 @@ export default function AdminAuthPage() {
         setTimeout(() => {
           toast({ title: "Admin Account Created", description: result.message });
         }, 0);
-        setStoredAdminCredentials({
-          email: result.adminData.email,
-          passwordHash: result.adminData.passwordHash,
-          pinHash: result.adminData.pinHash,
-        });
-        adminLoginForm.setValue("email", result.adminData.email || "");
-        setUiMode('loginAdmin');
-        setConfigErrorMessage(null);
+        // After successful creation, refresh config to switch to login mode
+        await fetchAdminConfig(); 
       } else {
         setTimeout(() => {
           toast({ title: "Creation Failed", description: result.message || "Could not create admin account.", variant: "destructive" });
@@ -194,12 +188,13 @@ export default function AdminAuthPage() {
     localStorage.setItem("isLoggedInPrototype", "true");
     localStorage.setItem("isAdminPrototype", "true");
     localStorage.setItem('currentUserEmail', storedAdminCredentials.email);
+    // For prototype, store a generic admin profile. A real app might fetch more details.
     const adminProfileForStorage: UserProfile = {
         firstName: "Admin",
         lastName: "User",
         email: storedAdminCredentials.email,
-        countryCode: "N/A",
-        phoneNumber: "N/A",
+        countryCode: "N/A", // Not relevant for admin
+        phoneNumber: "N/A", // Not relevant for admin
         isAdmin: true,
     };
     localStorage.setItem('userProfilePrototype', JSON.stringify(adminProfileForStorage));
@@ -314,6 +309,11 @@ export default function AdminAuthPage() {
           </CardContent>
            <CardFooter className="flex-col items-center space-y-2 pt-6">
             <p className="text-xs text-muted-foreground text-center">This panel is for authorized administrators only.</p>
+            {uiMode === 'loginAdmin' && !storedAdminCredentials && ( // If login mode but no creds, means file issue
+                <Button variant="link" onClick={fetchAdminConfig} className="text-xs">
+                   Problem loading credentials? Recheck Configuration
+                </Button>
+            )}
           </CardFooter>
         </Card>
       )}
@@ -323,3 +323,4 @@ export default function AdminAuthPage() {
     </div>
   );
 }
+

@@ -95,7 +95,7 @@ export default function LoginPage() {
       return;
     }
     
-    // Set admin status based on user data from users.json
+    // Set admin status based on user data from users.json (this will be false unless explicitly set, first user is no longer admin by default)
     if (userData.profile.isAdmin) {
       localStorage.setItem("isAdminPrototype", "true");
     } else {
@@ -110,7 +110,7 @@ export default function LoginPage() {
     setTimeout(() => {
       toast({ title: "Login Successful", description: "Welcome back!" });
     },0);
-    const redirectUrl = searchParams.get('redirect') || (userData.profile.isAdmin ? "/admin/dashboard" : "/");
+    const redirectUrl = searchParams.get('redirect') || "/"; // Regular users go to home
     router.push(redirectUrl);
     if (redirectUrl === pathname) { 
         router.refresh();
@@ -125,7 +125,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-primary">Welcome Back!</CardTitle>
+          <CardTitle className="text-3xl font-bold text-primary">Log In</CardTitle>
           <CardDescription>Log in to continue your journey with Earth Puran.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -223,3 +223,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
