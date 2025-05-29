@@ -24,7 +24,8 @@ async function readUsersFile(): Promise<AllUsersData> {
     try {
       return JSON.parse(jsonData) as AllUsersData;
     } catch (parseError) {
-      console.error("Failed to parse users.json. File content may be corrupted. Content snippet (first 500 chars):", jsonData.substring(0, 500), "Error:", parseError);
+      const nodeError = parseError as NodeJS.ErrnoException;
+      console.error("Failed to parse users.json. File content may be corrupted. Content snippet (first 500 chars):", jsonData.substring(0, 500), "Error:", nodeError.message);
       console.warn("Returning empty data due to users.json parse error. Please check the file content. Consider backing up and deleting/re-initializing users.json if the issue persists.");
       return {};
     }
@@ -198,7 +199,7 @@ export async function addOrder(email: string, newOrder: Order): Promise<boolean>
       return false;
     }
     allUsers[normalizedEmail].orders.push(newOrder);
-    allUsers[normalizedEmail].orders.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+    allUsers[normalizedEmail].orders.sort((a, b) => parseInt(b.id) - parseInt(a.id)); // Newest first
     await writeUsersFile(allUsers);
     return true;
 }
@@ -211,7 +212,7 @@ export async function updateUserOrders(email: string, updatedOrders: Order[]): P
         console.error(`Attempted to update orders for non-existent user: ${email}`);
         return false;
     }
-    allUsers[normalizedEmail].orders = updatedOrders;
+    allUsers[normalizedEmail].orders = updatedOrders.sort((a,b) => parseInt(b.id) - parseInt(a.id)); // Ensure sort order
     await writeUsersFile(allUsers);
     return true;
 }
@@ -229,7 +230,7 @@ export async function addProductToWishlistAction(email: string, product: Product
     allUsers[normalizedEmail].wishlist = [];
   }
   if (!allUsers[normalizedEmail].wishlist.find(p => p.id === product.id)) {
-    allUsers[normalizedEmail].wishlist.push(product);
+    allUsers[normalizedEmail].wishlist.push(product); // Add to end, could also unshift for newest first in raw data
     await writeUsersFile(allUsers);
   }
   return { success: true, wishlist: allUsers[normalizedEmail].wishlist };
@@ -337,7 +338,7 @@ export async function clearUserCartAction(email: string): Promise<{ success: boo
 }
 
 
-// --- Admin Actions ---
+// --- Admin Actions (earthpuranadmin.json) ---
 interface EarthPuranAdminCredentials {
   email?: string;
   passwordHash?: string;
@@ -347,11 +348,13 @@ interface EarthPuranAdminCredentials {
 async function readEarthPuranAdminFile(): Promise<EarthPuranAdminCredentials> {
   try {
     const jsonData = await fs.readFile(earthPuranAdminDataFilePath, 'utf-8');
+    if (!jsonData.trim()) return {}; // Empty file considered unconfigured
     return JSON.parse(jsonData) as EarthPuranAdminCredentials;
   } catch (error) {
-    // If file doesn't exist or is invalid JSON, return empty object.
-    // This allows the "Create Admin" flow to proceed.
-    return {}; 
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code === 'ENOENT') return {}; // File not found considered unconfigured
+    console.error("Failed to read or parse earthpuranadmin.json:", error);
+    return {}; // Other errors also mean unconfigured for safety
   }
 }
 
@@ -387,11 +390,27 @@ export async function getEarthPuranAdminCredentials(): Promise<{
         pinHash: creds.pinHash,
       };
     }
-    return { configured: false, error: "Admin credentials use placeholder values, are incomplete, or file is missing." };
+    // If file exists but is empty or has placeholders, it's not configured.
+    const jsonData = await fs.readFile(earthPuranAdminDataFilePath, 'utf-8').catch(() => "");
+    if (!jsonData.trim()) {
+         return { configured: false, error: "earthpuranadmin.json is empty. Please use the 'Create Admin Account' form." };
+    }
+    return { configured: false, error: "Admin credentials use placeholder values or are incomplete. Please use the 'Create Admin Account' form or manually configure earthpuranadmin.json." };
   } catch (error) { 
     const nodeError = error as NodeJS.ErrnoException;
     if (nodeError.code === 'ENOENT') {
-      return { configured: false, error: "earthpuranadmin.json not found. Please use the 'Create Admin Account' form." };
+      // Create the file if it doesn't exist, with placeholder content to guide setup
+      try {
+        await fs.writeFile(earthPuranAdminDataFilePath, JSON.stringify({
+          email: "REPLACE_WITH_ADMIN_EMAIL@example.com",
+          passwordHash: "REPLACE_WITH_BCRYPT_HASH_OF_ADMIN_PASSWORD",
+          pinHash: "REPLACE_WITH_BCRYPT_HASH_OF_ADMIN_6_DIGIT_LOGIN_PIN"
+        }, null, 2), 'utf-8');
+         return { configured: false, error: "earthpuranadmin.json was not found and has been created with placeholders. Please use the 'Create Admin Account' form or manually configure it." };
+      } catch (writeError) {
+        console.error("Failed to create placeholder earthpuranadmin.json:", writeError);
+        return { configured: false, error: "earthpuranadmin.json not found and could not be created. Please check file permissions." };
+      }
     } else if (error instanceof SyntaxError) {
       return { configured: false, error: "earthpuranadmin.json is not valid JSON. Please correct or delete it to re-create." };
     }
@@ -515,6 +534,3 @@ export async function updateEarthPuranAdminPin(
     return { success: false, message: "Failed to update admin PIN. Check server logs." };
   }
 }
-
-
-    
