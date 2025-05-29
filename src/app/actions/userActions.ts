@@ -4,12 +4,12 @@
 import fs from 'fs/promises';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import type { AllUsersData, UserData, UserProfile, UserAddress, WishlistProduct, FullCartItem } from '@/types/userData';
+import type { AllUsersData, UserData, UserProfile, UserAddress, FullCartItem } from '@/types/userData';
 import type { Product } from '@/types/product';
 import type { Order } from '@/types/order';
 
 const usersDataFilePath = path.join(process.cwd(), 'src', 'data', 'users.json');
-const adminDataFilePath = path.join(process.cwd(), 'src', 'data', 'admin.json');
+const earthPuranAdminDataFilePath = path.join(process.cwd(), 'src', 'data', 'earthpuranadmin.json');
 const saltRounds = 10;
 
 async function readUsersFile(): Promise<AllUsersData> {
@@ -83,7 +83,9 @@ export async function initializeUserAccount(profile: Omit<UserProfile, 'hashedPa
     if (allUsers[normalizedEmail]) {
         throw new Error(`User with email ${profile.email} already exists.`);
     }
-    allUsers[normalizedEmail] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, false);
+    // Determine if this is the first user to make them admin
+    const isFirstUser = Object.keys(allUsers).length === 0;
+    allUsers[normalizedEmail] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, false); // Regular users are not admin by default
     await writeUsersFile(allUsers);
     return allUsers[normalizedEmail];
 }
@@ -307,13 +309,13 @@ export async function clearUserCartAction(email: string): Promise<{ success: boo
 
 
 // --- Admin Actions ---
-interface AdminCredentials {
+interface EarthPuranAdminCredentials {
   email?: string;
   passwordHash?: string;
   pinHash?: string;
 }
 
-export async function getAdminCredentialsFromFile(): Promise<{
+export async function getEarthPuranAdminCredentials(): Promise<{
   configured: boolean;
   email?: string;
   passwordHash?: string;
@@ -321,8 +323,8 @@ export async function getAdminCredentialsFromFile(): Promise<{
   error?: string;
 }> {
   try {
-    const jsonData = await fs.readFile(adminDataFilePath, 'utf-8');
-    const creds = JSON.parse(jsonData) as AdminCredentials;
+    const jsonData = await fs.readFile(earthPuranAdminDataFilePath, 'utf-8');
+    const creds = JSON.parse(jsonData) as EarthPuranAdminCredentials;
 
     if (
       creds.email && !creds.email.startsWith("REPLACE_WITH_ADMIN_EMAIL") &&
@@ -336,15 +338,48 @@ export async function getAdminCredentialsFromFile(): Promise<{
         pinHash: creds.pinHash,
       };
     }
-    return { configured: false, error: "Admin credentials use placeholder values." };
+    return { configured: false, error: "Admin credentials use placeholder values or are incomplete." };
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
     if (nodeError.code === 'ENOENT') {
-      return { configured: false, error: "admin.json not found. Please create and configure it." };
+      // File not found, implies not configured
+      return { configured: false, error: "earthpuranadmin.json not found. Please create the admin account." };
     } else if (error instanceof SyntaxError) {
-      return { configured: false, error: "admin.json is not valid JSON. Please check its format." };
+      return { configured: false, error: "earthpuranadmin.json is not valid JSON." };
     }
-    console.error("Failed to read or parse admin.json:", error);
+    console.error("Failed to read or parse earthpuranadmin.json:", error);
     return { configured: false, error: "Could not read admin credentials." };
   }
 }
+
+export async function createEarthPuranAdminAccount(
+  email: string,
+  plaintextPassword_prototype_only: string,
+  plaintextPin_prototype_only: string
+): Promise<{ success: boolean; message: string }> {
+  const currentAdminConfig = await getEarthPuranAdminCredentials();
+  if (currentAdminConfig.configured) {
+    return { success: false, message: "An admin account is already configured. Cannot create another." };
+  }
+
+  try {
+    const passwordHash = bcrypt.hashSync(plaintextPassword_prototype_only, saltRounds);
+    const pinHash = bcrypt.hashSync(plaintextPin_prototype_only, saltRounds);
+
+    const adminData: EarthPuranAdminCredentials = {
+      email: email.toLowerCase(),
+      passwordHash,
+      pinHash,
+    };
+
+    await fs.writeFile(earthPuranAdminDataFilePath, JSON.stringify(adminData, null, 2), 'utf-8');
+    return { success: true, message: "Admin account created successfully. Please log in." };
+  } catch (error) {
+    console.error("Error creating admin account in earthpuranadmin.json:", error);
+    return { success: false, message: "Failed to create admin account. Check server logs." };
+  }
+}
+
+// Remove or comment out the old getAdminCredentialsFromFile if it exists
+// export async function getAdminCredentialsFromFile(): Promise<...> { ... }
+// This function is now replaced by getEarthPuranAdminCredentials
