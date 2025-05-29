@@ -13,7 +13,7 @@ import type { Order, OrderItem } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getUserData, updateUserOrders } from "@/app/actions/userActions";
+import { getUserData, updateUserOrders, getAllUsers } from "@/app/actions/userActions"; // Added getAllUsers
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -23,52 +23,78 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
+  const [orderOwnerEmail, setOrderOwnerEmail] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const email = localStorage.getItem('currentUserEmail');
+      const isAdmin = localStorage.getItem('isAdminPrototype') === 'true';
       setCurrentUserEmail(email);
-       if (!email) { // If not logged in, redirect
-          // toast({title: "Login Required", description: "Please log in to view order details.", variant:"destructive"});
-          // router.push(`/login?redirect=/orders/${orderId}`); // Optional
-      }
+      setIsCurrentUserAdmin(isAdmin);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchOrderDetails = useCallback(async () => {
-    if (!orderId || !currentUserEmail) {
+    if (!orderId) {
         setOrder(null);
         setLoading(false);
         return;
     }
     setLoading(true);
     try {
-      const userData = await getUserData(currentUserEmail);
-      const currentOrder = userData?.orders?.find(o => o.id === orderId);
-      setOrder(currentOrder || null);
+      let foundOrder: Order | undefined | null = null;
+      let ownerEmail: string | null = null;
+
+      if (isCurrentUserAdmin) {
+        const allUsers = await getAllUsers();
+        for (const user of allUsers) {
+          const o = user.orders?.find(ord => ord.id === orderId);
+          if (o) {
+            foundOrder = o;
+            ownerEmail = user.profile.email;
+            break;
+          }
+        }
+      } else if (currentUserEmail) {
+        const userData = await getUserData(currentUserEmail);
+        foundOrder = userData?.orders?.find(o => o.id === orderId);
+        if (foundOrder) {
+            ownerEmail = currentUserEmail;
+        }
+      }
+      setOrder(foundOrder || null);
+      setOrderOwnerEmail(ownerEmail);
+
     } catch (error) {
       console.error("Failed to load order details:", error);
       setOrder(null);
+      setOrderOwnerEmail(null);
       toast({ title: "Error", description: "Could not load order details.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [orderId, currentUserEmail, toast]);
+  }, [orderId, currentUserEmail, isCurrentUserAdmin, toast]);
 
   useEffect(() => {
-    fetchOrderDetails();
-  }, [fetchOrderDetails]);
+    // Fetch details only if currentUserEmail state is set (or if admin, immediately)
+    if (currentUserEmail || isCurrentUserAdmin) {
+        fetchOrderDetails();
+    } else if (typeof window !== 'undefined' && !localStorage.getItem('currentUserEmail')) {
+        // If no email and not admin, likely not logged in, stop loading
+        setLoading(false);
+    }
+  }, [fetchOrderDetails, currentUserEmail, isCurrentUserAdmin]);
 
   const handleCancelOrder = async () => {
-    if (!order || order.status !== 'Processing' || !currentUserEmail) {
+    if (!order || order.status !== 'Processing' || !orderOwnerEmail) { // Use orderOwnerEmail
       toast({ title: "Cancellation Failed", description: "Order cannot be cancelled or was not found.", variant: "destructive" });
       return;
     }
 
     try {
-        const userData = await getUserData(currentUserEmail);
+        const userData = await getUserData(orderOwnerEmail); // Use orderOwnerEmail
         if (!userData || !userData.orders) {
             toast({ title: "Error", description: "Could not retrieve user orders to process cancellation.", variant: "destructive" });
             return;
@@ -76,7 +102,7 @@ export default function OrderDetailPage() {
         const updatedOrderForDisplay = { ...order, status: 'Cancelled' as const };
         const updatedAllUserOrders = userData.orders.map(o => (o.id === orderId ? updatedOrderForDisplay : o));
         
-        const success = await updateUserOrders(currentUserEmail, updatedAllUserOrders);
+        const success = await updateUserOrders(orderOwnerEmail, updatedAllUserOrders); // Use orderOwnerEmail
         if (!success) throw new Error("Failed to update orders via action.");
 
         setOrder(updatedOrderForDisplay); // Update local state
@@ -101,6 +127,17 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleBackNavigation = () => {
+    if (isCurrentUserAdmin) {
+      // If admin was viewing this, go back to admin orders list or customer detail page
+      // For simplicity, let's assume admin orders list is the target
+      router.push('/admin/orders'); 
+    } else {
+      router.push('/profile?tab=orders');
+    }
+  };
+
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -118,7 +155,7 @@ export default function OrderDetailPage() {
     );
   }
 
-  if (!currentUserEmail && !loading) {
+  if (!currentUserEmail && !isCurrentUserAdmin && !loading) { // Adjusted for admin
     return (
          <div className="space-y-6 text-center">
             <PackageSearch className="mx-auto h-16 w-16 text-muted-foreground/50" />
@@ -132,7 +169,7 @@ export default function OrderDetailPage() {
   if (!order && !loading) {
     return (
       <div className="space-y-6 text-center">
-         <Button variant="outline" onClick={() => router.push('/profile?tab=orders')} className="mb-6 mr-auto">
+         <Button variant="outline" onClick={handleBackNavigation} className="mb-6 mr-auto">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Orders
         </Button>
         <PackageSearch className="mx-auto h-16 w-16 text-muted-foreground/50" />
@@ -146,7 +183,7 @@ export default function OrderDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Button variant="outline" onClick={() => router.push('/profile?tab=orders')} className="mb-2">
+      <Button variant="outline" onClick={handleBackNavigation} className="mb-2">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Orders
       </Button>
 
@@ -157,6 +194,9 @@ export default function OrderDetailPage() {
               <CardTitle className="text-2xl text-primary">Order #{order.id}</CardTitle>
               <CardDescription>
                 Date Placed: {order.date}
+                {isCurrentUserAdmin && orderOwnerEmail && (
+                  <span className="block text-xs mt-1">Customer: {orderOwnerEmail}</span>
+                )}
               </CardDescription>
             </div>
             <div className="text-left sm:text-right">
@@ -202,7 +242,7 @@ export default function OrderDetailPage() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-wrap gap-3 justify-end pt-6 border-t">
-          {order.status === 'Processing' && (
+          {order.status === 'Processing' && (isCurrentUserAdmin || currentUserEmail === orderOwnerEmail) && (
             <Button variant="destructive" size="sm" onClick={handleCancelOrder}>
               <XCircle className="mr-2 h-4 w-4" /> Cancel Order
             </Button>
