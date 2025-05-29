@@ -1,3 +1,4 @@
+
 // src/app/admin/layout.tsx
 'use client';
 
@@ -15,7 +16,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar";
-import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert } from "lucide-react";
+import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert, UserCircle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -23,12 +24,23 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { toast } = useToast();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -38,29 +50,38 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
     const isLoggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
     const isAdmin = localStorage.getItem("isAdminPrototype") === "true";
+    const currentAdminEmail = localStorage.getItem("currentUserEmail");
+    setAdminEmail(currentAdminEmail);
 
-    // If trying to access a protected admin route (not the login page itself)
+
     if (pathname !== '/admin/login') {
       if (!isLoggedIn || !isAdmin) {
-        router.push(`/admin/login?redirect=${pathname}`); // Redirect to admin login
+        router.push(`/admin/login?redirect=${pathname}`);
         setIsAuthorized(false);
       } else {
         setIsAuthorized(true);
       }
     } else {
-      // If on /admin/login, we don't need to authorize here; the page handles its own logic.
-      // However, if already logged in as admin, redirect to dashboard.
       if (isLoggedIn && isAdmin) {
         router.push('/admin/dashboard');
-        setIsAuthorized(true); // Should be true if redirecting to dashboard
+        setIsAuthorized(true);
       } else {
-        setIsAuthorized(true); // Allow access to login page if not logged in
+        setIsAuthorized(true); // Allow access to login page
       }
     }
     setLoading(false);
   }, [router, pathname]);
 
-  if (loading && pathname !== '/admin/login') { // Only show loading skeleton for protected routes
+  const handleAdminLogout = () => {
+    localStorage.removeItem("isLoggedInPrototype");
+    localStorage.removeItem("isAdminPrototype");
+    localStorage.removeItem("currentUserEmail");
+    toast({ title: "Admin Logged Out", description: "You have been successfully logged out." });
+    router.push("/admin/login");
+  };
+
+
+  if (loading && pathname !== '/admin/login') {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
@@ -73,7 +94,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If trying to access a protected route AND not authorized AND not loading
   if (pathname !== '/admin/login' && !isAuthorized && !loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background p-4">
@@ -97,12 +117,10 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If on admin/login page, or authorized for other admin routes, render layout or just children.
   if (pathname === '/admin/login') {
-    return <main>{children}</main>; // Render login page content directly without admin sidebar
+    return <main className="min-h-screen bg-muted/40">{children}</main>;
   }
 
-  // Render full admin layout for authorized users on protected admin routes
   return (
     <>
       <Sidebar>
@@ -168,10 +186,27 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           <SidebarTrigger className="sm:hidden" />
           <div className="ml-auto flex items-center gap-4">
             <ThemeToggle />
-            <Avatar>
-              <AvatarImage src="https://placehold.co/40x40.png" alt="Admin" data-ai-hint="user avatar" />
-              <AvatarFallback>AD</AvatarFallback>
-            </Avatar>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Avatar>
+                    <AvatarImage src="https://placehold.co/40x40.png" alt="Admin" data-ai-hint="user avatar" />
+                    <AvatarFallback>{adminEmail ? adminEmail.substring(0,2).toUpperCase() : 'AD'}</AvatarFallback>
+                  </Avatar>
+                   <span className="sr-only">Admin Menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Admin Account</DropdownMenuLabel>
+                {adminEmail && <DropdownMenuSeparator />}
+                {adminEmail && <DropdownMenuItem disabled className="text-xs text-muted-foreground">{adminEmail}</DropdownMenuItem>}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleAdminLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Log Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
         <main className="flex-1 p-4 sm:px-6 sm:py-0 md:gap-8">
