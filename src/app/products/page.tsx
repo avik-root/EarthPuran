@@ -18,7 +18,7 @@ import { Filter, Search, ChevronDown, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
@@ -38,7 +38,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortOption, setSortOption] = useState<SortOption>("default");
+  const [sortOption, setSortOption] = useState<SortOption>("newest"); // Default to newest
 
   const [minProductPrice, setMinProductPrice] = useState(0);
   const [maxProductPrice, setMaxProductPrice] = useState(10000);
@@ -147,15 +147,13 @@ export default function ProductsPage() {
       case "price-desc":
         tempProducts.sort((a, b) => b.price - a.price);
         break;
-      case "newest":
-        tempProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id));
-        break;
       case "rating":
         tempProducts.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
-      case "default":
+      case "newest":
+      case "default": // Make default sort by newest
       default:
-        tempProducts.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+        tempProducts.sort((a, b) => b.id.localeCompare(a.id)); // Sort by ID string descending
         break;
     }
 
@@ -283,11 +281,10 @@ export default function ProductsPage() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setSortOption("default")}>Default</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortOption("newest")}>Newest</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSortOption("popularity")}>Popularity</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSortOption("price-asc")}>Price: Low to High</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSortOption("price-desc")}>Price: High to Low</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortOption("newest")}>Newest</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSortOption("rating")}>Rating</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
