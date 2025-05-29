@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Truck, Save } from "lucide-react";
 
-const LOCAL_STORAGE_KEY = "earthPuranAdminShippingSettings";
+// Each customs option uses its own dedicated key in localStorage,
+// acting as a separate client-side "database" for its settings.
+const SHIPPING_SETTINGS_STORAGE_KEY = "earthPuranAdminShippingSettings";
 
 interface ShippingSettings {
   rate: string;
@@ -22,21 +24,19 @@ export default function AdminShippingChargesPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const storedSettings = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const storedSettings = localStorage.getItem(SHIPPING_SETTINGS_STORAGE_KEY);
     if (storedSettings) {
       try {
         const parsedSettings = JSON.parse(storedSettings) as ShippingSettings;
-        // Ensure both fields exist, otherwise use defaults
         setShippingSettings({
             rate: parsedSettings.rate !== undefined ? parsedSettings.rate : "50.00",
             threshold: parsedSettings.threshold !== undefined ? parsedSettings.threshold : "5000"
         });
       } catch (e) {
-        // If parsing fails, stick to default
          setShippingSettings({ rate: "50.00", threshold: "5000" });
       }
     } else {
-      setShippingSettings({ rate: "50.00", threshold: "5000" }); // Default settings
+      setShippingSettings({ rate: "50.00", threshold: "5000" });
     }
     setIsLoading(false);
   }, []);
@@ -66,7 +66,7 @@ export default function AdminShippingChargesPage() {
       return;
     }
 
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(shippingSettings));
+    localStorage.setItem(SHIPPING_SETTINGS_STORAGE_KEY, JSON.stringify(shippingSettings));
     toast({
       title: "Settings Saved",
       description: `Shipping settings updated. Rate: ₹${shippingSettings.rate}, Threshold: ₹${shippingSettings.threshold}.`,

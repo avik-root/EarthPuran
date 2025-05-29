@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { BadgePercent, Save } from "lucide-react";
 
-const LOCAL_STORAGE_KEY = "earthPuranAdminGlobalDiscount";
+// Each customs option uses its own dedicated key in localStorage,
+// acting as a separate client-side "database" for its settings.
+const GLOBAL_DISCOUNT_STORAGE_KEY = "earthPuranAdminGlobalDiscount";
 
 export default function AdminDiscountsPage() {
   const [discountPercentage, setDiscountPercentage] = useState<string>("");
@@ -17,7 +19,7 @@ export default function AdminDiscountsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const storedDiscount = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const storedDiscount = localStorage.getItem(GLOBAL_DISCOUNT_STORAGE_KEY);
     if (storedDiscount) {
       setDiscountPercentage(storedDiscount);
     } else {
@@ -36,7 +38,7 @@ export default function AdminDiscountsPage() {
       });
       return;
     }
-    localStorage.setItem(LOCAL_STORAGE_KEY, discountPercentage);
+    localStorage.setItem(GLOBAL_DISCOUNT_STORAGE_KEY, discountPercentage);
     toast({
       title: "Settings Saved",
       description: `Global discount percentage updated to ${discountPercentage}%.`,

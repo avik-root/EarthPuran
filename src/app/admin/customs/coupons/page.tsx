@@ -10,7 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Ticket, Save, PlusCircle, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
-const LOCAL_STORAGE_KEY = "earthPuranAdminCoupons";
+// Each customs option uses its own dedicated key in localStorage,
+// acting as a separate client-side "database" for its settings.
+const COUPONS_STORAGE_KEY = "earthPuranAdminCoupons";
 
 interface Coupon {
   id: string;
@@ -30,7 +32,7 @@ export default function AdminCouponsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const storedCoupons = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const storedCoupons = localStorage.getItem(COUPONS_STORAGE_KEY);
     if (storedCoupons) {
       try {
         setCoupons(JSON.parse(storedCoupons));
@@ -54,7 +56,7 @@ export default function AdminCouponsPage() {
     };
     const updatedCoupons = [...coupons, newCoupon];
     setCoupons(updatedCoupons);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedCoupons));
+    localStorage.setItem(COUPONS_STORAGE_KEY, JSON.stringify(updatedCoupons));
     toast({ title: "Coupon Added", description: `Coupon "${newCoupon.code}" added successfully.` });
     setCouponCode("");
     setCouponValue("");
@@ -64,7 +66,7 @@ export default function AdminCouponsPage() {
     const couponToRemove = coupons.find(coupon => coupon.id === idToRemove);
     const updatedCoupons = coupons.filter(coupon => coupon.id !== idToRemove);
     setCoupons(updatedCoupons);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedCoupons));
+    localStorage.setItem(COUPONS_STORAGE_KEY, JSON.stringify(updatedCoupons));
     toast({ title: "Coupon Removed", description: `Coupon "${couponToRemove?.code}" removed.`, variant: "destructive" });
   };
 

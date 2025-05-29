@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Percent, Save } from "lucide-react";
 
-const LOCAL_STORAGE_KEY = "earthPuranAdminTaxRate";
+// Each customs option uses its own dedicated key in localStorage,
+// acting as a separate client-side "database" for its settings.
+const TAX_RATE_STORAGE_KEY = "earthPuranAdminTaxRate";
 
 export default function AdminTaxesPage() {
   const [taxRate, setTaxRate] = useState<string>("");
@@ -17,7 +19,7 @@ export default function AdminTaxesPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const storedRate = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const storedRate = localStorage.getItem(TAX_RATE_STORAGE_KEY);
     if (storedRate) {
       setTaxRate(storedRate);
     } else {
@@ -36,7 +38,7 @@ export default function AdminTaxesPage() {
       });
       return;
     }
-    localStorage.setItem(LOCAL_STORAGE_KEY, taxRate);
+    localStorage.setItem(TAX_RATE_STORAGE_KEY, taxRate);
     toast({
       title: "Settings Saved",
       description: `Default tax rate updated to ${taxRate}%.`,
