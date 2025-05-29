@@ -2,6 +2,7 @@
 "use client"; 
 
 import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation"; // Import useSearchParams
 import { getProducts } from "@/app/actions/productActions";
 import type { Product } from "@/types/product";
 import { ProductCard } from "@/components/ProductCard";
@@ -18,7 +19,7 @@ import { Filter, Search, ChevronDown, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose, SheetTrigger } from "@/components/ui/sheet"; // Added SheetTrigger
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
@@ -36,9 +37,10 @@ const RATING_OPTIONS = [
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const searchParams = useSearchParams(); // Get search params
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortOption, setSortOption] = useState<SortOption>("newest"); // Default to newest
+  const [sortOption, setSortOption] = useState<SortOption>("newest"); 
 
   const [minProductPrice, setMinProductPrice] = useState(0);
   const [maxProductPrice, setMaxProductPrice] = useState(10000);
@@ -78,16 +80,32 @@ export default function ProductsPage() {
         setMinProductPrice(newMinPrice);
         setMaxProductPrice(newMaxPrice);
         
+        // Initialize price range for sheet and applied filters
         setSheetSelectedPriceRange([newMinPrice, newMaxPrice]);
         setAppliedPriceRange([newMinPrice, newMaxPrice]);
       } else {
         setSheetSelectedPriceRange([0, 10000]);
         setAppliedPriceRange([0, 10000]);
       }
+
+      // Check for category in URL search params
+      const categoryFromUrl = searchParams.get('category');
+      if (categoryFromUrl && uniqueCategories.includes(categoryFromUrl)) {
+        setSheetSelectedCategory(categoryFromUrl);
+        setAppliedCategory(categoryFromUrl);
+      }
+      
+      // Check for sort option in URL search params
+      const sortFromUrl = searchParams.get('sort') as SortOption;
+      if (sortFromUrl && ["default", "popularity", "price-asc", "price-desc", "newest", "rating"].includes(sortFromUrl)) {
+        setSortOption(sortFromUrl);
+      }
+
+
       setLoading(false);
     }
     fetchProductsData();
-  }, []);
+  }, [searchParams]); // Rerun when searchParams change
 
   const handleApplyFilters = () => {
     setAppliedCategory(sheetSelectedCategory);
@@ -151,9 +169,9 @@ export default function ProductsPage() {
         tempProducts.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
       case "newest":
-      case "default": // Make default sort by newest
+      case "default":
       default:
-        tempProducts.sort((a, b) => b.id.localeCompare(a.id)); // Sort by ID string descending
+        tempProducts.sort((a, b) => b.id.localeCompare(a.id));
         break;
     }
 
@@ -207,7 +225,7 @@ export default function ProductsPage() {
               <Slider
                 min={minProductPrice}
                 max={maxProductPrice}
-                step={Math.max(1, Math.floor((maxProductPrice - minProductPrice) / 100))} // Dynamic step
+                step={Math.max(1, Math.floor((maxProductPrice - minProductPrice) / 100))}
                 value={sheetSelectedPriceRange}
                 onValueChange={(value) => setSheetSelectedPriceRange(value as [number, number])}
                 className="my-4"
