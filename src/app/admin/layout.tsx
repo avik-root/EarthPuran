@@ -53,20 +53,17 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     const currentAdminEmail = localStorage.getItem("currentUserEmail");
     setAdminEmail(currentAdminEmail);
 
-
-    if (pathname !== '/admin/login') {
+    if (pathname === '/admin/login') {
+      if (isLoggedIn && isAdmin) {
+        router.push('/admin/dashboard'); // Already logged in as admin, go to dashboard
+      }
+      setIsAuthorized(true); // Always allow access to login page itself
+    } else { // For any other admin route
       if (!isLoggedIn || !isAdmin) {
-        router.push(`/admin/login?redirect=${pathname}`);
+        router.push(`/admin/login?redirect=${pathname}`); // Not logged in or not admin, redirect to admin login
         setIsAuthorized(false);
       } else {
-        setIsAuthorized(true);
-      }
-    } else {
-      if (isLoggedIn && isAdmin) {
-        router.push('/admin/dashboard');
-        setIsAuthorized(true);
-      } else {
-        setIsAuthorized(true); // Allow access to login page
+        setIsAuthorized(true); // Logged in and is admin
       }
     }
     setLoading(false);
@@ -76,10 +73,10 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("isLoggedInPrototype");
     localStorage.removeItem("isAdminPrototype");
     localStorage.removeItem("currentUserEmail");
+    setAdminEmail(null); // Clear admin email state
     toast({ title: "Admin Logged Out", description: "You have been successfully logged out." });
     router.push("/admin/login");
   };
-
 
   if (loading && pathname !== '/admin/login') {
     return (
@@ -93,7 +90,8 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-
+  
+  // If trying to access a protected route (/admin/* other than /admin/login) without authorization
   if (pathname !== '/admin/login' && !isAuthorized && !loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background p-4">
@@ -117,13 +115,15 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If on the login page, just render the children (the login page content)
   if (pathname === '/admin/login') {
-    return <main className="min-h-screen bg-muted/40">{children}</main>;
+    return <main className="flex-grow bg-muted/40">{children}</main>;
   }
 
+  // Authorized and not on login page, render full admin layout
   return (
     <>
-      <Sidebar>
+      <Sidebar collapsible="icon">
         <SidebarHeader>
           <div className="flex items-center justify-between p-2">
             <Link href="/admin/dashboard" className="flex items-center gap-2">
@@ -132,7 +132,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 EarthPuran Admin
               </h1>
             </Link>
-            <SidebarTrigger className="group-data-[collapsible=icon]:hidden" />
+            <SidebarTrigger /> {/* Removed group-data-[collapsible=icon]:hidden */}
           </div>
         </SidebarHeader>
         <SidebarContent>
