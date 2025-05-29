@@ -93,12 +93,12 @@ export default function AdminAuthPage() {
         setUiMode('loginAdmin');
       } else {
         setStoredAdminCredentials(null);
-        setConfigErrorMessage(result.error || "Admin account not configured.");
+        setConfigErrorMessage(result.error || "Admin account not configured. Please create one.");
         setUiMode('createAdmin'); 
       }
     } catch (e) {
         console.error("Error fetching admin config:", e);
-        setConfigErrorMessage("Could not check admin configuration. Please try again.");
+        setConfigErrorMessage("Could not check admin configuration. Please try again or create an account.");
         setUiMode('createAdmin');
     }
   };
@@ -139,15 +139,14 @@ export default function AdminAuthPage() {
         setTimeout(() => {
           toast({ title: "Admin Account Created", description: result.message });
         }, 0);
-        // Optimistically switch to login mode with the newly created credentials
         setStoredAdminCredentials({
           email: result.adminData.email,
           passwordHash: result.adminData.passwordHash,
           pinHash: result.adminData.pinHash,
         });
-        adminLoginForm.setValue("email", result.adminData.email || ""); // Pre-fill email
+        adminLoginForm.setValue("email", result.adminData.email || "");
         setUiMode('loginAdmin');
-        setConfigErrorMessage(null); // Clear any previous config error message
+        setConfigErrorMessage(null);
       } else {
         setTimeout(() => {
           toast({ title: "Creation Failed", description: result.message || "Could not create admin account.", variant: "destructive" });
@@ -230,8 +229,8 @@ export default function AdminAuthPage() {
             <CardTitle className="mt-2 text-3xl font-bold text-primary">Create Admin Account</CardTitle>
             <CardDescription>Set up the primary administrator for Earth Puran.</CardDescription>
             {configErrorMessage && (
-                 <Alert variant="default" className="mt-4 text-sm bg-blue-50 border-blue-200 text-blue-700">
-                    <AlertTriangle className="h-4 w-4 !text-blue-700" />
+                 <Alert variant="default" className="mt-4 text-sm bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300">
+                    <AlertTriangle className="h-4 w-4 !text-blue-700 dark:!text-blue-300" />
                     <AlertTitle>Configuration Note</AlertTitle>
                     <AlertDescription>{configErrorMessage}</AlertDescription>
                  </Alert>
@@ -281,11 +280,11 @@ export default function AdminAuthPage() {
             <ShieldCheck className="mx-auto h-10 w-10 text-primary" />
             <CardTitle className="mt-2 text-3xl font-bold text-primary">Admin Panel Login</CardTitle>
             <CardDescription>Enter your administrator credentials for Earth Puran.</CardDescription>
-             {configErrorMessage && !storedAdminCredentials && (
+             {configErrorMessage && !storedAdminCredentials && ( // Show this only if login mode is active but creds are bad
                 <Alert variant="destructive" className="mt-4">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Configuration Error!</AlertTitle>
-                    <AlertDescription>{configErrorMessage}. Please ensure `src/data/earthpuranadmin.json` is correctly set up or use the create form if this is the first time.</AlertDescription>
+                    <AlertDescription>{configErrorMessage}. Please ensure `src/data/earthpuranadmin.json` is correctly set up or contact support if this persists.</AlertDescription>
                 </Alert>
             )}
           </CardHeader>
@@ -324,5 +323,3 @@ export default function AdminAuthPage() {
     </div>
   );
 }
-
-    
