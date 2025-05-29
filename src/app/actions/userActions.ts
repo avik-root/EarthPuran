@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import type { AllUsersData, UserData, UserProfile, UserAddress, FullCartItem } from '@/types/userData';
 import type { Product } from '@/types/product';
 import type { Order } from '@/types/order';
+import { revalidatePath } from 'next/cache';
 
 const usersDataFilePath = path.join(process.cwd(), 'src', 'data', 'users.json');
 const earthPuranAdminDataFilePath = path.join(process.cwd(), 'src', 'data', 'earthpuranadmin.json');
@@ -77,6 +78,34 @@ export async function getUserData(email: string): Promise<UserData | null> {
   return allUsers[email.toLowerCase()] || null;
 }
 
+export async function getAllUsers(): Promise<UserData[]> {
+  const allUsersData = await readUsersFile();
+  return Object.values(allUsersData);
+}
+
+export async function deleteUserByEmail(email: string): Promise<{ success: boolean; message: string }> {
+  if (!email) {
+    return { success: false, message: "Email is required." };
+  }
+  const allUsers = await readUsersFile();
+  const normalizedEmail = email.toLowerCase();
+
+  if (!allUsers[normalizedEmail]) {
+    return { success: false, message: "User not found." };
+  }
+
+  delete allUsers[normalizedEmail];
+  try {
+    await writeUsersFile(allUsers);
+    revalidatePath('/admin/users'); // Revalidate the admin users page
+    return { success: true, message: "User deleted successfully." };
+  } catch (error) {
+    console.error("Failed to delete user:", error);
+    return { success: false, message: "Could not delete user from file." };
+  }
+}
+
+
 export async function initializeUserAccount(profile: Omit<UserProfile, 'hashedPassword' | 'hashedPin' | 'isAdmin'>, plaintextPassword_prototype_only: string, plaintextPin_prototype_only: string): Promise<UserData> {
     const allUsers = await readUsersFile();
     const normalizedEmail = profile.email.toLowerCase();
@@ -84,8 +113,8 @@ export async function initializeUserAccount(profile: Omit<UserProfile, 'hashedPa
         throw new Error(`User with email ${profile.email} already exists.`);
     }
     
-    // The first user created is NO LONGER automatically an admin. Admin is managed separately.
-    allUsers[normalizedEmail] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, false);
+    const isFirstUser = Object.keys(allUsers).length === 0;
+    allUsers[normalizedEmail] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, isFirstUser);
     await writeUsersFile(allUsers);
     return allUsers[normalizedEmail];
 }
@@ -359,7 +388,7 @@ export async function getEarthPuranAdminCredentials(): Promise<{
       };
     }
     return { configured: false, error: "Admin credentials use placeholder values, are incomplete, or file is missing." };
-  } catch (error) { // This catch might be redundant if readEarthPuranAdminFile handles file not found
+  } catch (error) { 
     const nodeError = error as NodeJS.ErrnoException;
     if (nodeError.code === 'ENOENT') {
       return { configured: false, error: "earthpuranadmin.json not found. Please use the 'Create Admin Account' form." };
@@ -392,6 +421,7 @@ export async function createEarthPuranAdminAccount(
     };
 
     await writeEarthPuranAdminFile(adminData);
+    revalidatePath('/admin/login'); // Revalidate the admin login page
     return { success: true, message: "Admin account created successfully. Please log in.", adminData };
   } catch (error) {
     console.error("Error creating admin account in earthpuranadmin.json:", error);
@@ -420,6 +450,7 @@ export async function updateEarthPuranAdminEmail(
       email: newEmail.toLowerCase(),
     };
     await writeEarthPuranAdminFile(updatedAdminData);
+    revalidatePath('/admin/settings');
     return { success: true, message: "Admin email updated successfully. Please log in again if this was your current session.", newEmail: newEmail.toLowerCase() };
   } catch (error) {
     console.error("Error updating admin email:", error);
@@ -448,6 +479,7 @@ export async function updateEarthPuranAdminPassword(
       passwordHash: newPasswordHash,
     };
     await writeEarthPuranAdminFile(updatedAdminData);
+    revalidatePath('/admin/settings');
     return { success: true, message: "Admin password updated successfully." };
   } catch (error) {
     console.error("Error updating admin password:", error);
@@ -476,9 +508,13 @@ export async function updateEarthPuranAdminPin(
       pinHash: newPinHash,
     };
     await writeEarthPuranAdminFile(updatedAdminData);
+    revalidatePath('/admin/settings');
     return { success: true, message: "Admin login PIN updated successfully." };
   } catch (error) {
     console.error("Error updating admin PIN:", error);
     return { success: false, message: "Failed to update admin PIN. Check server logs." };
   }
 }
+
+
+    

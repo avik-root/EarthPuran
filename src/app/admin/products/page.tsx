@@ -8,9 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
-import { MoreHorizontal, PlusCircle, Trash2 } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, Search } from "lucide-react"; // Added Search
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input"; // Added Input
+import { useEffect, useState, useMemo } from "react"; // Added useMemo
 import type { Product } from "@/types/product";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -23,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -30,15 +32,14 @@ export default function AdminProductsPage() {
   const { toast } = useToast();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     async function fetchProducts() {
       setLoading(true);
       try {
         const fetchedProducts = await getProducts();
-        // Sort products by ID in descending order (newest first)
-        const sortedProducts = fetchedProducts.sort((a, b) => b.id.localeCompare(a.id));
-        setProducts(sortedProducts);
+        setProducts(fetchedProducts); // Original sort from action (ID desc)
       } catch (error) {
         console.error("Failed to fetch products:", error);
         toast({
@@ -79,22 +80,31 @@ export default function AdminProductsPage() {
     setProductToDelete(null);
   };
 
+  const filteredProducts = useMemo(() => {
+    let sortedProducts = [...products].sort((a, b) => b.id.localeCompare(a.id)); // Ensure newest first
+    if (!searchTerm) {
+      return sortedProducts;
+    }
+    return sortedProducts.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [products, searchTerm]);
+
   if (loading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Manage Products</h1>
-          <Button disabled>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add New Product
-          </Button>
+          <Skeleton className="h-10 w-44" />
         </div>
+        <Skeleton className="h-12 w-full" />
         <Card>
           <CardHeader>
             <CardTitle>Product List</CardTitle>
             <CardDescription>Loading products...</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12">Loading...</div>
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full mb-2"/>)}
           </CardContent>
         </Card>
       </div>
@@ -103,7 +113,7 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Manage Products</h1>
           <p className="text-muted-foreground">Add, edit, or delete products from your store.</p>
@@ -113,6 +123,16 @@ export default function AdminProductsPage() {
             <PlusCircle className="mr-2 h-4 w-4" /> Add New Product
           </Link>
         </Button>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search products by name..."
+          className="pl-10 w-full sm:w-auto"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
       <Card>
@@ -136,7 +156,7 @@ export default function AdminProductsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((product) => (
+              {filteredProducts.length > 0 ? filteredProducts.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell className="hidden sm:table-cell">
                     <Image
@@ -177,14 +197,17 @@ export default function AdminProductsPage() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    No products found{searchTerm && " matching your search"}.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
-       {products.length === 0 && !loading && (
-          <p className="text-center text-muted-foreground py-8">No products yet. Add your first product!</p>
-        )}
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
@@ -206,3 +229,6 @@ export default function AdminProductsPage() {
     </div>
   );
 }
+
+
+    
