@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { getProductById } from "@/app/actions/productActions"; 
 import type { Product } from "@/types/product";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useParams } from "next/navigation"; // Import useParams
 
 const productSchema = z.object({
   name: z.string().min(3, "Product name must be at least 3 characters."),
@@ -34,12 +35,16 @@ type ProductFormValues = z.infer<typeof productSchema>;
 const categories = ["Lips", "Face", "Eyes", "Skincare", "Tools", "Fragrance"];
 const brands = ["Earth Puran"];
 
-interface EditProductPageProps {
-  params: { id: string };
-}
+// Remove params from props interface
+// interface EditProductPageProps {
+// params: { id: string };
+// }
 
-export default function EditProductPage({ params }: EditProductPageProps) {
-  const { id: productId } = params;
+// Remove params from function signature
+export default function EditProductPage() {
+  const params = useParams(); // Use the hook
+  const productId = params.id as string; // Access id from the hook's return, cast to string
+
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
 
@@ -59,6 +64,10 @@ export default function EditProductPage({ params }: EditProductPageProps) {
 
   useEffect(() => {
     async function fetchProductData() {
+      if (!productId) { // Ensure productId is available
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       const fetchedProduct = await getProductById(productId); 
       if (fetchedProduct) {
@@ -74,13 +83,11 @@ export default function EditProductPage({ params }: EditProductPageProps) {
           imageHint: fetchedProduct.imageHint || "",
         });
       } else {
-        console.error("Product not found");
+        console.error("Product not found for ID:", productId);
       }
       setLoading(false);
     }
-    if (productId) {
-      fetchProductData();
-    }
+    fetchProductData();
   }, [productId, form]);
 
 
@@ -112,7 +119,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
      return (
        <div className="space-y-6 text-center">
          <h2 className="text-2xl font-semibold">Product Not Found</h2>
-         <p>The product you are trying to edit does not exist.</p>
+         <p>The product you are trying to edit does not exist or could not be loaded for ID: {productId}.</p>
          <Button variant="outline" asChild>
             <Link href="/admin/products">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Products
