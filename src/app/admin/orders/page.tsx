@@ -1,17 +1,17 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { getAllUsers } from "@/app/actions/userActions";
-import type { UserData, UserProfile } from "@/types/userData";
+import { getAllUsers, updateOrderStatus } from "@/app/actions/userActions";
+import type { UserData } from "@/types/userData";
 import type { Order } from "@/types/order";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, MoreHorizontal } from "lucide-react";
+import { Search, MoreHorizontal, CheckCircle, PackageCheck } from "lucide-react"; // Added PackageCheck
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 
 interface EnrichedOrder extends Order {
@@ -34,38 +35,58 @@ export default function AdminOrdersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
-  useEffect(() => {
-    async function fetchAllOrders() {
-      setLoading(true);
-      try {
-        const users: UserData[] = await getAllUsers();
-        let collectedOrders: EnrichedOrder[] = [];
-        users.forEach(user => {
-          if (user.orders && user.orders.length > 0) {
-            const userOrders = user.orders.map(order => ({
-              ...order,
-              customerName: `${user.profile.firstName} ${user.profile.lastName}`,
-              customerEmail: user.profile.email,
-            }));
-            collectedOrders = collectedOrders.concat(userOrders);
-          }
-        });
-        // Sort all orders by ID (which includes timestamp) newest first
-        collectedOrders.sort((a, b) => b.id.localeCompare(a.id));
-        setAllOrders(collectedOrders);
-      } catch (error) {
-        console.error("Failed to fetch all orders:", error);
-        toast({
-          title: "Error",
-          description: "Could not load orders.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
+  const fetchAllOrders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const users: UserData[] = await getAllUsers();
+      let collectedOrders: EnrichedOrder[] = [];
+      users.forEach(user => {
+        if (user.orders && user.orders.length > 0) {
+          const userOrders = user.orders.map(order => ({
+            ...order,
+            customerName: `${user.profile.firstName} ${user.profile.lastName}`,
+            customerEmail: user.profile.email,
+          }));
+          collectedOrders = collectedOrders.concat(userOrders);
+        }
+      });
+      collectedOrders.sort((a, b) => b.id.localeCompare(a.id));
+      setAllOrders(collectedOrders);
+    } catch (error) {
+      console.error("Failed to fetch all orders:", error);
+      toast({
+        title: "Error",
+        description: "Could not load orders.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-    fetchAllOrders();
   }, [toast]);
+
+  useEffect(() => {
+    fetchAllOrders();
+  }, [fetchAllOrders]);
+
+  const handleMarkAsDelivered = async (order: EnrichedOrder) => {
+    const result = await updateOrderStatus(order.customerEmail, order.id, 'Delivered');
+    if (result.success && result.updatedOrder) {
+      setAllOrders(prevOrders =>
+        prevOrders.map(o => (o.id === order.id ? { ...o, status: 'Delivered' } : o))
+      );
+      toast({
+        title: "Order Status Updated",
+        description: `Order #${order.id} marked as Delivered.`,
+      });
+    } else {
+      toast({
+        title: "Update Failed",
+        description: result.message || "Could not update order status.",
+        variant: "destructive",
+      });
+    }
+  };
+
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -176,7 +197,12 @@ export default function AdminOrdersPage() {
                            <DropdownMenuItem asChild>
                             <Link href={`/orders/${order.id}`}>View Details</Link>
                           </DropdownMenuItem>
-                          {/* Future: Update Status DropdownMenuItem */}
+                          {(order.status === 'Processing' || order.status === 'Shipped') && (
+                            <DropdownMenuItem onClick={() => handleMarkAsDelivered(order)}>
+                              <PackageCheck className="mr-2 h-4 w-4" /> Mark as Delivered
+                            </DropdownMenuItem>
+                          )}
+                          {/* Future: Update Status options could go here */}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -190,3 +216,6 @@ export default function AdminOrdersPage() {
     </div>
   );
 }
+
+
+    

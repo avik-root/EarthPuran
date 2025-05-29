@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ListOrdered, PackageSearch, XCircle, Truck, ArrowLeft } from "lucide-react";
+import { ListOrdered, PackageSearch, XCircle, Truck, ArrowLeft, CheckCircle, ShoppingBag } from "lucide-react"; // Added CheckCircle
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -13,7 +13,7 @@ import type { Order, OrderItem } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getUserData, updateUserOrders, getAllUsers } from "@/app/actions/userActions"; // Added getAllUsers
+import { getUserData, updateUserOrders, getAllUsers, updateOrderStatus } from "@/app/actions/userActions"; // Added updateOrderStatus
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -78,40 +78,42 @@ export default function OrderDetailPage() {
   }, [orderId, currentUserEmail, isCurrentUserAdmin, toast]);
 
   useEffect(() => {
-    // Fetch details only if currentUserEmail state is set (or if admin, immediately)
     if (currentUserEmail || isCurrentUserAdmin) {
         fetchOrderDetails();
     } else if (typeof window !== 'undefined' && !localStorage.getItem('currentUserEmail')) {
-        // If no email and not admin, likely not logged in, stop loading
         setLoading(false);
     }
   }, [fetchOrderDetails, currentUserEmail, isCurrentUserAdmin]);
 
   const handleCancelOrder = async () => {
-    if (!order || order.status !== 'Processing' || !orderOwnerEmail) { // Use orderOwnerEmail
+    if (!order || order.status !== 'Processing' || !orderOwnerEmail) {
       toast({ title: "Cancellation Failed", description: "Order cannot be cancelled or was not found.", variant: "destructive" });
       return;
     }
 
-    try {
-        const userData = await getUserData(orderOwnerEmail); // Use orderOwnerEmail
-        if (!userData || !userData.orders) {
-            toast({ title: "Error", description: "Could not retrieve user orders to process cancellation.", variant: "destructive" });
-            return;
-        }
-        const updatedOrderForDisplay = { ...order, status: 'Cancelled' as const };
-        const updatedAllUserOrders = userData.orders.map(o => (o.id === orderId ? updatedOrderForDisplay : o));
-        
-        const success = await updateUserOrders(orderOwnerEmail, updatedAllUserOrders); // Use orderOwnerEmail
-        if (!success) throw new Error("Failed to update orders via action.");
-
-        setOrder(updatedOrderForDisplay); // Update local state
+    const result = await updateOrderStatus(orderOwnerEmail, order.id, 'Cancelled');
+    if (result.success && result.updatedOrder) {
+        setOrder(result.updatedOrder); 
         toast({ title: "Order Cancelled", description: `Order #${orderId} has been cancelled.` });
-    } catch (error) {
-        console.error("Failed to cancel order:", error);
-        toast({ title: "Cancellation Error", description: "Could not cancel the order.", variant: "destructive" });
+    } else {
+        toast({ title: "Cancellation Error", description: result.message || "Could not cancel the order.", variant: "destructive" });
     }
   };
+  
+  const handleMarkAsDelivered = async () => {
+    if (!order || !isCurrentUserAdmin || (order.status !== 'Processing' && order.status !== 'Shipped') || !orderOwnerEmail ) {
+      toast({ title: "Action Failed", description: "Order cannot be marked as delivered or you don't have permission.", variant: "destructive" });
+      return;
+    }
+    const result = await updateOrderStatus(orderOwnerEmail, order.id, 'Delivered');
+    if (result.success && result.updatedOrder) {
+      setOrder(result.updatedOrder);
+      toast({ title: "Order Status Updated", description: `Order #${order.id} marked as Delivered.` });
+    } else {
+      toast({ title: "Update Failed", description: result.message || "Could not update order status.", variant: "destructive"});
+    }
+  };
+
 
   const handleTrackPackage = () => {
     toast({ title: "Tracking Not Available", description: `Package tracking for order #${orderId} is not yet implemented.` });
@@ -129,8 +131,6 @@ export default function OrderDetailPage() {
 
   const handleBackNavigation = () => {
     if (isCurrentUserAdmin) {
-      // If admin was viewing this, go back to admin orders list or customer detail page
-      // For simplicity, let's assume admin orders list is the target
       router.push('/admin/orders'); 
     } else {
       router.push('/profile?tab=orders');
@@ -155,7 +155,7 @@ export default function OrderDetailPage() {
     );
   }
 
-  if (!currentUserEmail && !isCurrentUserAdmin && !loading) { // Adjusted for admin
+  if (!currentUserEmail && !isCurrentUserAdmin && !loading) { 
     return (
          <div className="space-y-6 text-center">
             <PackageSearch className="mx-auto h-16 w-16 text-muted-foreground/50" />
@@ -191,7 +191,9 @@ export default function OrderDetailPage() {
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
-              <CardTitle className="text-2xl text-primary">Order #{order.id}</CardTitle>
+              <CardTitle className="text-2xl text-primary flex items-center gap-2">
+                <ShoppingBag className="h-7 w-7" /> Order #{order.id}
+              </CardTitle>
               <CardDescription>
                 Date Placed: {order.date}
                 {isCurrentUserAdmin && orderOwnerEmail && (
@@ -247,6 +249,11 @@ export default function OrderDetailPage() {
               <XCircle className="mr-2 h-4 w-4" /> Cancel Order
             </Button>
           )}
+          {isCurrentUserAdmin && (order.status === 'Processing' || order.status === 'Shipped') && (
+             <Button variant="default" size="sm" onClick={handleMarkAsDelivered} className="bg-green-600 hover:bg-green-700 text-white">
+               <CheckCircle className="mr-2 h-4 w-4" /> Mark as Delivered
+             </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleTrackPackage}>
             <Truck className="mr-2 h-4 w-4" /> Track Package
           </Button>
@@ -255,3 +262,6 @@ export default function OrderDetailPage() {
     </div>
   );
 }
+
+
+    

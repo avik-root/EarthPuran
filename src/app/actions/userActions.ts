@@ -99,6 +99,7 @@ export async function deleteUserByEmail(email: string): Promise<{ success: boole
   try {
     await writeUsersFile(allUsers);
     revalidatePath('/admin/users'); // Revalidate the admin users page
+    revalidatePath(`/admin/users/${encodeURIComponent(normalizedEmail)}`);
     return { success: true, message: "User deleted successfully." };
   } catch (error) {
     console.error("Failed to delete user:", error);
@@ -117,6 +118,7 @@ export async function initializeUserAccount(profile: Omit<UserProfile, 'hashedPa
     const isFirstUser = Object.keys(allUsers).length === 0;
     allUsers[normalizedEmail] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, isFirstUser);
     await writeUsersFile(allUsers);
+    revalidatePath('/admin/users');
     return allUsers[normalizedEmail];
 }
 
@@ -134,6 +136,8 @@ export async function updateUserProfile(email: string, profileData: Partial<Pick
         ...profileData,
      };
     await writeUsersFile(allUsers);
+    revalidatePath(`/profile`);
+    revalidatePath(`/admin/users/${encodeURIComponent(normalizedEmail)}`);
     return true;
 }
 
@@ -154,6 +158,7 @@ export async function updateUserPasswordAction(email: string, currentPlaintextPa
 
     userData.profile.hashedPassword = bcrypt.hashSync(newPlaintextPassword_prototype_only, saltRounds);
     await writeUsersFile(allUsers);
+    revalidatePath(`/profile`);
     return {success: true, message: "Password updated successfully."};
 }
 
@@ -174,6 +179,7 @@ export async function updateUserPinAction(email: string, currentPlaintextPin_pro
 
     userData.profile.hashedPin = bcrypt.hashSync(newPlaintextPin_prototype_only, saltRounds);
     await writeUsersFile(allUsers);
+    revalidatePath(`/profile`);
     return {success: true, message: "PIN updated successfully."};
 }
 
@@ -187,6 +193,9 @@ export async function updateUserAddresses(email: string, addresses: UserAddress[
     }
     allUsers[normalizedEmail].addresses = addresses;
     await writeUsersFile(allUsers);
+    revalidatePath(`/profile`);
+    revalidatePath(`/checkout`);
+    revalidatePath(`/admin/users/${encodeURIComponent(normalizedEmail)}`);
     return true;
 }
 
@@ -201,6 +210,11 @@ export async function addOrder(email: string, newOrder: Order): Promise<boolean>
     allUsers[normalizedEmail].orders.push(newOrder);
     allUsers[normalizedEmail].orders.sort((a, b) => parseInt(b.id) - parseInt(a.id)); // Newest first
     await writeUsersFile(allUsers);
+    revalidatePath(`/profile`);
+    revalidatePath(`/orders`);
+    revalidatePath(`/orders/${newOrder.id}`);
+    revalidatePath(`/admin/orders`);
+    revalidatePath(`/admin/users/${encodeURIComponent(normalizedEmail)}`);
     return true;
 }
 
@@ -214,8 +228,47 @@ export async function updateUserOrders(email: string, updatedOrders: Order[]): P
     }
     allUsers[normalizedEmail].orders = updatedOrders.sort((a,b) => parseInt(b.id) - parseInt(a.id)); // Ensure sort order
     await writeUsersFile(allUsers);
+    revalidatePath(`/profile`);
+    revalidatePath(`/orders`);
+    updatedOrders.forEach(order => revalidatePath(`/orders/${order.id}`));
+    revalidatePath(`/admin/orders`);
+    revalidatePath(`/admin/users/${encodeURIComponent(normalizedEmail)}`);
     return true;
 }
+
+export async function updateOrderStatus(customerEmail: string, orderId: string, newStatus: Order['status']): Promise<{ success: boolean; message: string; updatedOrder?: Order }> {
+  if (!customerEmail || !orderId || !newStatus) {
+    return { success: false, message: "Customer email, order ID, and new status are required." };
+  }
+  const allUsers = await readUsersFile();
+  const normalizedEmail = customerEmail.toLowerCase();
+  const userData = allUsers[normalizedEmail];
+
+  if (!userData) {
+    return { success: false, message: "Customer not found." };
+  }
+
+  const orderIndex = userData.orders.findIndex(order => order.id === orderId);
+  if (orderIndex === -1) {
+    return { success: false, message: "Order not found for this customer." };
+  }
+
+  userData.orders[orderIndex].status = newStatus;
+  const updatedOrder = userData.orders[orderIndex];
+
+  try {
+    await writeUsersFile(allUsers);
+    revalidatePath('/admin/orders');
+    revalidatePath(`/orders/${orderId}`);
+    revalidatePath(`/profile`); // To update user's view of their orders
+    revalidatePath(`/admin/users/${encodeURIComponent(normalizedEmail)}`); // To update admin's view of user's orders
+    return { success: true, message: `Order ${orderId} status updated to ${newStatus}.`, updatedOrder };
+  } catch (error) {
+    console.error("Failed to update order status:", error);
+    return { success: false, message: "Could not update order status in file." };
+  }
+}
+
 
 // --- Wishlist Actions ---
 export async function addProductToWishlistAction(email: string, product: Product): Promise<{ success: boolean; wishlist?: Product[] }> {
@@ -230,8 +283,10 @@ export async function addProductToWishlistAction(email: string, product: Product
     allUsers[normalizedEmail].wishlist = [];
   }
   if (!allUsers[normalizedEmail].wishlist.find(p => p.id === product.id)) {
-    allUsers[normalizedEmail].wishlist.push(product); // Add to end, could also unshift for newest first in raw data
+    allUsers[normalizedEmail].wishlist.push(product);
     await writeUsersFile(allUsers);
+    revalidatePath('/profile');
+    revalidatePath('/wishlist');
   }
   return { success: true, wishlist: allUsers[normalizedEmail].wishlist };
 }
@@ -248,6 +303,8 @@ export async function removeProductFromWishlistAction(email: string, productId: 
   allUsers[normalizedEmail].wishlist = allUsers[normalizedEmail].wishlist.filter(p => p.id !== productId);
   if (allUsers[normalizedEmail].wishlist.length < initialLength) {
     await writeUsersFile(allUsers);
+    revalidatePath('/profile');
+    revalidatePath('/wishlist');
   }
   return { success: true, wishlist: allUsers[normalizedEmail].wishlist };
 }
@@ -262,6 +319,8 @@ export async function clearUserWishlistAction(email: string): Promise<{ success:
     }
     allUsers[normalizedEmail].wishlist = [];
     await writeUsersFile(allUsers);
+    revalidatePath('/profile');
+    revalidatePath('/wishlist');
     return { success: true, wishlist: allUsers[normalizedEmail].wishlist };
 }
 
@@ -285,6 +344,7 @@ export async function addItemToUserCartAction(email: string, product: Product, q
     allUsers[normalizedEmail].cart.push({ product, quantity: Math.min(quantity, product.stock) });
   }
   await writeUsersFile(allUsers);
+  revalidatePath('/cart');
   return { success: true, cart: allUsers[normalizedEmail].cart };
 }
 
@@ -300,6 +360,7 @@ export async function removeItemFromUserCartAction(email: string, productId: str
   allUsers[normalizedEmail].cart = allUsers[normalizedEmail].cart.filter(item => item.product.id !== productId);
   if (allUsers[normalizedEmail].cart.length < initialLength) {
     await writeUsersFile(allUsers);
+    revalidatePath('/cart');
   }
   return { success: true, cart: allUsers[normalizedEmail].cart };
 }
@@ -320,6 +381,7 @@ export async function updateUserItemQuantityInCartAction(email: string, productI
       allUsers[normalizedEmail].cart[itemIndex].quantity = Math.min(newQuantity, allUsers[normalizedEmail].cart[itemIndex].product.stock);
     }
     await writeUsersFile(allUsers);
+    revalidatePath('/cart');
   }
   return { success: true, cart: allUsers[normalizedEmail].cart };
 }
@@ -334,6 +396,8 @@ export async function clearUserCartAction(email: string): Promise<{ success: boo
   }
   allUsers[normalizedEmail].cart = [];
   await writeUsersFile(allUsers);
+  revalidatePath('/cart');
+  revalidatePath('/checkout'); // Also revalidate checkout as cart affects it
   return { success: true, cart: allUsers[normalizedEmail].cart };
 }
 
@@ -534,3 +598,6 @@ export async function updateEarthPuranAdminPin(
     return { success: false, message: "Failed to update admin PIN. Check server logs." };
   }
 }
+
+
+    

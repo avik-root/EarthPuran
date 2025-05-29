@@ -32,16 +32,16 @@ export default function ProfilePage() {
   
   const [activeTab, setActiveTab] = useState('edit-profile');
   const [hasMounted, setHasMounted] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Default to false
-  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null); // Default to null
+  const [isLoggedIn, setIsLoggedIn] = useState(false); 
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null); 
 
 
   useEffect(() => {
-    setHasMounted(true); // Signal client has mounted
+    setHasMounted(true); 
   }, []);
 
   useEffect(() => {
-    if (hasMounted) { // Only run this logic on the client after mounting
+    if (hasMounted) { 
       const email = localStorage.getItem('currentUserEmail');
       const loggedInStatus = localStorage.getItem('isLoggedInPrototype') === 'true';
       setCurrentUserEmail(email);
@@ -50,14 +50,14 @@ export default function ProfilePage() {
       const tabQueryParam = searchParams.get('tab');
       if (tabQueryParam && ['edit-profile', 'addresses', 'orders', 'wishlist'].includes(tabQueryParam)) {
         setActiveTab(tabQueryParam);
-      } else if (tabQueryParam) { // If tab is invalid or not one of the main ones, default
+      } else if (tabQueryParam) { 
         router.replace('/profile?tab=edit-profile', { scroll: false });
       }
     }
   }, [hasMounted, searchParams, router]);
 
   const fetchOrders = useCallback(async () => {
-    if (!currentUserEmail || !isLoggedIn || !hasMounted) { // Ensure all conditions met
+    if (!currentUserEmail || !isLoggedIn || !hasMounted) { 
         setOrders([]);
         setLoadingOrders(false);
         return;
@@ -95,7 +95,6 @@ export default function ProfilePage() {
   };
   
   if (!hasMounted) {
-    // Consistent loading skeleton for server and initial client render
     return (
       <div className="space-y-8">
         <div className="flex items-center space-x-3 mb-8">
@@ -105,15 +104,14 @@ export default function ProfilePage() {
             <Skeleton className="h-4 w-48 mt-1" />
           </div>
         </div>
-        <Skeleton className="h-32 w-full mb-8" /> {/* Placeholder for UserProfileDisplay */}
-        <Skeleton className="h-12 w-full" /> {/* Placeholder for TabsList */}
-        <Skeleton className="h-64 w-full mt-6" /> {/* Placeholder for TabsContent */}
+        <Skeleton className="h-32 w-full mb-8" /> 
+        <Skeleton className="h-12 w-full" /> 
+        <Skeleton className="h-64 w-full mt-6" /> 
       </div>
     );
   }
 
   if (!isLoggedIn || !currentUserEmail) {
-    // This part runs only on the client, after hasMounted is true, if user is not logged in.
     const redirectTab = searchParams.get('tab') || 'edit-profile';
     return (
       <div className="space-y-8 text-center">
@@ -127,7 +125,6 @@ export default function ProfilePage() {
     );
   }
 
-  // If hasMounted and user is logged in, render the actual profile content.
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3 mb-8">
@@ -189,7 +186,7 @@ export default function ProfilePage() {
             <CardContent>
               {loadingOrders ? (
                      <Skeleton className="h-24 w-full" />
-                ) : !isLoggedIn ? ( // This check might be redundant if already handled above
+                ) : !isLoggedIn ? ( 
                     <p className="text-muted-foreground text-center py-4">Please log in to view your order history.</p>
                 ) : orders.length === 0 ? (
                     <div className="text-center py-12 border border-dashed rounded-lg">
@@ -243,7 +240,7 @@ export default function ProfilePage() {
             <CardContent>
               {isLoadingWishlist ? (
                     <Skeleton className="h-64 w-full" />
-                ) : !isLoggedIn ? ( // This check might be redundant
+                ) : !isLoggedIn ? ( 
                     <p className="text-muted-foreground text-center py-4">Please log in to manage your wishlist.</p>
                 ) : wishlistItems.length === 0 ? (
                     <div className="text-center py-12 border border-dashed rounded-lg">
@@ -270,3 +267,6 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+
+    
