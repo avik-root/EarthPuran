@@ -14,10 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getProductById } from "@/app/actions/productActions"; 
+import { getProductById } from "@/app/actions/productActions";
 import type { Product } from "@/types/product";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useParams } from "next/navigation"; // Import useParams
+import { useParams } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 const productSchema = z.object({
   name: z.string().min(3, "Product name must be at least 3 characters."),
@@ -28,6 +29,7 @@ const productSchema = z.object({
   stock: z.coerce.number().int().min(0, "Stock cannot be negative."),
   imageUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
+  colors: z.string().optional(), // Added for comma-separated colors
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -35,22 +37,17 @@ type ProductFormValues = z.infer<typeof productSchema>;
 const categories = ["Lips", "Face", "Eyes", "Skincare", "Tools", "Fragrance"];
 const brands = ["Earth Puran"];
 
-// Remove params from props interface
-// interface EditProductPageProps {
-// params: { id: string };
-// }
-
-// Remove params from function signature
 export default function EditProductPage() {
-  const params = useParams(); // Use the hook
-  const productId = params.id as string; // Access id from the hook's return, cast to string
+  const params = useParams();
+  const productId = params.id as string;
+  const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: { 
+    defaultValues: {
       name: "",
       description: "",
       price: 0,
@@ -59,17 +56,18 @@ export default function EditProductPage() {
       stock: 0,
       imageUrl: "",
       imageHint: "",
+      colors: "", // Default empty string for colors
     },
   });
 
   useEffect(() => {
     async function fetchProductData() {
-      if (!productId) { // Ensure productId is available
+      if (!productId) {
         setLoading(false);
         return;
       }
       setLoading(true);
-      const fetchedProduct = await getProductById(productId); 
+      const fetchedProduct = await getProductById(productId);
       if (fetchedProduct) {
         setProduct(fetchedProduct);
         form.reset({
@@ -77,24 +75,31 @@ export default function EditProductPage() {
           description: fetchedProduct.description,
           price: fetchedProduct.price,
           category: fetchedProduct.category,
-          brand: fetchedProduct.brand, // Should be "Earth Puran" from updated data
+          brand: fetchedProduct.brand,
           stock: fetchedProduct.stock,
           imageUrl: fetchedProduct.imageUrl,
           imageHint: fetchedProduct.imageHint || "",
+          colors: fetchedProduct.colors ? fetchedProduct.colors.join(', ') : "", // Join colors array for form input
         });
       } else {
         console.error("Product not found for ID:", productId);
+        toast({ title: "Error", description: "Product not found.", variant: "destructive" });
       }
       setLoading(false);
     }
     fetchProductData();
-  }, [productId, form]);
+  }, [productId, form, toast]);
 
 
   function onSubmit(values: ProductFormValues) {
     // TODO: Implement actual product update logic
-    console.log("Updated product data for ID", productId, ":", values);
-    // toast({ title: "Product Updated", description: `${values.name} has been updated.` });
+    const processedValues = {
+      ...values,
+      // Process comma-separated colors string into an array
+      colorsArray: values.colors ? values.colors.split(',').map(c => c.trim()).filter(c => c) : [],
+    };
+    console.log("Updated product data for ID", productId, ":", processedValues);
+    toast({ title: "Product Updated (Simulated)", description: `${values.name} has been updated. (Data logged to console)` });
   }
 
   if (loading) {
@@ -104,7 +109,7 @@ export default function EditProductPage() {
         <Card>
           <CardHeader><Skeleton className="h-8 w-1/2" /><Skeleton className="h-4 w-3/4 mt-2" /></CardHeader>
           <CardContent className="space-y-8">
-            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)} {/* Increased skeleton count */}
             <div className="flex justify-end gap-2">
               <Skeleton className="h-10 w-24" />
               <Skeleton className="h-10 w-32" />
@@ -114,7 +119,7 @@ export default function EditProductPage() {
       </div>
     );
   }
-  
+
   if (!product && !loading) {
      return (
        <div className="space-y-6 text-center">
@@ -225,6 +230,18 @@ export default function EditProductPage() {
                   )}
                 />
               </div>
+              <FormField
+                control={form.control}
+                name="colors"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Available Colors (comma-separated)</FormLabel>
+                    <FormControl><Input placeholder="e.g., Ruby Red, Dusty Rose, Nude Beige" {...field} /></FormControl>
+                    <FormDescription>Enter color names separated by commas.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="imageUrl"

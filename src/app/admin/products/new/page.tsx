@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const productSchema = z.object({
   name: z.string().min(3, "Product name must be at least 3 characters."),
@@ -23,15 +24,16 @@ const productSchema = z.object({
   stock: z.coerce.number().int().min(0, "Stock cannot be negative."),
   imageUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
-  // Add more fields like colors, tags if needed
+  colors: z.string().optional(), // Added for comma-separated colors
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
 
 const categories = ["Lips", "Face", "Eyes", "Skincare", "Tools", "Fragrance"];
-const brands = ["Earth Puran"]; 
+const brands = ["Earth Puran"];
 
 export default function NewProductPage() {
+  const { toast } = useToast();
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -39,18 +41,25 @@ export default function NewProductPage() {
       description: "",
       price: 0,
       category: "",
-      brand: "Earth Puran", // Default to Earth Puran
+      brand: "Earth Puran",
       stock: 0,
       imageUrl: "",
       imageHint: "",
+      colors: "", // Default empty string for colors
     },
   });
 
   function onSubmit(values: ProductFormValues) {
     // TODO: Implement actual product creation logic (e.g., call server action)
-    console.log("New product data:", values);
-    // toast({ title: "Product Created", description: `${values.name} has been added.` });
+    const processedValues = {
+      ...values,
+      // Process comma-separated colors string into an array
+      colorsArray: values.colors ? values.colors.split(',').map(c => c.trim()).filter(c => c) : [],
+    };
+    console.log("New product data:", processedValues);
+    toast({ title: "Product Created (Simulated)", description: `${values.name} has been added. (Data logged to console)` });
     // Potentially redirect or clear form
+    // form.reset(); // Uncomment to clear form after submission
   }
 
   return (
@@ -150,6 +159,18 @@ export default function NewProductPage() {
               </div>
               <FormField
                 control={form.control}
+                name="colors"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Available Colors (comma-separated)</FormLabel>
+                    <FormControl><Input placeholder="e.g., Ruby Red, Dusty Rose, Nude Beige" {...field} /></FormControl>
+                    <FormDescription>Enter color names separated by commas.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="imageUrl"
                 render={({ field }) => (
                   <FormItem>
@@ -172,7 +193,6 @@ export default function NewProductPage() {
                   </FormItem>
                 )}
               />
-              {/* Add fields for tags, colors, etc. as needed */}
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" asChild>
                   <Link href="/admin/products">Cancel</Link>
