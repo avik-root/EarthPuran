@@ -83,7 +83,8 @@ export async function initializeUserAccount(profile: Omit<UserProfile, 'hashedPa
     if (allUsers[normalizedEmail]) {
         throw new Error(`User with email ${profile.email} already exists.`);
     }
-    // Removed "first user is admin" logic
+    
+    // The first user created is NO LONGER automatically an admin. Admin is managed separately.
     allUsers[normalizedEmail] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, false);
     await writeUsersFile(allUsers);
     return allUsers[normalizedEmail];
@@ -314,6 +315,27 @@ interface EarthPuranAdminCredentials {
   pinHash?: string;
 }
 
+async function readEarthPuranAdminFile(): Promise<EarthPuranAdminCredentials> {
+  try {
+    const jsonData = await fs.readFile(earthPuranAdminDataFilePath, 'utf-8');
+    return JSON.parse(jsonData) as EarthPuranAdminCredentials;
+  } catch (error) {
+    // If file doesn't exist or is invalid JSON, return empty object.
+    // This allows the "Create Admin" flow to proceed.
+    return {}; 
+  }
+}
+
+async function writeEarthPuranAdminFile(data: EarthPuranAdminCredentials): Promise<void> {
+  try {
+    await fs.writeFile(earthPuranAdminDataFilePath, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (error) {
+    console.error("Failed to write to earthpuranadmin.json:", error);
+    throw new Error("Could not save admin credentials.");
+  }
+}
+
+
 export async function getEarthPuranAdminCredentials(): Promise<{
   configured: boolean;
   email?: string;
@@ -322,8 +344,7 @@ export async function getEarthPuranAdminCredentials(): Promise<{
   error?: string;
 }> {
   try {
-    const jsonData = await fs.readFile(earthPuranAdminDataFilePath, 'utf-8');
-    const creds = JSON.parse(jsonData) as EarthPuranAdminCredentials;
+    const creds = await readEarthPuranAdminFile();
 
     if (
       creds.email && !creds.email.startsWith("REPLACE_WITH_ADMIN_EMAIL") &&
@@ -337,8 +358,8 @@ export async function getEarthPuranAdminCredentials(): Promise<{
         pinHash: creds.pinHash,
       };
     }
-    return { configured: false, error: "Admin credentials use placeholder values or are incomplete." };
-  } catch (error) {
+    return { configured: false, error: "Admin credentials use placeholder values, are incomplete, or file is missing." };
+  } catch (error) { // This catch might be redundant if readEarthPuranAdminFile handles file not found
     const nodeError = error as NodeJS.ErrnoException;
     if (nodeError.code === 'ENOENT') {
       return { configured: false, error: "earthpuranadmin.json not found. Please use the 'Create Admin Account' form." };
@@ -370,7 +391,7 @@ export async function createEarthPuranAdminAccount(
       pinHash,
     };
 
-    await fs.writeFile(earthPuranAdminDataFilePath, JSON.stringify(adminData, null, 2), 'utf-8');
+    await writeEarthPuranAdminFile(adminData);
     return { success: true, message: "Admin account created successfully. Please log in.", adminData };
   } catch (error) {
     console.error("Error creating admin account in earthpuranadmin.json:", error);
@@ -378,4 +399,86 @@ export async function createEarthPuranAdminAccount(
   }
 }
 
-    
+
+export async function updateEarthPuranAdminEmail(
+  newEmail: string,
+  currentPassword_prototype_only: string
+): Promise<{ success: boolean; message: string; newEmail?: string }> {
+  try {
+    const adminData = await readEarthPuranAdminFile();
+    if (!adminData.email || !adminData.passwordHash) {
+      return { success: false, message: "Admin account not configured. Cannot update email." };
+    }
+
+    const isPasswordCorrect = bcrypt.compareSync(currentPassword_prototype_only, adminData.passwordHash);
+    if (!isPasswordCorrect) {
+      return { success: false, message: "Incorrect current password." };
+    }
+
+    const updatedAdminData: EarthPuranAdminCredentials = {
+      ...adminData,
+      email: newEmail.toLowerCase(),
+    };
+    await writeEarthPuranAdminFile(updatedAdminData);
+    return { success: true, message: "Admin email updated successfully. Please log in again if this was your current session.", newEmail: newEmail.toLowerCase() };
+  } catch (error) {
+    console.error("Error updating admin email:", error);
+    return { success: false, message: "Failed to update admin email. Check server logs." };
+  }
+}
+
+export async function updateEarthPuranAdminPassword(
+  currentPassword_prototype_only: string,
+  newPassword_prototype_only: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const adminData = await readEarthPuranAdminFile();
+    if (!adminData.email || !adminData.passwordHash) {
+      return { success: false, message: "Admin account not configured. Cannot update password." };
+    }
+
+    const isPasswordCorrect = bcrypt.compareSync(currentPassword_prototype_only, adminData.passwordHash);
+    if (!isPasswordCorrect) {
+      return { success: false, message: "Incorrect current password." };
+    }
+
+    const newPasswordHash = bcrypt.hashSync(newPassword_prototype_only, saltRounds);
+    const updatedAdminData: EarthPuranAdminCredentials = {
+      ...adminData,
+      passwordHash: newPasswordHash,
+    };
+    await writeEarthPuranAdminFile(updatedAdminData);
+    return { success: true, message: "Admin password updated successfully." };
+  } catch (error) {
+    console.error("Error updating admin password:", error);
+    return { success: false, message: "Failed to update admin password. Check server logs." };
+  }
+}
+
+export async function updateEarthPuranAdminPin(
+  currentPin_prototype_only: string,
+  newPin_prototype_only: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const adminData = await readEarthPuranAdminFile();
+    if (!adminData.email || !adminData.pinHash) {
+      return { success: false, message: "Admin account not configured or PIN not set. Cannot update PIN." };
+    }
+
+    const isPinCorrect = bcrypt.compareSync(currentPin_prototype_only, adminData.pinHash);
+    if (!isPinCorrect) {
+      return { success: false, message: "Incorrect current PIN." };
+    }
+
+    const newPinHash = bcrypt.hashSync(newPin_prototype_only, saltRounds);
+    const updatedAdminData: EarthPuranAdminCredentials = {
+      ...adminData,
+      pinHash: newPinHash,
+    };
+    await writeEarthPuranAdminFile(updatedAdminData);
+    return { success: true, message: "Admin login PIN updated successfully." };
+  } catch (error) {
+    console.error("Error updating admin PIN:", error);
+    return { success: false, message: "Failed to update admin PIN. Check server logs." };
+  }
+}

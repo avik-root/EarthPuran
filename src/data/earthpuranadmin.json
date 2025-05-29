@@ -1,5 +1,5 @@
 {
-  "email": "REPLACE_WITH_ADMIN_EMAIL@example.com",
-  "passwordHash": "REPLACE_WITH_BCRYPT_HASH_OF_ADMIN_PASSWORD",
-  "pinHash": "REPLACE_WITH_BCRYPT_HASH_OF_ADMIN_6_DIGIT_LOGIN_PIN"
+  "email": "ep@gmail.com",
+  "passwordHash": "$2a$10$6aBzYZ6cfoScpKjJkFDLCuRO2avCYkGCAh03ZSeqpdopoHaHgrjoy",
+  "pinHash": "$2a$10$7gKg5yZ6S0Lsd5ip1vNpa.wSESM9q2WCR77KKYY/mri5JFIgadyHa"
 }

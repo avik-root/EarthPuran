@@ -132,7 +132,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 EarthPuran Admin
               </h1>
             </Link>
-            <SidebarTrigger /> {/* Removed group-data-[collapsible=icon]:hidden */}
+            <SidebarTrigger /> 
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -168,7 +168,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             <SidebarGroup>
               <SidebarGroupLabel>Settings</SidebarGroupLabel>
               <SidebarMenuItem>
-                <SidebarMenuButton href="/admin/settings" tooltip="Settings (coming soon)" isActive={pathname.startsWith('/admin/settings')}>
+                <SidebarMenuButton href="/admin/settings" tooltip="Admin Settings" isActive={pathname.startsWith('/admin/settings')}>
                   <Settings /> <span>Settings</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
