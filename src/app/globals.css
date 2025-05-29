@@ -116,28 +116,34 @@
 }
 
 @media print {
-  body > *:not(.printable-invoice-container) {
-    display: none !important; /* Hide everything in body except the invoice container */
+  /* Hide everything initially */
+  body * {
+    visibility: hidden !important;
   }
 
+  /* Make the specific container and its children visible */
+  .printable-invoice-container,
+  .printable-invoice-container * {
+    visibility: visible !important;
+  }
+
+  /* Position the container to take up the whole page for printing */
   .printable-invoice-container {
-    display: block !important; /* Show the invoice container for print */
-    position: absolute !important; /* Take over the viewport */
+    position: absolute !important;
     left: 0 !important;
     top: 0 !important;
     width: 100% !important;
-    height: auto !important;
+    height: auto !important; /* Use auto to allow content to flow */
     margin: 0 !important;
-    padding: 0 !important; /* Padding will be on .printable-invoice-area */
-    background-color: white !important; /* Ensure background is white */
+    padding: 0 !important; /* Padding should be on .printable-invoice-area */
+    display: block !important; /* Ensure it's a block for positioning */
+    background-color: white !important; /* Ensure background is white for print */
   }
 
+  /* Styles for the actual invoice content area within the container */
   .printable-invoice-area {
-    /* Styles for the actual invoice content within the container */
-    visibility: visible !important;
-    display: block !important;
-    width: 100% !important;
-    margin: 0 auto !important;
+    width: 100% !important; /* Ensure it uses the full width of its parent */
+    margin: 0 auto !important; /* Center if needed, but should be full width */
     padding: 1cm !important; /* Standard page margin for A4 */
     font-size: 10pt !important;
     line-height: 1.2 !important;
@@ -150,10 +156,9 @@
     box-sizing: border-box; /* Ensures padding is included in width */
   }
 
-  /* General print improvements */
   @page {
     size: A4;
-    margin: 0mm; /* Let the .printable-invoice-area handle padding/margins */
+    margin: 0mm; /* Margins handled by .printable-invoice-area padding */
   }
 
   .no-print { /* Utility class to hide elements during any print */

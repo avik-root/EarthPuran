@@ -1,9 +1,9 @@
 
 "use client";
 
-import type { EnrichedOrder, OrderItem } from "@/app/admin/orders/page"; // Assuming EnrichedOrder is exported or define a similar type
+import type { EnrichedOrder, OrderItem } from "@/app/admin/orders/page"; 
 import QRCode from "qrcode.react";
-import Image from "next/image"; // For Earth Puran logo placeholder
+import Image from "next/image"; 
 
 interface PrintableInvoiceProps {
   order: EnrichedOrder | null;
@@ -15,10 +15,12 @@ const numberToWords = (num: number): string => {
   const b = ['', '', 'twenty','thirty','forty','fifty', 'sixty','seventy','eighty','ninety'];
   
   const convert = (n: number): string => {
+    if (n < 0) return "Minus " + convert(Math.abs(n));
     if (n < 20) return a[n];
-    if (n < 100) return b[Math.floor(n/10)] + (n % 10 !== 0 ? ' ' + a[n%10] : '');
+    if (n < 100) return b[Math.floor(n/10)] + (n % 10 !== 0 ? '' + a[n%10] : ''); // Removed extra space before a[n%10]
     if (n < 1000) return a[Math.floor(n/100)] + 'hundred ' + (n % 100 !== 0 ? 'and ' + convert(n%100) : '');
     if (n < 100000) return convert(Math.floor(n/1000)) + 'thousand ' + (n % 1000 !== 0 ? convert(n%1000) : '');
+    if (n < 10000000) return convert(Math.floor(n/100000)) + 'lakh ' + (n % 100000 !== 0 ? convert(n % 100000) : ''); // Basic Lakh support
     return 'Number too large for words'; // Basic limit
   }
   const rupees = Math.floor(num);
@@ -34,8 +36,10 @@ const numberToWords = (num: number): string => {
 
 
 export function PrintableInvoice({ order }: PrintableInvoiceProps) {
+  // Although parent AdminOrdersPage only calls print when orderToInvoice is set,
+  // this component might still be in the DOM. If order is null, don't try to render invoice content.
   if (!order) {
-    return null;
+    return null; 
   }
 
   const earthPuranDetails = {
@@ -51,11 +55,11 @@ export function PrintableInvoice({ order }: PrintableInvoiceProps) {
   const qrCodeValue = JSON.stringify({
     customerName: order.customerName,
     customerEmail: order.customerEmail,
-    orderId: order.id,
+    orderId: order.id, // Package ID
     totalAmount: order.totalAmount.toFixed(2),
   });
 
-  const invoiceDate = new Date().toLocaleDateString('en-GB'); // Or use order.date if preferred
+  const invoiceDate = order.date; // Use the formatted date string from the order
   const invoiceId = `INV-${order.id}`;
 
   return (
@@ -63,7 +67,7 @@ export function PrintableInvoice({ order }: PrintableInvoiceProps) {
       {/* Invoice Header */}
       <div className="flex justify-between items-start mb-6">
         <div>
-          {/* Placeholder for Earth Puran Logo - you can use next/image if you have a logo URL */}
+          {/* Placeholder for Earth Puran Logo */}
           {/* <Image src="/path/to/earth-puran-logo.png" alt="Earth Puran Logo" width={150} height={50} /> */}
           <h1 className="text-3xl font-bold text-primary">{earthPuranDetails.name}</h1>
           <p>{earthPuranDetails.addressLine1}</p>
@@ -104,7 +108,6 @@ export function PrintableInvoice({ order }: PrintableInvoiceProps) {
           <p>{order.shippingDetails.country}</p>
           <p>Ph: {order.shippingDetails.phoneCountryCode}{order.shippingDetails.phoneNumber}</p>
         </div>
-        {/* Optional: If sender details are different or need to be highlighted again */}
       </div>
 
       {/* Items Table */}
@@ -119,8 +122,8 @@ export function PrintableInvoice({ order }: PrintableInvoiceProps) {
           </tr>
         </thead>
         <tbody>
-          {order.items.map((item, index) => (
-            <tr key={item.productId}>
+          {order.items && order.items.map((item, index) => (
+            <tr key={item.productId || `item-${index}`}>
               <td className="border border-gray-300 p-1">{index + 1}</td>
               <td className="border border-gray-300 p-1">
                 {item.name}
