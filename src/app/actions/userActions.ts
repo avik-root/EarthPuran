@@ -83,9 +83,8 @@ export async function initializeUserAccount(profile: Omit<UserProfile, 'hashedPa
     if (allUsers[normalizedEmail]) {
         throw new Error(`User with email ${profile.email} already exists.`);
     }
-    // Determine if this is the first user to make them admin
-    const isFirstUser = Object.keys(allUsers).length === 0;
-    allUsers[normalizedEmail] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, false); // Regular users are not admin by default
+    // Removed "first user is admin" logic
+    allUsers[normalizedEmail] = getDefaultUserData(profile, plaintextPassword_prototype_only, plaintextPin_prototype_only, false);
     await writeUsersFile(allUsers);
     return allUsers[normalizedEmail];
 }
@@ -342,13 +341,12 @@ export async function getEarthPuranAdminCredentials(): Promise<{
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
     if (nodeError.code === 'ENOENT') {
-      // File not found, implies not configured
-      return { configured: false, error: "earthpuranadmin.json not found. Please create the admin account." };
+      return { configured: false, error: "earthpuranadmin.json not found. Please use the 'Create Admin Account' form." };
     } else if (error instanceof SyntaxError) {
-      return { configured: false, error: "earthpuranadmin.json is not valid JSON." };
+      return { configured: false, error: "earthpuranadmin.json is not valid JSON. Please correct or delete it to re-create." };
     }
     console.error("Failed to read or parse earthpuranadmin.json:", error);
-    return { configured: false, error: "Could not read admin credentials." };
+    return { configured: false, error: "Could not read admin credentials. Check server logs." };
   }
 }
 
@@ -356,7 +354,7 @@ export async function createEarthPuranAdminAccount(
   email: string,
   plaintextPassword_prototype_only: string,
   plaintextPin_prototype_only: string
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; adminData?: EarthPuranAdminCredentials }> {
   const currentAdminConfig = await getEarthPuranAdminCredentials();
   if (currentAdminConfig.configured) {
     return { success: false, message: "An admin account is already configured. Cannot create another." };
@@ -373,13 +371,11 @@ export async function createEarthPuranAdminAccount(
     };
 
     await fs.writeFile(earthPuranAdminDataFilePath, JSON.stringify(adminData, null, 2), 'utf-8');
-    return { success: true, message: "Admin account created successfully. Please log in." };
+    return { success: true, message: "Admin account created successfully. Please log in.", adminData };
   } catch (error) {
     console.error("Error creating admin account in earthpuranadmin.json:", error);
     return { success: false, message: "Failed to create admin account. Check server logs." };
   }
 }
 
-// Remove or comment out the old getAdminCredentialsFromFile if it exists
-// export async function getAdminCredentialsFromFile(): Promise<...> { ... }
-// This function is now replaced by getEarthPuranAdminCredentials
+    

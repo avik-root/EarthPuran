@@ -11,7 +11,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { PinInput } from "@/components/ui/pin-input";
 import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Added import
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Eye, EyeOff, ShieldCheck, UserPlus, AlertTriangle, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import bcrypt from 'bcryptjs';
 import { cn } from "@/lib/utils";
 import { getEarthPuranAdminCredentials, createEarthPuranAdminAccount } from "@/app/actions/userActions";
-import type { UserProfile } from "@/types/userData"; // Keep for potential UserProfile storage
+import type { UserProfile } from "@/types/userData";
 
 const passwordStrengthSchema = z.string()
   .min(8, "Password must be at least 8 characters long.")
@@ -89,17 +89,17 @@ export default function AdminAuthPage() {
           passwordHash: result.passwordHash,
           pinHash: result.pinHash,
         });
-        adminLoginForm.setValue("email", result.email); // Pre-fill login form email
+        adminLoginForm.setValue("email", result.email); 
         setUiMode('loginAdmin');
       } else {
         setStoredAdminCredentials(null);
-        setConfigErrorMessage(result.error || "Admin account not configured."); // Keep this to inform if file is bad
-        setUiMode('createAdmin'); // Default to create if not configured
+        setConfigErrorMessage(result.error || "Admin account not configured.");
+        setUiMode('createAdmin'); 
       }
     } catch (e) {
         console.error("Error fetching admin config:", e);
         setConfigErrorMessage("Could not check admin configuration. Please try again.");
-        setUiMode('createAdmin'); // Fallback to create if error
+        setUiMode('createAdmin');
     }
   };
   
@@ -135,15 +135,22 @@ export default function AdminAuthPage() {
     setIsSubmittingCreate(true);
     try {
       const result = await createEarthPuranAdminAccount(values.adminEmail, values.adminPassword, values.adminLoginPin);
-      if (result.success) {
+      if (result.success && result.adminData) {
         setTimeout(() => {
           toast({ title: "Admin Account Created", description: result.message });
         }, 0);
-        // Re-fetch config to switch to login mode
-        await fetchAdminConfig(); 
+        // Optimistically switch to login mode with the newly created credentials
+        setStoredAdminCredentials({
+          email: result.adminData.email,
+          passwordHash: result.adminData.passwordHash,
+          pinHash: result.adminData.pinHash,
+        });
+        adminLoginForm.setValue("email", result.adminData.email || ""); // Pre-fill email
+        setUiMode('loginAdmin');
+        setConfigErrorMessage(null); // Clear any previous config error message
       } else {
         setTimeout(() => {
-          toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
+          toast({ title: "Creation Failed", description: result.message || "Could not create admin account.", variant: "destructive" });
         }, 0);
       }
     } catch (error) {
@@ -174,9 +181,6 @@ export default function AdminAuthPage() {
       return;
     }
 
-    // Server-side hashes are compared against client-side hashed input (less ideal, but matches current flow for users)
-    // For admin, it's better to send plaintext to a server action for comparison if possible.
-    // Sticking to client-side comparison for prototype consistency here.
     const isPasswordCorrect = bcrypt.compareSync(values.password, storedAdminCredentials.passwordHash);
     const isPinCorrect = bcrypt.compareSync(values.loginPin, storedAdminCredentials.pinHash);
 
@@ -191,12 +195,11 @@ export default function AdminAuthPage() {
     localStorage.setItem("isLoggedInPrototype", "true");
     localStorage.setItem("isAdminPrototype", "true");
     localStorage.setItem('currentUserEmail', storedAdminCredentials.email);
-    // Store a simple admin profile for consistency if needed by other parts of the app
     const adminProfileForStorage: UserProfile = {
         firstName: "Admin",
         lastName: "User",
         email: storedAdminCredentials.email,
-        countryCode: "N/A", // Or other appropriate placeholder
+        countryCode: "N/A",
         phoneNumber: "N/A",
         isAdmin: true,
     };
@@ -278,11 +281,11 @@ export default function AdminAuthPage() {
             <ShieldCheck className="mx-auto h-10 w-10 text-primary" />
             <CardTitle className="mt-2 text-3xl font-bold text-primary">Admin Panel Login</CardTitle>
             <CardDescription>Enter your administrator credentials for Earth Puran.</CardDescription>
-             {configErrorMessage && !storedAdminCredentials && ( // Show if there was an error loading valid config
+             {configErrorMessage && !storedAdminCredentials && (
                 <Alert variant="destructive" className="mt-4">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Configuration Error!</AlertTitle>
-                    <AlertDescription>{configErrorMessage}. Please ensure `src/data/earthpuranadmin.json` is correctly set up by the developer if issues persist after creation.</AlertDescription>
+                    <AlertDescription>{configErrorMessage}. Please ensure `src/data/earthpuranadmin.json` is correctly set up or use the create form if this is the first time.</AlertDescription>
                 </Alert>
             )}
           </CardHeader>
@@ -321,3 +324,5 @@ export default function AdminAuthPage() {
     </div>
   );
 }
+
+    
