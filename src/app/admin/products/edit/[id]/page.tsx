@@ -1,8 +1,9 @@
+
 // src/app/admin/products/edit/[id]/page.tsx
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,12 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
-import { ArrowLeft, PlusCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, PlusCircle, Trash2, Loader2 } from "lucide-react"; // Added Loader2
 import { useEffect, useState } from "react";
-import { getProductById } from "@/app/actions/productActions";
-import type { Product, ColorVariant } from "@/types/product";
+import { getProductById, updateProductById, type ProductFormData } from "@/app/actions/productActions"; // Import updateProductById
+import type { Product } from "@/types/product";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation"; // Import useRouter
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 
@@ -28,7 +29,7 @@ const productSchema = z.object({
   brand: z.string().min(1, "Brand is required."),
   stock: z.coerce.number().int().min(0, "Stock cannot be negative."),
   imageUrl: z.string().url("Must be a valid URL for the primary image.").optional().or(z.literal('')),
-  imageHint: z.string().optional(),
+  imageHint: z.string().max(20, "Hint too long (max 20 chars).").refine(val => !val || val.split(' ').length <= 2, {message: "Max 2 words for hint."}).optional(),
   additionalImageUrlsString: z.string().optional(), // For textarea input
   colors: z.array(z.object({
     name: z.string().min(1, "Color name is required."),
@@ -46,8 +47,10 @@ export default function EditProductPage() {
   const params = useParams();
   const productId = params.id as string;
   const { toast } = useToast();
+  const router = useRouter(); // For navigation
 
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Loading state for submit
   const [product, setProduct] = useState<Product | null>(null);
 
   const form = useForm<ProductFormValues>({
@@ -103,19 +106,37 @@ export default function EditProductPage() {
   }, [productId, form, toast]);
 
 
-  function onSubmit(values: ProductFormValues) {
+  async function onSubmit(values: ProductFormValues) {
+    if (!productId) return;
+    setIsSubmitting(true);
+
     const additionalImageUrls = values.additionalImageUrlsString
       ? values.additionalImageUrlsString.split('\n').map(url => url.trim()).filter(url => url && z.string().url().safeParse(url).success)
       : [];
 
-    const processedValues = {
-      ...values,
+    const productDataForAction: ProductFormData = {
+      name: values.name,
+      description: values.description,
+      price: values.price,
+      category: values.category,
+      brand: values.brand,
+      stock: values.stock,
+      imageUrl: values.imageUrl,
+      imageHint: values.imageHint,
       additionalImageUrls: additionalImageUrls,
+      colors: values.colors,
     };
-    delete (processedValues as any).additionalImageUrlsString;
+    
+    const result = await updateProductById(productId, productDataForAction);
 
-    console.log("Updated product data for ID", productId, ":", processedValues);
-    toast({ title: "Product Updated (Simulated)", description: `${values.name} has been updated. (Data logged to console)` });
+    if (result.success && result.product) {
+      toast({ title: "Product Updated Successfully", description: `${result.product.name} has been updated.` });
+      // Optionally redirect or refresh data
+      router.push('/admin/products'); // Redirect to product list after update
+    } else {
+      toast({ title: "Failed to Update Product", description: result.error || "An unknown error occurred.", variant: "destructive" });
+    }
+    setIsSubmitting(false);
   }
 
   if (loading) {
@@ -295,6 +316,7 @@ export default function EditProductPage() {
                         size="icon"
                         className="absolute top-2 right-2 h-7 w-7 text-destructive hover:text-destructive"
                         onClick={() => removeColor(index)}
+                        disabled={isSubmitting}
                       >
                         <Trash2 className="h-4 w-4" />
                         <span className="sr-only">Remove color variant</span>
@@ -340,6 +362,7 @@ export default function EditProductPage() {
                   size="sm"
                   onClick={() => appendColor({ name: "", link: "", image: "" })}
                   className="mt-2"
+                  disabled={isSubmitting}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Color Variant
                 </Button>
@@ -347,10 +370,13 @@ export default function EditProductPage() {
               <Separator />
 
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" asChild>
+                <Button type="button" variant="outline" asChild disabled={isSubmitting}>
                   <Link href="/admin/products">Cancel</Link>
                 </Button>
-                <Button type="submit">Save Changes</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                   {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
+                   {isSubmitting ? "Saving..." : "Save Changes"}
+                </Button>
               </div>
             </form>
           </Form>

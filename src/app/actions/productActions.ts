@@ -4,7 +4,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import type { Product, Review, ColorVariant } from '@/types/product';
-import { revalidatePath } from 'next/cache'; // Import revalidatePath
+import { revalidatePath } from 'next/cache';
 
 const dataFilePath = path.join(process.cwd(), 'src', 'data', 'products.json');
 
@@ -55,7 +55,6 @@ export async function getProductById(id: string): Promise<Product | null> {
 
 export async function getFeaturedProducts(limit: number = 4): Promise<Product[]> {
   const products = await readProductsFile();
-  // Sort by ID descending (newer products first, assuming IDs are time-based or sequential)
   return products.sort((a,b) => b.id.localeCompare(a.id)).slice(0, limit);
 }
 
@@ -106,9 +105,9 @@ export async function addProductReview(
     products[productIndex] = product;
     await writeProductsFile(products);
 
-    revalidatePath('/'); // Revalidate homepage for featured products/new arrivals
-    revalidatePath('/products'); // Revalidate main products page
-    revalidatePath(`/products/${productId}`); // Revalidate specific product page
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath(`/products/${productId}`);
 
     return { success: true, product: product };
   } catch (error) {
@@ -162,10 +161,10 @@ export async function addProduct(
     products.push(newProduct);
     await writeProductsFile(products);
 
-    revalidatePath('/'); // Revalidate homepage for new arrivals
-    revalidatePath('/products'); // Revalidate main products page
-    // Optionally, revalidate specific category pages if you have them:
-    // revalidatePath(`/products?category=${newProduct.category}`);
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath('/admin/products');
+
 
     return { success: true, product: newProduct };
   } catch (error) {
@@ -174,6 +173,61 @@ export async function addProduct(
     return { success: false, error: `Could not add product to file. ${errorMessage}` };
   }
 }
+
+export async function updateProductById(
+  productId: string,
+  productUpdateData: ProductFormData
+): Promise<{ success: boolean; product?: Product; error?: string }> {
+  if (!productId) {
+    return { success: false, error: "Product ID is required for update." };
+  }
+  if (!productUpdateData.name || !productUpdateData.category || !productUpdateData.brand || productUpdateData.price === undefined || productUpdateData.stock === undefined) {
+    return { success: false, error: "Missing essential product data (name, category, brand, price, stock)." };
+  }
+
+  try {
+    const products = await readProductsFile();
+    const productIndex = products.findIndex(p => p.id === productId);
+
+    if (productIndex === -1) {
+      return { success: false, error: "Product not found." };
+    }
+
+    // Preserve existing review data and rating if not explicitly changed by form
+    const existingProduct = products[productIndex];
+    const updatedProduct: Product = {
+      ...existingProduct, // Preserve ID, reviews, rating, etc.
+      name: productUpdateData.name,
+      description: productUpdateData.description,
+      price: productUpdateData.price,
+      category: productUpdateData.category,
+      brand: productUpdateData.brand,
+      stock: productUpdateData.stock,
+      imageUrl: productUpdateData.imageUrl || existingProduct.imageUrl || "https://placehold.co/600x400.png",
+      imageHint: productUpdateData.imageHint || existingProduct.imageHint || "product image",
+      additionalImageUrls: productUpdateData.additionalImageUrls || existingProduct.additionalImageUrls || [],
+      colors: productUpdateData.colors || existingProduct.colors || [],
+      // Keep existingProduct.tags, rating, reviews, productReviews unless the form also modifies them
+    };
+
+    products[productIndex] = updatedProduct;
+    await writeProductsFile(products);
+
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath(`/products/${productId}`);
+    revalidatePath('/admin/products');
+    revalidatePath(`/admin/products/edit/${productId}`);
+
+
+    return { success: true, product: updatedProduct };
+  } catch (error) {
+    console.error("Error updating product in action:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    return { success: false, error: `Could not update product in file. ${errorMessage}` };
+  }
+}
+
 
 export async function deleteProductById(productId: string): Promise<{ success: boolean; message: string }> {
   if (!productId) {
@@ -192,12 +246,11 @@ export async function deleteProductById(productId: string): Promise<{ success: b
 
     await writeProductsFile(products);
 
-    revalidatePath('/'); // Revalidate homepage
-    revalidatePath('/products'); // Revalidate main products page
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath('/admin/products');
     if (productToDelete) {
-      revalidatePath(`/products/${productToDelete.id}`); // Revalidate the deleted product's detail page (will 404)
-      // Optionally, revalidate specific category pages:
-      // revalidatePath(`/products?category=${productToDelete.category}`);
+      revalidatePath(`/products/${productToDelete.id}`); 
     }
     
     return { success: true, message: "Product deleted successfully." };
