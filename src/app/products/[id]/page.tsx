@@ -24,6 +24,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import * as z from "zod";
 import type { UserProfile } from "@/types/userData";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 
 const reviewSchema = z.object({
@@ -43,6 +44,9 @@ export default function ProductDetailPage() {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const [thumbnailImages, setThumbnailImages] = useState<string[]>([]);
 
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
@@ -72,6 +76,13 @@ export default function ProductDetailPage() {
         setProduct(null);
       } else {
         setProduct(fetchedProduct);
+        setSelectedImageUrl(fetchedProduct.imageUrl); // Initialize selected image
+        const allImages = [fetchedProduct.imageUrl];
+        if (fetchedProduct.additionalImageUrls) {
+          allImages.push(...fetchedProduct.additionalImageUrls);
+        }
+        setThumbnailImages(Array.from(new Set(allImages.filter(url => url && url.trim() !== ''))));
+
         const allProducts = await getProducts();
         const filteredRelated = allProducts
           .filter(p => p.category === fetchedProduct.category && p.id !== fetchedProduct.id);
@@ -99,16 +110,16 @@ export default function ProductDetailPage() {
                  setCurrentUserProfile(storedProfile);
             } catch (e) {
                 console.error("Failed to parse user profile from localStorage", e);
-                 setCurrentUserProfile(null); // Reset if parsing fails
+                 setCurrentUserProfile(null); 
             }
         } else {
-             setCurrentUserProfile(null); // No profile in local storage
+             setCurrentUserProfile(null); 
         }
     } else {
-        setCurrentUserProfile(null); // Not logged in
+        setCurrentUserProfile(null); 
     }
     fetchProductData();
-  }, [fetchProductData, pathname]); // Re-check on navigation also re-fetches product for latest reviews.
+  }, [fetchProductData, pathname]); 
 
   const handleReviewSubmit = async (values: ReviewFormValues) => {
     if (!isUserActuallyLoggedIn || !currentUserEmail || !currentUserProfile || !product) {
@@ -125,7 +136,7 @@ export default function ProductDetailPage() {
 
     const result = await addProductReview(product.id, reviewData);
     if (result.success && result.product) {
-      setProduct(result.product); // Update product state with new review and rating
+      setProduct(result.product); 
       toast({ title: "Review Submitted", description: "Thank you for your feedback!" });
       reviewForm.reset();
     } else {
@@ -140,7 +151,14 @@ export default function ProductDetailPage() {
       <div className="space-y-12">
         <Card className="overflow-hidden">
           <div className="grid md:grid-cols-2 gap-8">
-            <Skeleton className="w-full h-[400px] md:h-[600px] rounded-lg" />
+            <div> {/* Image gallery skeleton */}
+              <Skeleton className="w-full h-[400px] md:h-[500px] lg:h-[600px] rounded-lg aspect-square" />
+              <div className="mt-4 flex space-x-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-20 rounded-md aspect-square" />
+                ))}
+              </div>
+            </div>
             <div className="p-6 flex flex-col justify-center space-y-4">
               <Skeleton className="h-6 w-1/4" />
               <Skeleton className="h-10 w-3/4" />
@@ -239,15 +257,58 @@ export default function ProductDetailPage() {
     <div className="space-y-12">
       <Card className="overflow-hidden">
         <div className="grid md:grid-cols-2 gap-8">
-          <div className="p-4 md:p-0">
-             <Image
-              src={product.imageUrl}
-              alt={product.name}
-              width={600}
-              height={600}
-              className="w-full h-auto object-cover rounded-lg shadow-lg"
-              data-ai-hint={product.imageHint || "product detail"}
-            />
+          <div className="p-4"> {/* Container for image gallery */}
+            {selectedImageUrl && (
+              <Image
+                src={selectedImageUrl}
+                alt={product.name}
+                width={600}
+                height={600}
+                className="w-full h-auto object-cover rounded-lg shadow-lg aspect-square"
+                data-ai-hint={product.imageHint || "product detail"}
+                priority
+              />
+            )}
+            {!selectedImageUrl && ( // Fallback for initial load before state is set
+              <Image
+                src={product.imageUrl}
+                alt={product.name}
+                width={600}
+                height={600}
+                className="w-full h-auto object-cover rounded-lg shadow-lg aspect-square"
+                data-ai-hint={product.imageHint || "product detail"}
+                priority
+              />
+            )}
+
+            {thumbnailImages.length > 1 && (
+              <div className="mt-4">
+                <ScrollArea className="w-full whitespace-nowrap">
+                  <div className="flex space-x-2 pb-2">
+                    {thumbnailImages.map((imgUrl, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedImageUrl(imgUrl)}
+                        className={cn(
+                          "focus:outline-none rounded-md overflow-hidden border-2 transition-all",
+                          selectedImageUrl === imgUrl ? "border-primary ring-2 ring-primary/50" : "border-transparent hover:border-muted-foreground/30"
+                        )}
+                        aria-label={`View image ${index + 1}`}
+                      >
+                        <Image
+                          src={imgUrl}
+                          alt={`${product.name} thumbnail ${index + 1}`}
+                          width={80}
+                          height={80}
+                          className="object-cover aspect-square rounded"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+              </div>
+            )}
           </div>
           <div className="p-6 flex flex-col justify-center">
             <CardHeader className="p-0">
@@ -265,10 +326,19 @@ export default function ProductDetailPage() {
               <CardDescription className="text-base text-foreground/90 leading-relaxed">{product.description}</CardDescription>
 
               {product.colors && product.colors.length > 0 && (
-                <div>
+                 <div>
                   <p className="text-sm font-medium text-foreground mb-2">Available Colors:</p>
                   <div className="flex flex-wrap gap-2">
-                    {product.colors.map(color => <Badge key={color} variant="secondary">{color}</Badge>)}
+                    {product.colors.map(colorVariant => (
+                      <Badge key={colorVariant.name} variant="secondary" className="cursor-pointer hover:bg-primary/20"
+                        onClick={() => {
+                          if (colorVariant.image) setSelectedImageUrl(colorVariant.image);
+                          // If you want to navigate to colorVariant.link, handle that here
+                        }}
+                      >
+                        {colorVariant.name}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
               )}
@@ -332,13 +402,11 @@ export default function ProductDetailPage() {
 
       <Separator />
       
-      {/* Reviews Section */}
       <section className="space-y-6">
         <h3 className="text-2xl font-semibold flex items-center">
           <MessageSquare className="mr-3 h-7 w-7 text-primary" /> Customer Reviews ({product.reviews || 0})
         </h3>
 
-        {/* Add Review Form */}
         {isClientMounted && isUserActuallyLoggedIn && (
           <Card>
             <CardHeader>
@@ -382,7 +450,6 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        {/* Display Reviews */}
         {(product.productReviews && product.productReviews.length > 0) ? (
           <div className="space-y-4">
             {product.productReviews.map((review: Review) => (
@@ -412,7 +479,7 @@ export default function ProductDetailPage() {
         <div>
           <Separator className="my-8"/>
           <h2 className="text-2xl font-semibold mb-6">You Might Also Like</h2>
-          <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4 xl:gap-x-8">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
             {relatedProducts.map((relatedProd: Product) => (
               <ProductCard key={relatedProd.id} product={relatedProd} />
             ))}
