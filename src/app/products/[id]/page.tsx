@@ -6,7 +6,7 @@ import { useParams, useRouter, usePathname } from "next/navigation";
 import { getProductById, getProducts, addProductReview, type NewReviewData } from "@/app/actions/productActions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Heart, Minus, Plus, ShoppingCart, Star, Truck, MessageSquare, Send } from "lucide-react";
+import { Heart, Minus, Plus, ShoppingCart, Star, Truck, MessageSquare, Send, Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/ProductCard";
@@ -93,14 +93,20 @@ export default function ProductDetailPage() {
     setCurrentUserEmail(email);
     setIsUserActuallyLoggedIn(loggedIn);
     if (loggedIn && email) {
-        const storedProfile = localStorage.getItem('userProfilePrototype');
-        if (storedProfile) {
+        const storedProfileString = localStorage.getItem('userProfilePrototype');
+        if (storedProfileString) {
             try {
-                setCurrentUserProfile(JSON.parse(storedProfile) as UserProfile);
+                const storedProfile = JSON.parse(storedProfileString) as UserProfile;
+                 setCurrentUserProfile(storedProfile);
             } catch (e) {
                 console.error("Failed to parse user profile from localStorage", e);
+                 setCurrentUserProfile(null); // Reset if parsing fails
             }
+        } else {
+             setCurrentUserProfile(null); // No profile in local storage
         }
+    } else {
+        setCurrentUserProfile(null); // Not logged in
     }
     fetchProductData();
   }, [fetchProductData, pathname]); // Re-check on navigation also re-fetches product for latest reviews.
@@ -170,7 +176,9 @@ export default function ProductDetailPage() {
 
   const isProductInWishlist = isInWishlist(product.id);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!isUserActuallyLoggedIn) {
       router.push("/login?redirect=" + encodeURIComponent(pathname));
       return;
@@ -178,15 +186,19 @@ export default function ProductDetailPage() {
     if (product.stock > 0) {
       addToCart(product, quantity);
     } else {
-       toast({
-        title: "Out of Stock",
-        description: `${product.name} is currently out of stock.`,
-        variant: "destructive",
-      });
+       setTimeout(() => {
+        toast({
+          title: "Out of Stock",
+          description: `${product.name} is currently out of stock.`,
+          variant: "destructive",
+        });
+      },0);
     }
   };
 
-  const handleToggleWishlist = () => {
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!isUserActuallyLoggedIn) {
       router.push("/login?redirect=" + encodeURIComponent(pathname));
       return;
@@ -411,3 +423,5 @@ export default function ProductDetailPage() {
     </div>
   );
 }
+
+    
