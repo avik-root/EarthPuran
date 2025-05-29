@@ -2,22 +2,35 @@
 "use client";
 
 import Image from "next/image";
-import { useParams, useRouter, usePathname } from "next/navigation"; // Import useRouter, usePathname
-import { getProductById, getProducts } from "@/app/actions/productActions";
+import { useParams, useRouter, usePathname } from "next/navigation";
+import { getProductById, getProducts, addProductReview, type NewReviewData } from "@/app/actions/productActions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Heart, Minus, Plus, ShoppingCart, Star, Truck } from "lucide-react";
+import { Heart, Minus, Plus, ShoppingCart, Star, Truck, MessageSquare, Send } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/ProductCard";
-import type { Product } from "@/types/product";
-import { useEffect, useState } from "react";
+import type { Product, Review } from "@/types/product";
+import { useEffect, useState, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, Controller } from "react-hook-form";
+import * as z from "zod";
+import type { UserProfile } from "@/types/userData";
+
+
+const reviewSchema = z.object({
+  rating: z.number().min(1, "Rating is required.").max(5, "Rating cannot exceed 5."),
+  comment: z.string().min(10, "Comment must be at least 10 characters.").max(500, "Comment cannot exceed 500 characters."),
+});
+type ReviewFormValues = z.infer<typeof reviewSchema>;
 
 
 export default function ProductDetailPage() {
@@ -37,42 +50,85 @@ export default function ProductDetailPage() {
 
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [isUserActuallyLoggedIn, setIsUserActuallyLoggedIn] = useState(false);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  const reviewForm = useForm<ReviewFormValues>({
+    resolver: zodResolver(reviewSchema),
+    defaultValues: {
+      rating: 0,
+      comment: "",
+    },
+  });
+
+
+  const fetchProductData = useCallback(async () => {
+    if (!productId) return;
+    setLoading(true);
+    try {
+      const fetchedProduct = await getProductById(productId);
+      if (!fetchedProduct) {
+        setProduct(null);
+      } else {
+        setProduct(fetchedProduct);
+        const allProducts = await getProducts();
+        const filteredRelated = allProducts
+          .filter(p => p.category === fetchedProduct.category && p.id !== fetchedProduct.id)
+          .slice(0, 4);
+        setRelatedProducts(filteredRelated);
+      }
+    } catch (error) {
+      console.error("Failed to fetch product data:", error);
+      setProduct(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [productId]);
 
   useEffect(() => {
     setIsClientMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (isClientMounted) {
-      setIsUserActuallyLoggedIn(localStorage.getItem("isLoggedInPrototype") === "true");
-    }
-  }, [isClientMounted, pathname]); // Re-check on navigation
-
-  useEffect(() => {
-    async function fetchData() {
-      if (!productId) return;
-      setLoading(true);
-      try {
-        const fetchedProduct = await getProductById(productId);
-        if (!fetchedProduct) {
-          setProduct(null);
-        } else {
-          setProduct(fetchedProduct);
-          const allProducts = await getProducts();
-          const filteredRelated = allProducts
-            .filter(p => p.category === fetchedProduct.category && p.id !== fetchedProduct.id)
-            .slice(0, 4);
-          setRelatedProducts(filteredRelated);
+    const email = localStorage.getItem("currentUserEmail");
+    const loggedIn = localStorage.getItem("isLoggedInPrototype") === "true";
+    setCurrentUserEmail(email);
+    setIsUserActuallyLoggedIn(loggedIn);
+    if (loggedIn && email) {
+        const storedProfile = localStorage.getItem('userProfilePrototype');
+        if (storedProfile) {
+            try {
+                setCurrentUserProfile(JSON.parse(storedProfile) as UserProfile);
+            } catch (e) {
+                console.error("Failed to parse user profile from localStorage", e);
+            }
         }
-      } catch (error) {
-        console.error("Failed to fetch product data:", error);
-        setProduct(null);
-      } finally {
-        setLoading(false);
-      }
     }
-    fetchData();
-  }, [productId]);
+    fetchProductData();
+  }, [fetchProductData, pathname]); // Re-check on navigation also re-fetches product for latest reviews.
+
+  const handleReviewSubmit = async (values: ReviewFormValues) => {
+    if (!isUserActuallyLoggedIn || !currentUserEmail || !currentUserProfile || !product) {
+      toast({ title: "Authentication Error", description: "You must be logged in to submit a review.", variant: "destructive" });
+      return;
+    }
+    setSubmittingReview(true);
+    const reviewData: NewReviewData = {
+      userEmail: currentUserEmail,
+      userName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`.trim() || currentUserEmail.split('@')[0],
+      rating: values.rating,
+      comment: values.comment,
+    };
+
+    const result = await addProductReview(product.id, reviewData);
+    if (result.success && result.product) {
+      setProduct(result.product); // Update product state with new review and rating
+      toast({ title: "Review Submitted", description: "Thank you for your feedback!" });
+      reviewForm.reset();
+    } else {
+      toast({ title: "Submission Failed", description: result.error || "Could not submit your review.", variant: "destructive" });
+    }
+    setSubmittingReview(false);
+  };
+
 
   if (loading) {
     return (
@@ -93,6 +149,9 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </Card>
+        <Separator />
+        <Skeleton className="h-8 w-1/4" />
+        <Skeleton className="h-24 w-full" />
       </div>
     );
   }
@@ -113,7 +172,7 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (!isUserActuallyLoggedIn) {
-      router.push("/login");
+      router.push("/login?redirect=" + encodeURIComponent(pathname));
       return;
     }
     if (product.stock > 0) {
@@ -129,7 +188,7 @@ export default function ProductDetailPage() {
 
   const handleToggleWishlist = () => {
     if (!isUserActuallyLoggedIn) {
-      router.push("/login");
+      router.push("/login?redirect=" + encodeURIComponent(pathname));
       return;
     }
     toggleWishlist(product);
@@ -143,6 +202,27 @@ export default function ProductDetailPage() {
     setQuantity(prev => Math.max(1, prev - 1));
   };
 
+  const StarRatingInput: React.FC<{ value: number; onChange: (rating: number) => void }> = ({ value, onChange }) => {
+    const [hoverValue, setHoverValue] = useState(0);
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            onClick={() => onChange(star)}
+            onMouseEnter={() => setHoverValue(star)}
+            onMouseLeave={() => setHoverValue(0)}
+            className={cn(
+              "h-7 w-7 cursor-pointer transition-colors",
+              (hoverValue || value) >= star
+                ? "text-primary fill-primary"
+                : "text-muted-foreground hover:text-primary/70"
+            )}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-12">
@@ -165,14 +245,12 @@ export default function ProductDetailPage() {
               <p className="text-lg text-muted-foreground">{product.brand}</p>
             </CardHeader>
             <CardContent className="p-0 mt-4 space-y-4">
-              {product.rating && (
-                <div className="flex items-center">
-                  {Array(5).fill(0).map((_, i) => (
-                      <Star key={i} className={`h-5 w-5 ${ i < Math.floor(product.rating || 0) ? "text-primary fill-primary" : "text-muted-foreground/50" }`}/>
-                  ))}
-                  <span className="ml-2 text-sm text-muted-foreground">({product.reviews || 0} reviews)</span>
-                </div>
-              )}
+              <div className="flex items-center">
+                {Array(5).fill(0).map((_, i) => (
+                    <Star key={i} className={`h-5 w-5 ${ i < Math.floor(product.rating || 0) ? "text-primary fill-primary" : "text-muted-foreground/50" }`}/>
+                ))}
+                <span className="ml-2 text-sm text-muted-foreground">({product.reviews || 0} reviews)</span>
+              </div>
               <CardDescription className="text-base text-foreground/90 leading-relaxed">{product.description}</CardDescription>
 
               {product.colors && product.colors.length > 0 && (
@@ -242,16 +320,82 @@ export default function ProductDetailPage() {
       </Card>
 
       <Separator />
-      <div>
-        <h3 className="text-2xl font-semibold mb-4">Product Details</h3>
-        <div className="prose dark:prose-invert max-w-none text-foreground/90">
-            <p>More detailed information about the product, ingredients, how to use, etc., would go here. This can be structured using tabs for better organization.</p>
-            <h4>Ingredients:</h4>
-            <p>Aqua, Dimethicone, Cyclopentasiloxane, Mica, Butylene Glycol, etc. (List actual ingredients)</p>
-            <h4>How to Use:</h4>
-            <p>Apply evenly to face using fingertips, sponge, or brush. Blend well. (Provide usage instructions)</p>
-        </div>
-      </div>
+      
+      {/* Reviews Section */}
+      <section className="space-y-6">
+        <h3 className="text-2xl font-semibold flex items-center">
+          <MessageSquare className="mr-3 h-7 w-7 text-primary" /> Customer Reviews ({product.reviews || 0})
+        </h3>
+
+        {/* Add Review Form */}
+        {isClientMounted && isUserActuallyLoggedIn && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Write a Review</CardTitle>
+              <CardDescription>Share your thoughts about {product.name}.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={reviewForm.handleSubmit(handleReviewSubmit)} className="space-y-4">
+                <div>
+                  <Label htmlFor="rating" className="mb-2 block font-medium">Your Rating</Label>
+                  <Controller
+                    name="rating"
+                    control={reviewForm.control}
+                    render={({ field }) => <StarRatingInput value={field.value} onChange={field.onChange} />}
+                  />
+                  {reviewForm.formState.errors.rating && <p className="text-sm text-destructive mt-1">{reviewForm.formState.errors.rating.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="comment" className="font-medium">Your Comment</Label>
+                  <Textarea
+                    id="comment"
+                    placeholder="Tell us more about your experience..."
+                    {...reviewForm.register("comment")}
+                    className="mt-1"
+                    rows={4}
+                  />
+                  {reviewForm.formState.errors.comment && <p className="text-sm text-destructive mt-1">{reviewForm.formState.errors.comment.message}</p>}
+                </div>
+                <Button type="submit" disabled={submittingReview}>
+                  {submittingReview ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : <>Submit Review <Send className="ml-2 h-4 w-4" /></>}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+         {isClientMounted && !isUserActuallyLoggedIn && (
+          <div className="text-center py-4 border rounded-md bg-muted/50">
+            <p className="text-muted-foreground">
+              <Link href={`/login?redirect=${encodeURIComponent(pathname)}`} className="text-primary hover:underline font-medium">Log in</Link> to write a review.
+            </p>
+          </div>
+        )}
+
+        {/* Display Reviews */}
+        {(product.productReviews && product.productReviews.length > 0) ? (
+          <div className="space-y-4">
+            {product.productReviews.map((review: Review) => (
+              <Card key={review.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-center mb-1">
+                    {Array(5).fill(0).map((_, i) => (
+                      <Star key={i} className={`h-4 w-4 ${i < review.rating ? "text-primary fill-primary" : "text-muted-foreground/40"}`}/>
+                    ))}
+                    <p className="ml-2 text-sm font-semibold text-foreground">{review.userName}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {new Date(review.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </p>
+                  <p className="text-sm text-foreground/90 whitespace-pre-wrap">{review.comment}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-center py-4">No reviews yet for this product. Be the first to write one!</p>
+        )}
+      </section>
+
 
       {relatedProducts.length > 0 && (
         <div>
