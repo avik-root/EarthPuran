@@ -1,7 +1,7 @@
 
 "use client";
 
-import { ShoppingCart, Trash2, Minus, Plus, Ticket, Loader2 } from "lucide-react";
+import { ShoppingCart, Trash2, Minus, Plus, Ticket, Loader2, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
@@ -13,8 +13,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { Coupon } from "@/types/coupon"; // Import Coupon type
-import { getCoupons } from "@/app/actions/couponActions"; // Import server action
+import type { Coupon } from "@/types/coupon";
+import { getCoupons } from "@/app/actions/couponActions";
+
+const TAX_RATE_STORAGE_KEY = "earthPuranAdminTaxRate";
+const DEFAULT_TAX_RATE_PERCENTAGE = 18; // Default if not set in admin
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, subtotal, clearCart } = useCart();
@@ -26,6 +29,7 @@ export default function CartPage() {
   const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [taxRatePercentage, setTaxRatePercentage] = useState<number>(DEFAULT_TAX_RATE_PERCENTAGE);
 
   const fetchAvailableCoupons = useCallback(async () => {
     setIsLoadingCoupons(true);
@@ -43,6 +47,19 @@ export default function CartPage() {
 
   useEffect(() => {
     fetchAvailableCoupons();
+    
+    // Fetch tax rate from localStorage
+    const storedTaxRate = localStorage.getItem(TAX_RATE_STORAGE_KEY);
+    if (storedTaxRate) {
+      const rate = parseFloat(storedTaxRate);
+      if (!isNaN(rate) && rate >= 0 && rate <= 100) {
+        setTaxRatePercentage(rate);
+      } else {
+        setTaxRatePercentage(DEFAULT_TAX_RATE_PERCENTAGE);
+      }
+    } else {
+      setTaxRatePercentage(DEFAULT_TAX_RATE_PERCENTAGE);
+    }
   }, [fetchAvailableCoupons]);
 
   const handleApplyCoupon = async () => {
@@ -53,12 +70,10 @@ export default function CartPage() {
     }
     setIsApplyingCoupon(true);
     
-    // Ensure coupons are fresh if user enters code after page load without refresh
     if (availableCoupons.length === 0 && !isLoadingCoupons) {
         await fetchAvailableCoupons(); 
     }
     
-    // It's possible availableCoupons is still empty if fetch failed or no coupons exist
     const matchedCoupon = availableCoupons.find(
       (coupon) => coupon.code.toUpperCase() === couponCodeInput.trim().toUpperCase()
     );
@@ -84,22 +99,18 @@ export default function CartPage() {
 
   const removeAppliedCoupon = () => {
     setAppliedCoupon(null);
-    setCouponMessage({ text: "Coupon removed.", type: 'error' }); // Using error style for removal message
+    setCouponMessage({ text: "Coupon removed.", type: 'error' });
     toast({ title: "Coupon Removed" });
   };
 
   const shipping = cartItems.length > 0 ? 50.00 : 0; 
   const discountAmount = appliedCoupon && appliedCoupon.discountType === 'fixed' ? appliedCoupon.value : 0;
   
-  let calculatedTotal = subtotal - discountAmount + shipping;
-  if (calculatedTotal < 0) {
-    calculatedTotal = 0; 
-  }
-  if (subtotal - discountAmount < 0 && cartItems.length > 0) {
-    calculatedTotal = shipping;
-  } else if (subtotal - discountAmount < 0 && cartItems.length === 0) {
-    calculatedTotal = 0;
-  }
+  const subtotalAfterDiscount = Math.max(0, subtotal - discountAmount);
+  const taxAmount = cartItems.length > 0 ? subtotalAfterDiscount * (taxRatePercentage / 100) : 0;
+  
+  let calculatedTotal = subtotalAfterDiscount + taxAmount + shipping;
+  if (calculatedTotal < 0) calculatedTotal = 0;
 
 
   const handleQuantityChange = (item: CartItem, newQuantity: number) => {
@@ -218,9 +229,19 @@ export default function CartPage() {
                   <span>- ₹{discountAmount.toFixed(2)}</span>
                 </div>
               )}
+              {subtotalAfterDiscount !== subtotal && (
+                <div className="flex justify-between text-sm font-medium">
+                  <span>Subtotal (after discount)</span>
+                  <span>₹{subtotalAfterDiscount.toFixed(2)}</span>
+                </div>
+              )}
+               <div className="flex justify-between text-sm">
+                <span>Tax ({taxRatePercentage}%)</span>
+                <span>+ ₹{taxAmount.toFixed(2)}</span>
+              </div>
               <div className="flex justify-between text-sm">
                 <span>Shipping</span>
-                <span>₹{shipping.toFixed(2)}</span>
+                <span>+ ₹{shipping.toFixed(2)}</span>
               </div>
               <Separator />
               <div className="flex justify-between font-semibold text-lg">
@@ -244,3 +265,4 @@ export default function CartPage() {
     </div>
   );
 }
+
