@@ -1,3 +1,4 @@
+
 [
   {
     "id": "1",
@@ -184,8 +185,8 @@
     "category": "Skincare",
     "brand": "Earth Puran",
     "stock": 30,
-    "imageUrl": "https://drive.google.com/file/d/13r28dCxm75gw4F5XQMNIHorXK19mhjiN/view?usp=drive_link",
-    "imageHint": "product image",
+    "imageUrl": "https://drive.google.com/uc?export=view&id=13r28dCxm75gw4F5XQMNIHorXK19mhjiN",
+    "imageHint": "hair oil",
     "additionalImageUrls": [],
     "colors": [],
     "rating": 0,
