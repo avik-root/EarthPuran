@@ -1,7 +1,7 @@
 
 "use client";
 
-import { ShoppingCart, Trash2, Minus, Plus, Ticket } from "lucide-react";
+import { ShoppingCart, Trash2, Minus, Plus, Ticket, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,54 +10,60 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { useCart, type CartItem } from "@/hooks/useCart";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
-interface StoredCoupon {
-  id: string;
-  code: string;
-  discountType: 'percentage' | 'fixed'; // For now, we only implement 'fixed'
-  value: number;
-  expiryDate?: string;
-  minSpend?: number;
-  usageLimit?: number;
-}
+import type { Coupon } from "@/types/coupon"; // Import Coupon type
+import { getCoupons } from "@/app/actions/couponActions"; // Import server action
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, subtotal, clearCart } = useCart();
   const { toast } = useToast();
 
   const [couponCodeInput, setCouponCodeInput] = useState<string>("");
-  const [appliedCoupon, setAppliedCoupon] = useState<StoredCoupon | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponMessage, setCouponMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
-  const [availableCoupons, setAvailableCoupons] = useState<StoredCoupon[]>([]);
+  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
+  const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+
+  const fetchAvailableCoupons = useCallback(async () => {
+    setIsLoadingCoupons(true);
+    try {
+      const fetchedCoupons = await getCoupons();
+      setAvailableCoupons(fetchedCoupons);
+    } catch (e) {
+      console.error("Failed to fetch coupons from server", e);
+      setAvailableCoupons([]);
+      toast({ title: "Coupon Error", description: "Could not load available coupons.", variant: "destructive" });
+    } finally {
+      setIsLoadingCoupons(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
-    const storedCoupons = localStorage.getItem("earthPuranAdminCoupons");
-    if (storedCoupons) {
-      try {
-        setAvailableCoupons(JSON.parse(storedCoupons));
-      } catch (e) {
-        console.error("Failed to parse coupons from localStorage", e);
-        setAvailableCoupons([]);
-      }
-    }
-  }, []);
+    fetchAvailableCoupons();
+  }, [fetchAvailableCoupons]);
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     setCouponMessage(null);
     if (!couponCodeInput.trim()) {
       setCouponMessage({ text: "Please enter a coupon code.", type: 'error' });
       return;
     }
-
+    setIsApplyingCoupon(true);
+    
+    // Ensure coupons are fresh if user enters code after page load without refresh
+    if (availableCoupons.length === 0 && !isLoadingCoupons) {
+        await fetchAvailableCoupons(); 
+    }
+    
+    // It's possible availableCoupons is still empty if fetch failed or no coupons exist
     const matchedCoupon = availableCoupons.find(
       (coupon) => coupon.code.toUpperCase() === couponCodeInput.trim().toUpperCase()
     );
 
     if (matchedCoupon) {
-      // For now, only fixed discounts are handled
       if (matchedCoupon.discountType === 'fixed') {
         setAppliedCoupon(matchedCoupon);
         setCouponMessage({ text: `Coupon "${matchedCoupon.code}" applied! You save ₹${matchedCoupon.value.toFixed(2)}.`, type: 'success' });
@@ -73,6 +79,7 @@ export default function CartPage() {
       toast({ title: "Invalid Coupon", description: "The entered coupon code is not valid.", variant: "destructive" });
     }
     setCouponCodeInput("");
+    setIsApplyingCoupon(false);
   };
 
   const removeAppliedCoupon = () => {
@@ -81,15 +88,13 @@ export default function CartPage() {
     toast({ title: "Coupon Removed" });
   };
 
-  const shipping = cartItems.length > 0 ? 50.00 : 0; // Example shipping in INR
+  const shipping = cartItems.length > 0 ? 50.00 : 0; 
   const discountAmount = appliedCoupon && appliedCoupon.discountType === 'fixed' ? appliedCoupon.value : 0;
   
   let calculatedTotal = subtotal - discountAmount + shipping;
   if (calculatedTotal < 0) {
-    calculatedTotal = 0; // Ensure total doesn't go below zero
+    calculatedTotal = 0; 
   }
-  // If subtotal itself is 0 after discount, shipping should still apply if cart isn't empty
-  // However, if discount makes subtotal negative, then total should just be shipping (if items exist)
   if (subtotal - discountAmount < 0 && cartItems.length > 0) {
     calculatedTotal = shipping;
   } else if (subtotal - discountAmount < 0 && cartItems.length === 0) {
@@ -98,7 +103,7 @@ export default function CartPage() {
 
 
   const handleQuantityChange = (item: CartItem, newQuantity: number) => {
-    const quantity = Math.max(1, Math.min(newQuantity, item.product.stock)); // Ensure quantity is within bounds
+    const quantity = Math.max(1, Math.min(newQuantity, item.product.stock)); 
     updateQuantity(item.product.id, quantity);
   };
 
@@ -184,10 +189,13 @@ export default function CartPage() {
                   value={couponCodeInput}
                   onChange={(e) => setCouponCodeInput(e.target.value)}
                   className="flex-grow"
-                  disabled={!!appliedCoupon}
+                  disabled={!!appliedCoupon || isApplyingCoupon || isLoadingCoupons}
                 />
                 {!appliedCoupon ? (
-                    <Button onClick={handleApplyCoupon}><Ticket className="mr-2 h-4 w-4" />Apply</Button>
+                    <Button onClick={handleApplyCoupon} disabled={isApplyingCoupon || isLoadingCoupons}>
+                        {isApplyingCoupon || isLoadingCoupons ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Ticket className="mr-2 h-4 w-4" />}
+                        Apply
+                    </Button>
                 ) : (
                     <Button variant="outline" onClick={removeAppliedCoupon} className="text-destructive hover:text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" />Remove
