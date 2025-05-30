@@ -1,5 +1,4 @@
-
 {
-  "rate": 50,
-  "threshold": 5000
+  "rate": 100,
+  "threshold": 1000
 }
