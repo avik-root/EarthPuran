@@ -15,7 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { Coupon } from "@/types/coupon";
 import { getCoupons } from "@/app/actions/couponActions";
-import { getTaxRate } from "@/app/actions/taxActions"; // Import new tax action
+import { getTaxRate } from "@/app/actions/taxActions";
+import { getGlobalDiscountPercentage } from "@/app/actions/globalDiscountActions";
 
 const DEFAULT_TAX_RATE_PERCENTAGE = 18; // Fallback default
 
@@ -29,8 +30,12 @@ export default function CartPage() {
   const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  
   const [taxRatePercentage, setTaxRatePercentage] = useState<number>(DEFAULT_TAX_RATE_PERCENTAGE);
   const [isLoadingTaxRate, setIsLoadingTaxRate] = useState(true);
+
+  const [globalDiscountPercentage, setGlobalDiscountPercentage] = useState<number>(0);
+  const [isLoadingGlobalDiscount, setIsLoadingGlobalDiscount] = useState(true);
 
   const fetchAvailableCoupons = useCallback(async () => {
     setIsLoadingCoupons(true);
@@ -60,10 +65,25 @@ export default function CartPage() {
     }
   }, [toast]);
 
+  const fetchGlobalDiscount = useCallback(async () => {
+    setIsLoadingGlobalDiscount(true);
+    try {
+        const discountData = await getGlobalDiscountPercentage();
+        setGlobalDiscountPercentage(discountData.percentage);
+    } catch (error) {
+        console.error("Failed to fetch global discount:", error);
+        setGlobalDiscountPercentage(0); // Fallback
+        toast({ title: "Discount Error", description: "Could not load global discount.", variant: "destructive" });
+    } finally {
+        setIsLoadingGlobalDiscount(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     fetchAvailableCoupons();
     fetchCurrentTaxRate();
-  }, [fetchAvailableCoupons, fetchCurrentTaxRate]);
+    fetchGlobalDiscount();
+  }, [fetchAvailableCoupons, fetchCurrentTaxRate, fetchGlobalDiscount]);
 
   const handleApplyCoupon = async () => {
     setCouponMessage(null);
@@ -102,14 +122,26 @@ export default function CartPage() {
 
   const removeAppliedCoupon = () => {
     setAppliedCoupon(null);
-    setCouponMessage({ text: "Coupon removed.", type: 'error' }); // Using error type for red text consistency
+    setCouponMessage({ text: "Coupon removed.", type: 'error' }); 
     toast({ title: "Coupon Removed" });
   };
 
   const shipping = cartItems.length > 0 ? 50.00 : 0; 
-  const discountAmount = appliedCoupon && appliedCoupon.discountType === 'fixed' ? appliedCoupon.value : 0;
   
-  const subtotalAfterDiscount = Math.max(0, subtotal - discountAmount);
+  let activeDiscountAmount = 0;
+  let discountLabel = "Discount";
+  let isGlobalDiscountApplied = false;
+
+  if (appliedCoupon && appliedCoupon.discountType === 'fixed') {
+    activeDiscountAmount = appliedCoupon.value;
+    discountLabel = `Discount (${appliedCoupon.code})`;
+  } else if (globalDiscountPercentage > 0 && !isLoadingGlobalDiscount) {
+    activeDiscountAmount = subtotal * (globalDiscountPercentage / 100);
+    discountLabel = `Global Discount (${globalDiscountPercentage}%)`;
+    isGlobalDiscountApplied = true;
+  }
+  
+  const subtotalAfterDiscount = Math.max(0, subtotal - activeDiscountAmount);
   const taxAmount = cartItems.length > 0 && !isLoadingTaxRate ? subtotalAfterDiscount * (taxRatePercentage / 100) : 0;
   
   let calculatedTotal = subtotalAfterDiscount + taxAmount + shipping;
@@ -203,10 +235,10 @@ export default function CartPage() {
                   value={couponCodeInput}
                   onChange={(e) => setCouponCodeInput(e.target.value)}
                   className="flex-grow"
-                  disabled={!!appliedCoupon || isApplyingCoupon || isLoadingCoupons}
+                  disabled={!!appliedCoupon || isApplyingCoupon || isLoadingCoupons || isGlobalDiscountApplied}
                 />
                 {!appliedCoupon ? (
-                    <Button onClick={handleApplyCoupon} disabled={isApplyingCoupon || isLoadingCoupons}>
+                    <Button onClick={handleApplyCoupon} disabled={isApplyingCoupon || isLoadingCoupons || isGlobalDiscountApplied}>
                         {isApplyingCoupon || isLoadingCoupons ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Ticket className="mr-2 h-4 w-4" />}
                         Apply
                     </Button>
@@ -221,18 +253,22 @@ export default function CartPage() {
                   {couponMessage.text}
                 </p>
               )}
+              {isGlobalDiscountApplied && !appliedCoupon && (
+                <p className="text-xs text-green-600">
+                    Global discount of {globalDiscountPercentage}% applied.
+                </p>
+              )}
               <Separator />
               <div className="flex justify-between text-sm">
                 <span>Subtotal</span>
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
               
-              <div className={cn("flex justify-between text-sm", discountAmount > 0 ? "text-green-600" : "text-muted-foreground")}>
+              <div className={cn("flex justify-between text-sm", activeDiscountAmount > 0 ? "text-green-600" : "text-muted-foreground")}>
                 <span>
-                  Discount
-                  {appliedCoupon && discountAmount > 0 ? <span className="text-xs"> ({appliedCoupon.code})</span> : ""}
+                  {discountLabel}
                 </span>
-                <span>- ₹{discountAmount.toFixed(2)}</span>
+                <span>- ₹{activeDiscountAmount.toFixed(2)}</span>
               </div>
 
               {subtotalAfterDiscount !== subtotal && (
@@ -256,7 +292,7 @@ export default function CartPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button asChild size="lg" className="w-full" disabled={isLoadingTaxRate || cartItems.length === 0 || cartItems.some(item => item.quantity > item.product.stock)}>
+              <Button asChild size="lg" className="w-full" disabled={isLoadingTaxRate || isLoadingCoupons || isLoadingGlobalDiscount || cartItems.length === 0 || cartItems.some(item => item.quantity > item.product.stock)}>
                 <Link href="/checkout">Proceed to Checkout</Link>
               </Button>
             </CardFooter>
