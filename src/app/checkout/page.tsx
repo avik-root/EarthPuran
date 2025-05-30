@@ -21,7 +21,9 @@ import type { Order, ShippingDetails as OrderShippingDetails } from "@/types/ord
 import type { UserProfile, UserAddress } from "@/types/userData";
 import { getUserData, addOrder } from "@/app/actions/userActions";
 import { getTaxRate } from "@/app/actions/taxActions"; 
-import { getGlobalDiscountPercentage } from "@/app/actions/globalDiscountActions"; // Import global discount action
+import { getGlobalDiscountPercentage } from "@/app/actions/globalDiscountActions";
+import { getShippingSettings } from "@/app/actions/shippingActions"; // Import
+import type { ShippingSettings } from "@/types/shipping"; // Import
 
 const countries: { code: string; name: string; phoneCode: string }[] = [
   { code: "US", name: "United States", phoneCode: "+1" },
@@ -45,11 +47,12 @@ const shippingSchema = z.object({
 
 export type ShippingFormValues = z.infer<typeof shippingSchema>;
 
-const DEFAULT_TAX_RATE_PERCENTAGE = 18; // Fallback default
+const DEFAULT_TAX_RATE_PERCENTAGE = 18; 
+const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = { rate: 50, threshold: 5000 };
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartItems, subtotal: cartSubtotal, clearCart, isLoadingCart, refreshCart } = useCart(); // Renamed subtotal to cartSubtotal
+  const { cartItems, subtotal: cartSubtotal, clearCart, isLoadingCart, refreshCart } = useCart(); 
   const { toast } = useToast();
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [shippingDetailsSaved, setShippingDetailsSaved] = useState<ShippingFormValues | null>(null);
@@ -61,31 +64,28 @@ export default function CheckoutPage() {
   const [globalDiscountPercentage, setGlobalDiscountPercentage] = useState<number>(0);
   const [isLoadingGlobalDiscount, setIsLoadingGlobalDiscount] = useState(true);
 
-  // Calculate final amounts
-  const shippingCost = cartItems.length > 0 ? 50.00 : 0;
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings>(DEFAULT_SHIPPING_SETTINGS);
+  const [isLoadingShipping, setIsLoadingShipping] = useState(true);
+
 
   let activeDiscountAmount = 0;
-  // For checkout, we assume no coupon is applied directly on this page;
-  // The subtotal from useCart should already be coupon-discounted if one was applied in cart.
-  // However, the global discount needs to be fetched and potentially applied if cart didn't.
-  // For simplicity here, let's assume the subtotal from useCart already includes any coupon discount.
-  // We will calculate the global discount here only if no coupon discount was present in the cart's subtotal logic.
-  // This can be complex; ideal scenario is `useCart` provides a `subtotalAfterCoupon`.
-  // For now, we apply global discount to `cartSubtotal` if `globalDiscountPercentage > 0`.
-  // This might double-discount if a coupon was already applied and `cartSubtotal` is post-coupon.
-  // A more robust solution would be for useCart to expose subtotalBeforeAnyDiscount.
-  // Let's assume `cartSubtotal` IS the subtotal before any discount for global discount calculation here.
   if (globalDiscountPercentage > 0 && !isLoadingGlobalDiscount) {
+      // Assuming cartSubtotal from useCart is PRE-DISCOUNT for this calculation
       activeDiscountAmount = cartSubtotal * (globalDiscountPercentage / 100);
   }
-  // If a coupon was applied in cart, `cartSubtotal` from `useCart` might already be discounted.
-  // This logic needs careful review in a real app. For now, let's assume `cartSubtotal` is the raw sum.
-  // The global discount here takes precedence if no coupon was applied, or if global is better (not implemented).
-  // For this iteration, let's stick to cart page handling coupon vs global, and checkout respects the `cartSubtotal` as potentially coupon-discounted.
-  // The `activeDiscountAmount` here will just be the global discount for display if no coupon was applied on cart.
-
+  
   const subtotalAfterGlobalDiscount = Math.max(0, cartSubtotal - activeDiscountAmount);
   const taxAmount = cartItems.length > 0 && !isLoadingTaxRate ? subtotalAfterGlobalDiscount * (taxRatePercentage / 100) : 0;
+  
+  let shippingCost = 0;
+  if (cartItems.length > 0 && !isLoadingShipping) {
+    if (shippingSettings.threshold > 0 && subtotalAfterGlobalDiscount >= shippingSettings.threshold) {
+        shippingCost = 0; // Free shipping
+    } else {
+        shippingCost = shippingSettings.rate;
+    }
+  }
+  
   const totalAmount = subtotalAfterGlobalDiscount + taxAmount + shippingCost;
 
 
@@ -143,6 +143,20 @@ export default function CheckoutPage() {
         setIsLoadingGlobalDiscount(false);
     }
   }, [toast]);
+  
+  const fetchCurrentShippingSettings = useCallback(async () => {
+    setIsLoadingShipping(true);
+    try {
+        const settings = await getShippingSettings();
+        setShippingSettings(settings);
+    } catch (error) {
+        console.error("Failed to fetch shipping settings:", error);
+        setShippingSettings(DEFAULT_SHIPPING_SETTINGS); // Fallback
+        toast({ title: "Shipping Error", description: "Could not load shipping settings.", variant: "destructive" });
+    } finally {
+        setIsLoadingShipping(false);
+    }
+  }, [toast]);
 
   const loadInitialData = useCallback(async () => {
     if (!currentUserEmail) {
@@ -192,9 +206,10 @@ export default function CheckoutPage() {
         refreshCart(); 
         fetchCurrentTaxRate();
         fetchGlobalDiscountRate();
+        fetchCurrentShippingSettings();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserEmail, loadInitialData, fetchCurrentTaxRate, fetchGlobalDiscountRate]); 
+  }, [currentUserEmail, loadInitialData, fetchCurrentTaxRate, fetchGlobalDiscountRate, fetchCurrentShippingSettings]); 
 
 
   const onShippingSubmit = (values: ShippingFormValues) => {
@@ -217,21 +232,6 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Recalculate final total based on current cartSubtotal, global discount, tax, and shipping
-    // This ensures the order saves the most up-to-date calculation.
-    let orderDiscountAmount = 0;
-    // Logic: if cartSubtotal from useCart is already coupon-discounted, use it.
-    // Otherwise, if global discount applies, calculate it from cartSubtotal.
-    // This step is tricky. Assuming `cartSubtotal` from `useCart` is the subtotal *after* any coupon.
-    // The `getGlobalDiscountPercentage` is for display and if no coupon was applied.
-    // For the order, the totalAmount should be derived from cart's state primarily.
-    // Let's trust `cartSubtotal` and assume it's correct (post-coupon or pre-global).
-    // The `totalAmount` state variable used for display should be accurate if `useCart().subtotal` is.
-
-    // If the `cartSubtotal` from `useCart` does NOT include coupon discount, then:
-    // if (appliedCouponFromCart) { orderDiscountAmount = couponValue; } 
-    // else if (globalDiscountPercentage > 0) { orderDiscountAmount = cartSubtotal * (globalDiscountPercentage / 100); }
-    // For now, let's use the `totalAmount` state which *should* reflect the logic on cart page.
     const finalOrderTotal = totalAmount;
 
 
@@ -403,7 +403,7 @@ export default function CheckoutPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {isLoadingCart || isLoadingTaxRate || isLoadingGlobalDiscount ? (
+              {isLoadingCart || isLoadingTaxRate || isLoadingGlobalDiscount || isLoadingShipping ? (
                 <Skeleton className="h-24 w-full" />
               ) : cartItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">Your cart is empty.</p>
@@ -435,7 +435,14 @@ export default function CheckoutPage() {
                     <span>₹{subtotalAfterGlobalDiscount.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm"><span>Tax ({taxRatePercentage}%)</span><span>₹{taxAmount.toFixed(2)}</span></div>
-                  <div className="flex justify-between text-sm"><span>Shipping</span><span>₹{shippingCost.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-sm">
+                    <span>Shipping</span>
+                    <span>
+                        {isLoadingShipping ? '...' : 
+                        shippingCost === 0 && cartItems.length > 0 ? 'Free' : `+ ₹${shippingCost.toFixed(2)}`
+                        }
+                    </span>
+                  </div>
                   <Separator />
                   <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>₹{totalAmount.toFixed(2)}</span></div>
                 </>
@@ -446,7 +453,7 @@ export default function CheckoutPage() {
                 size="lg"
                 className="w-full"
                 onClick={handlePlaceOrder}
-                disabled={!shippingDetailsSaved || cartItems.length === 0 || loadingProfile || isLoadingCart || isLoadingTaxRate || isLoadingGlobalDiscount}
+                disabled={!shippingDetailsSaved || cartItems.length === 0 || loadingProfile || isLoadingCart || isLoadingTaxRate || isLoadingGlobalDiscount || isLoadingShipping}
               >
                 Place Order (COD)
               </Button>

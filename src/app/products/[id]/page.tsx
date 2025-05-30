@@ -4,6 +4,7 @@
 import Image from "next/image";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { getProductById, getProducts, addProductReview, type NewReviewData } from "@/app/actions/productActions";
+import { getShippingSettings } from "@/app/actions/shippingActions"; // Import
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Heart, Minus, Plus, ShoppingCart, Star, Truck, MessageSquare, Send, Loader2 } from "lucide-react";
@@ -11,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/ProductCard";
 import type { Product, Review } from "@/types/product";
+import type { ShippingSettings } from "@/types/shipping"; // Import
 import { useEffect, useState, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/hooks/useCart";
@@ -32,12 +34,7 @@ const reviewSchema = z.object({
 });
 type ReviewFormValues = z.infer<typeof reviewSchema>;
 
-interface ShippingSettings {
-  rate: string;
-  threshold: string;
-}
-
-const DEFAULT_FREE_SHIPPING_THRESHOLD = "5000";
+const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = { rate: 50, threshold: 5000 };
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -49,7 +46,9 @@ export default function ProductDetailPage() {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState<string>(DEFAULT_FREE_SHIPPING_THRESHOLD);
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings>(DEFAULT_SHIPPING_SETTINGS);
+  const [loadingShipping, setLoadingShipping] = useState(true);
+
 
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [thumbnailImages, setThumbnailImages] = useState<string[]>([]);
@@ -101,6 +100,20 @@ export default function ProductDetailPage() {
       setLoading(false);
     }
   }, [productId]);
+  
+  const fetchShippingData = useCallback(async () => {
+    setLoadingShipping(true);
+    try {
+        const settings = await getShippingSettings();
+        setShippingSettings(settings);
+    } catch (e) {
+        console.error("Failed to fetch shipping settings:", e);
+        setShippingSettings(DEFAULT_SHIPPING_SETTINGS); // Fallback
+        toast({title: "Shipping Info Error", description: "Could not load shipping details.", variant: "destructive"});
+    } finally {
+        setLoadingShipping(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
     setIsClientMounted(true);
@@ -124,22 +137,10 @@ export default function ProductDetailPage() {
     } else {
         setCurrentUserProfile(null); 
     }
-
-    // Load shipping settings
-    const storedShippingSettings = localStorage.getItem("earthPuranAdminShippingSettings");
-    if (storedShippingSettings) {
-      try {
-        const parsedSettings = JSON.parse(storedShippingSettings) as ShippingSettings;
-        setFreeShippingThreshold(parsedSettings.threshold || DEFAULT_FREE_SHIPPING_THRESHOLD);
-      } catch (e) {
-        setFreeShippingThreshold(DEFAULT_FREE_SHIPPING_THRESHOLD);
-      }
-    } else {
-      setFreeShippingThreshold(DEFAULT_FREE_SHIPPING_THRESHOLD);
-    }
-
+    
+    fetchShippingData();
     fetchProductData();
-  }, [fetchProductData, pathname]); 
+  }, [fetchProductData, fetchShippingData, pathname]); 
 
   const handleReviewSubmit = async (values: ReviewFormValues) => {
     if (!isUserActuallyLoggedIn || !currentUserEmail || !currentUserProfile || !product) {
@@ -166,7 +167,7 @@ export default function ProductDetailPage() {
   };
 
 
-  if (loading) {
+  if (loading || loadingShipping) {
     return (
       <div className="space-y-12">
         <Card className="overflow-hidden">
@@ -184,6 +185,7 @@ export default function ProductDetailPage() {
               <Skeleton className="h-10 w-3/4" />
               <Skeleton className="h-6 w-1/3" />
               <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-6 w-full" /> {/* For shipping text */}
               <Skeleton className="h-10 w-1/2" />
               <div className="flex gap-3 w-full flex-col sm:flex-row">
                 <Skeleton className="h-12 w-full sm:flex-1" />
@@ -374,7 +376,11 @@ export default function ProductDetailPage() {
 
               <div className="flex items-center space-x-2">
                 <Truck className="h-5 w-5 text-primary" />
-                <span className="text-sm text-muted-foreground">Free shipping on orders over ₹{parseFloat(freeShippingThreshold).toLocaleString('en-IN')}</span>
+                <span className="text-sm text-muted-foreground">
+                  {shippingSettings.threshold > 0 
+                    ? `Free shipping on orders over ₹${shippingSettings.threshold.toLocaleString('en-IN')}`
+                    : "Standard shipping rates apply." }
+                </span>
               </div>
                <p className={`text-sm font-medium ${product.stock > 0 ? 'text-green-600' : 'text-destructive'}`}>
                 {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}

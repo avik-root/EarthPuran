@@ -17,8 +17,11 @@ import type { Coupon } from "@/types/coupon";
 import { getCoupons } from "@/app/actions/couponActions";
 import { getTaxRate } from "@/app/actions/taxActions";
 import { getGlobalDiscountPercentage } from "@/app/actions/globalDiscountActions";
+import { getShippingSettings } from "@/app/actions/shippingActions"; // Import
+import type { ShippingSettings } from "@/types/shipping"; // Import
 
-const DEFAULT_TAX_RATE_PERCENTAGE = 18; // Fallback default
+const DEFAULT_TAX_RATE_PERCENTAGE = 18; 
+const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = { rate: 50, threshold: 5000 };
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, subtotal, clearCart } = useCart();
@@ -36,6 +39,9 @@ export default function CartPage() {
 
   const [globalDiscountPercentage, setGlobalDiscountPercentage] = useState<number>(0);
   const [isLoadingGlobalDiscount, setIsLoadingGlobalDiscount] = useState(true);
+
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings>(DEFAULT_SHIPPING_SETTINGS);
+  const [isLoadingShipping, setIsLoadingShipping] = useState(true);
 
   const fetchAvailableCoupons = useCallback(async () => {
     setIsLoadingCoupons(true);
@@ -58,7 +64,7 @@ export default function CartPage() {
         setTaxRatePercentage(taxData.rate);
     } catch (error) {
         console.error("Failed to fetch tax rate:", error);
-        setTaxRatePercentage(DEFAULT_TAX_RATE_PERCENTAGE); // Fallback
+        setTaxRatePercentage(DEFAULT_TAX_RATE_PERCENTAGE); 
         toast({ title: "Tax Rate Error", description: "Could not load tax rate, using default.", variant: "destructive" });
     } finally {
         setIsLoadingTaxRate(false);
@@ -72,10 +78,24 @@ export default function CartPage() {
         setGlobalDiscountPercentage(discountData.percentage);
     } catch (error) {
         console.error("Failed to fetch global discount:", error);
-        setGlobalDiscountPercentage(0); // Fallback
+        setGlobalDiscountPercentage(0); 
         toast({ title: "Discount Error", description: "Could not load global discount.", variant: "destructive" });
     } finally {
         setIsLoadingGlobalDiscount(false);
+    }
+  }, [toast]);
+
+  const fetchCurrentShippingSettings = useCallback(async () => {
+    setIsLoadingShipping(true);
+    try {
+        const settings = await getShippingSettings();
+        setShippingSettings(settings);
+    } catch (error) {
+        console.error("Failed to fetch shipping settings:", error);
+        setShippingSettings(DEFAULT_SHIPPING_SETTINGS); // Fallback
+        toast({ title: "Shipping Error", description: "Could not load shipping settings.", variant: "destructive" });
+    } finally {
+        setIsLoadingShipping(false);
     }
   }, [toast]);
 
@@ -83,7 +103,8 @@ export default function CartPage() {
     fetchAvailableCoupons();
     fetchCurrentTaxRate();
     fetchGlobalDiscount();
-  }, [fetchAvailableCoupons, fetchCurrentTaxRate, fetchGlobalDiscount]);
+    fetchCurrentShippingSettings();
+  }, [fetchAvailableCoupons, fetchCurrentTaxRate, fetchGlobalDiscount, fetchCurrentShippingSettings]);
 
   const handleApplyCoupon = async () => {
     setCouponMessage(null);
@@ -125,8 +146,6 @@ export default function CartPage() {
     setCouponMessage({ text: "Coupon removed.", type: 'error' }); 
     toast({ title: "Coupon Removed" });
   };
-
-  const shipping = cartItems.length > 0 ? 50.00 : 0; 
   
   let activeDiscountAmount = 0;
   let discountLabel = "Discount";
@@ -144,7 +163,16 @@ export default function CartPage() {
   const subtotalAfterDiscount = Math.max(0, subtotal - activeDiscountAmount);
   const taxAmount = cartItems.length > 0 && !isLoadingTaxRate ? subtotalAfterDiscount * (taxRatePercentage / 100) : 0;
   
-  let calculatedTotal = subtotalAfterDiscount + taxAmount + shipping;
+  let shippingCost = 0;
+  if (cartItems.length > 0 && !isLoadingShipping) {
+    if (shippingSettings.threshold > 0 && subtotalAfterDiscount >= shippingSettings.threshold) {
+        shippingCost = 0; // Free shipping
+    } else {
+        shippingCost = shippingSettings.rate;
+    }
+  }
+  
+  let calculatedTotal = subtotalAfterDiscount + taxAmount + shippingCost;
   if (calculatedTotal < 0) calculatedTotal = 0;
 
 
@@ -283,7 +311,11 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between text-sm">
                 <span>Shipping</span>
-                <span>+ ₹{shipping.toFixed(2)}</span>
+                <span>
+                    {isLoadingShipping ? '...' : 
+                     shippingCost === 0 && cartItems.length > 0 ? 'Free' : `+ ₹${shippingCost.toFixed(2)}`
+                    }
+                </span>
               </div>
               <Separator />
               <div className="flex justify-between font-semibold text-lg">
@@ -292,7 +324,7 @@ export default function CartPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button asChild size="lg" className="w-full" disabled={isLoadingTaxRate || isLoadingCoupons || isLoadingGlobalDiscount || cartItems.length === 0 || cartItems.some(item => item.quantity > item.product.stock)}>
+              <Button asChild size="lg" className="w-full" disabled={isLoadingTaxRate || isLoadingCoupons || isLoadingGlobalDiscount || isLoadingShipping || cartItems.length === 0 || cartItems.some(item => item.quantity > item.product.stock)}>
                 <Link href="/checkout">Proceed to Checkout</Link>
               </Button>
             </CardFooter>
