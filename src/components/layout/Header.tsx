@@ -10,7 +10,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger, // Added SheetTrigger
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -29,7 +29,7 @@ const navItems = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
   { href: "/blog", label: "Beauty Blog" },
-  // { href: "/about", label: "About Us" },
+  { href: "/about", label: "About Us" },
   // { href: "/contact", label: "Contact" },
 ];
 
@@ -60,7 +60,7 @@ export function Header() {
     if (mobileSearchTerm.trim()) {
       router.push(`/products?q=${encodeURIComponent(mobileSearchTerm.trim())}`);
       setMobileSearchTerm("");
-      setMobileSearchOpen(false);
+      setMobileSearchOpen(false); // Close sheet after search
       setMobileMenuOpen(false); 
     }
   };
@@ -68,10 +68,17 @@ export function Header() {
   const handleLogout = () => {
     localStorage.removeItem("isLoggedInPrototype");
     localStorage.removeItem("currentUserEmail");
+    localStorage.removeItem("isAdminPrototype"); 
+    localStorage.removeItem("userProfilePrototype");
     setIsLoggedIn(false); 
-    toast({ title: "Logged Out", description: "You have been successfully logged out." });
+    
+    setTimeout(() => {
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+    }, 0);
+    
     setMobileMenuOpen(false); 
     router.push("/"); 
+    router.refresh(); // Force refresh to ensure header updates
   };
 
   return (
@@ -137,46 +144,43 @@ export function Header() {
               <ShoppingBag className="h-5 w-5" />
             </Button>
           </Link>
-
+          
           {hasMounted ? (
-            <>
-              {isLoggedIn ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" aria-label="User Account">
-                      <UserCircle className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/orders"><ListOrdered className="mr-2 h-4 w-4" />Order History</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />Log Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/login">Login</Link>
-                </Button>
-              )}
-              <ThemeToggle />
-            </>
+            isLoggedIn ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="User Account">
+                    <UserCircle className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/orders"><ListOrdered className="mr-2 h-4 w-4" />Order History</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />Log Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/login">Login</Link>
+              </Button>
+            )
           ) : (
-            // Static placeholders for server and initial client render to avoid hydration mismatch
-            // Sized to approximate the space the actual components will take.
+            // Static placeholders for server and initial client render
             <>
-              <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" /> {/* Approx space for Login button */}
-              <div style={{ width: '40px', height: '40px' }} aria-hidden="true" /> {/* Approx space for ThemeToggle icon button */}
+              <div style={{ width: 'auto', minWidth:'60px', height: '36px' }} aria-hidden="true" />
             </>
           )}
+           {hasMounted ? <ThemeToggle /> : <div style={{ width: '40px', height: '40px' }} aria-hidden="true" /> }
+
 
           <div className="md:hidden">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>

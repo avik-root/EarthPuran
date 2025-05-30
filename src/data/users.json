@@ -419,6 +419,32 @@
           "tags": []
         },
         "quantity": 2
+      },
+      {
+        "product": {
+          "id": "4",
+          "name": "Silk Finish Primer",
+          "category": "Face",
+          "brand": "Earth Puran",
+          "price": 32,
+          "description": "Create a smooth canvas for makeup application with this silk-finish primer. Minimizes pores, blurs imperfections, and extends makeup wear. Lightweight and non-greasy formula. Experience the Earth Puran difference.",
+          "imageUrl": "https://placehold.co/600x600.png",
+          "imageHint": "makeup primer",
+          "additionalImageUrls": [],
+          "rating": 0,
+          "reviews": 0,
+          "productReviews": [],
+          "stock": 60,
+          "tags": [
+            "primer",
+            "face",
+            "smoothing",
+            "pore-minimizing",
+            "organic-extracts"
+          ],
+          "colors": []
+        },
+        "quantity": 2
       }
     ]
   },
