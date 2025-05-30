@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar";
-import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert, UserCircle, LogOut, SlidersHorizontal, Truck, Percent, Ticket, BadgePercent } from "lucide-react";
+import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert, UserCircle, LogOut, SlidersHorizontal, Truck, Percent, Ticket, BadgePercent, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -160,6 +160,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               <SidebarMenuItem>
                 <SidebarMenuButton href="/admin/users" tooltip="Customers" isActive={pathname.startsWith('/admin/users')}>
                   <Users /> <span>Customers</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton href="/admin/blogs/new" tooltip="Write Blogs" isActive={pathname.startsWith('/admin/blogs/new')}>
+                  <FileText /> <span>Write Blogs</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarGroup>
