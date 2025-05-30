@@ -12,7 +12,8 @@ async function readProductsFile(): Promise<Product[]> {
   try {
     const jsonData = await fs.readFile(dataFilePath, 'utf-8');
     if (!jsonData.trim()) {
-      console.warn("products.json is empty, returning empty array.");
+      console.warn("products.json is empty, re-initializing with [].");
+      await fs.writeFile(dataFilePath, JSON.stringify([], null, 2), 'utf-8'); // Ensure file is valid JSON
       return [];
     }
     try {
@@ -25,7 +26,7 @@ async function readProductsFile(): Promise<Product[]> {
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
     if (nodeError.code === 'ENOENT') {
-        console.warn("products.json not found, returning empty array.");
+        console.warn("products.json not found, creating it with [].");
         await fs.writeFile(dataFilePath, JSON.stringify([], null, 2), 'utf-8'); // Create if not exists
         return [];
     }
@@ -260,3 +261,4 @@ export async function deleteProductById(productId: string): Promise<{ success: b
     return { success: false, message: errorMessage };
   }
 }
+

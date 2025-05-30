@@ -10,18 +10,26 @@ const blogsFilePath = path.join(process.cwd(), 'src', 'data', 'blogs.json');
 
 // Helper function to generate a URL-friendly slug from a title
 function generateSlug(title: string): string {
-  return title
+  let slug = title
     .toLowerCase()
     .trim()
     .replace(/[^\w\s-]/g, '') // Remove non-word characters except spaces and hyphens
     .replace(/\s+/g, '-')    // Replace spaces with hyphens
     .replace(/-+/g, '-');   // Replace multiple hyphens with single hyphen
+  
+  // Ensure slug is not empty and doesn't consist only of hyphens
+  if (!slug || slug.replace(/-/g, '') === '') {
+    // Fallback to a unique slug based on timestamp if title results in empty/meaningless slug
+    return `post-${Date.now().toString(36)}${Math.random().toString(36).substring(2, 7)}`;
+  }
+  return slug;
 }
 
 async function readBlogPostsFile(): Promise<BlogPost[]> {
   try {
     const jsonData = await fs.readFile(blogsFilePath, 'utf-8');
     if (!jsonData.trim()) {
+      // If the file is empty, initialize with an empty array and write it back
       await fs.writeFile(blogsFilePath, JSON.stringify([], null, 2), 'utf-8');
       return [];
     }
@@ -29,11 +37,14 @@ async function readBlogPostsFile(): Promise<BlogPost[]> {
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
     if (nodeError.code === 'ENOENT') {
+      // If file doesn't exist, create it with an empty array
       await fs.writeFile(blogsFilePath, JSON.stringify([], null, 2), 'utf-8');
       return [];
     }
     console.error("Failed to read blogs.json:", error);
-    return [];
+    // In case of other errors (e.g., parse error), return empty or throw
+    // For robustness, returning empty array for this prototype.
+    return []; 
   }
 }
 
@@ -79,11 +90,13 @@ export async function addBlogPost(
     const posts = await readBlogPostsFile();
     
     let slug = generateSlug(formData.title);
+    // Check if a post with this exact slug already exists
     let slugExists = posts.some(p => p.slug === slug);
     let suffix = 1;
+    const baseSlug = slug; // Keep the original generated slug for appending suffix
     while (slugExists) {
       suffix++;
-      slug = `${generateSlug(formData.title)}-${suffix}`;
+      slug = `${baseSlug}-${suffix}`;
       slugExists = posts.some(p => p.slug === slug);
     }
 
@@ -139,11 +152,31 @@ export async function updateBlogPost(
       updatedAt: new Date().toISOString(),
     };
     
+    // If title changed, slug might need to be regenerated, ensure uniqueness
+    if (updateData.title && updateData.title !== existingPost.title) {
+      let newSlug = generateSlug(updateData.title);
+      if (newSlug !== existingPost.slug) { // Only update if different
+        let slugExists = posts.some(p => p.slug === newSlug && p.id !== existingPost.id);
+        let suffix = 1;
+        const baseSlug = newSlug;
+        while (slugExists) {
+          suffix++;
+          newSlug = `${baseSlug}-${suffix}`;
+          slugExists = posts.some(p => p.slug === newSlug && p.id !== existingPost.id);
+        }
+        updatedPost.slug = newSlug;
+      }
+    }
+
+
     posts[postIndex] = updatedPost;
     await writeBlogPostsFile(posts);
 
     revalidatePath('/blog');
-    revalidatePath(`/blog/${updatedPost.slug}`);
+    if(existingPost.slug !== updatedPost.slug) {
+      revalidatePath(`/blog/${existingPost.slug}`); // Revalidate old path
+    }
+    revalidatePath(`/blog/${updatedPost.slug}`); // Revalidate new/current path
     // revalidatePath('/admin/blogs/manage');
     revalidatePath(`/admin/blogs/edit/${updatedPost.slug}`);
 
@@ -171,6 +204,7 @@ export async function deleteBlogPost(
 
     await writeBlogPostsFile(posts);
     revalidatePath('/blog');
+    revalidatePath(`/blog/${slug}`); // Revalidate the deleted post's path
     // revalidatePath('/admin/blogs/manage');
 
     return { success: true };
