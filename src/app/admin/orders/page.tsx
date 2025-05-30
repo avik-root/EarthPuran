@@ -42,6 +42,8 @@ export default function AdminOrdersPage() {
   const [sortOption, setSortOption] = useState<SortOption>("newest");
   const { toast } = useToast();
   const [orderToInvoice, setOrderToInvoice] = useState<EnrichedOrder | null>(null);
+  const [isInvoiceReadyToPrint, setIsInvoiceReadyToPrint] = useState(false);
+
 
   const fetchAllOrders = useCallback(async () => {
     setLoading(true);
@@ -78,14 +80,12 @@ export default function AdminOrdersPage() {
   }, [fetchAllOrders]);
   
   useEffect(() => {
-    if (orderToInvoice) {
-      const timer = setTimeout(() => {
-        window.print();
-        setOrderToInvoice(null); 
-      }, 250); 
-      return () => clearTimeout(timer);
+    if (orderToInvoice && isInvoiceReadyToPrint) {
+      window.print();
+      setOrderToInvoice(null); 
+      setIsInvoiceReadyToPrint(false); // Reset for next print
     }
-  }, [orderToInvoice]);
+  }, [orderToInvoice, isInvoiceReadyToPrint]);
 
 
   const handleMarkAsDelivered = async (order: EnrichedOrder) => {
@@ -151,6 +151,11 @@ export default function AdminOrdersPage() {
     }
     return processedOrders;
   }, [allOrders, searchTerm, sortOption]);
+
+  const handleInvoiceGeneration = (order: EnrichedOrder) => {
+    setIsInvoiceReadyToPrint(false); // Ensure it's false before setting new order
+    setOrderToInvoice(order);
+  };
 
   if (loading) {
     return (
@@ -264,7 +269,7 @@ export default function AdminOrdersPage() {
                                   <FileText className="mr-2 h-4 w-4" /> View Details
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setOrderToInvoice(order)} className="flex items-center">
+                            <DropdownMenuItem onClick={() => handleInvoiceGeneration(order)} className="flex items-center">
                               <Printer className="mr-2 h-4 w-4" /> Generate Invoice
                             </DropdownMenuItem>
                             {(order.status === 'Processing' || order.status === 'Shipped') && (
@@ -295,9 +300,13 @@ export default function AdminOrdersPage() {
         </Card>
         
         <div className="printable-invoice-container">
-          <PrintableInvoice order={orderToInvoice} />
+          <PrintableInvoice 
+            order={orderToInvoice} 
+            onReady={() => setIsInvoiceReadyToPrint(true)}
+          />
         </div>
       </div>
     </TooltipProvider>
   );
 }
+

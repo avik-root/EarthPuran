@@ -11,6 +11,7 @@ import type { ShippingSettings } from "@/types/shipping";
 
 interface PrintableInvoiceProps {
   order: EnrichedOrder | null;
+  onReady?: () => void; // New callback prop
 }
 
 // Helper to convert number to words (basic implementation for prototype)
@@ -39,7 +40,7 @@ const numberToWords = (num: number): string => {
 };
 
 
-export function PrintableInvoice({ order }: PrintableInvoiceProps) {
+export function PrintableInvoice({ order, onReady }: PrintableInvoiceProps) {
   const [taxRate, setTaxRate] = useState<number>(18); // Default tax rate
   const [currentShippingSettings, setCurrentShippingSettings] = useState<ShippingSettings>({rate: 50, threshold: 5000}); // Default shipping
   const [loadingSettings, setLoadingSettings] = useState(true);
@@ -60,13 +61,17 @@ export function PrintableInvoice({ order }: PrintableInvoiceProps) {
                 // Keep defaults if fetch fails
             } finally {
                 setLoadingSettings(false);
+                onReady?.(); // Call onReady after settings are loaded (or failed to load)
             }
         };
         fetchSettings();
     } else {
         setLoadingSettings(false); 
+        // If there's no order, it's arguably "ready" in a sense, or onReady shouldn't be called.
+        // Calling onReady here might be too soon if the parent expects an order.
+        // Let's ensure onReady is only called when an order exists and settings are processed.
     }
-  }, [order]);
+  }, [order, onReady]);
 
 
   if (!order) {
@@ -102,10 +107,11 @@ export function PrintableInvoice({ order }: PrintableInvoiceProps) {
   const invoiceId = `INV-${order.id}`;
 
   const itemsSubtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const calculatedShippingCost = itemsSubtotal >= currentShippingSettings.threshold ? 0 : currentShippingSettings.rate;
+  const calculatedShippingCost = itemsSubtotal >= currentShippingSettings.threshold && currentShippingSettings.threshold > 0 ? 0 : currentShippingSettings.rate;
   const subtotalForTax = itemsSubtotal + calculatedShippingCost;
   const calculatedTaxAmount = subtotalForTax * (taxRate / 100);
   const totalBeforeAdjustments = itemsSubtotal + calculatedShippingCost + calculatedTaxAmount;
+  // Ensure discountOrAdjustment accurately reflects the difference to reach order.totalAmount
   const discountOrAdjustment = totalBeforeAdjustments - order.totalAmount;
 
 
@@ -199,7 +205,7 @@ export function PrintableInvoice({ order }: PrintableInvoiceProps) {
                 <span className="font-semibold text-xs">Tax ({taxRate}%):</span>
                 <span className="text-xs">₹{calculatedTaxAmount.toFixed(2)}</span>
             </div>
-            {discountOrAdjustment !== 0 && (
+            {discountOrAdjustment.toFixed(2) !== '0.00' && (
               <div className="flex justify-between py-0.5">
                 <span className="font-semibold text-xs">{discountOrAdjustment > 0 ? "Discount:" : "Adjustments:"}</span>
                 <span className="text-xs">{discountOrAdjustment > 0 ? "- " : "+ "}₹{Math.abs(discountOrAdjustment).toFixed(2)}</span>
