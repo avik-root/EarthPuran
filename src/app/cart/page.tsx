@@ -226,12 +226,15 @@ export default function CartPage() {
                 <span>Subtotal</span>
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
-              {discountAmount > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>Discount <span className="text-xs">({appliedCoupon?.code})</span></span>
-                  <span>- ₹{discountAmount.toFixed(2)}</span>
-                </div>
-              )}
+              
+              <div className={cn("flex justify-between text-sm", discountAmount > 0 ? "text-green-600" : "text-muted-foreground")}>
+                <span>
+                  Discount
+                  {appliedCoupon && discountAmount > 0 ? <span className="text-xs"> ({appliedCoupon.code})</span> : ""}
+                </span>
+                <span>- ₹{discountAmount.toFixed(2)}</span>
+              </div>
+
               {subtotalAfterDiscount !== subtotal && (
                 <div className="flex justify-between text-sm font-medium">
                   <span>Subtotal (after discount)</span>
