@@ -175,5 +175,22 @@
     "reviews": 0,
     "productReviews": [],
     "tags": []
+  },
+  {
+    "id": "17486172881023hikgon",
+    "name": "Argan Anti Hairfall Oil",
+    "description": "Heal Through Sattva – Nature’s Path to Hair Revival\n\nExperience the power of ancient wisdom blended with modern science in Earthyeror™ Argan Anti Hairfall Oil. Enriched with nourishing Vitamin A, B3, rare Blu C, and E, this intensive formula is crafted with 44 potent herbs to target hair fall at its root and stimulate healthy regrowth.\n\nInfused with pure Argan oil, known as \"liquid gold\" for its revitalizing properties, this luxurious oil penetrates deep into the scalp to strengthen follicles, restore shine, and rejuvenate tired strands.",
+    "price": 400,
+    "category": "Skincare",
+    "brand": "Earth Puran",
+    "stock": 30,
+    "imageUrl": "https://drive.google.com/file/d/13r28dCxm75gw4F5XQMNIHorXK19mhjiN/view?usp=drive_link",
+    "imageHint": "product image",
+    "additionalImageUrls": [],
+    "colors": [],
+    "rating": 0,
+    "reviews": 0,
+    "productReviews": [],
+    "tags": []
   }
 ]

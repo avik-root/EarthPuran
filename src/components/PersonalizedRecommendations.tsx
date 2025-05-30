@@ -7,7 +7,7 @@ import { ProductCard } from '@/components/ProductCard';
 import type { Product } from '@/types/product';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Lightbulb } from "lucide-react";
+import { Lightbulb, AlertCircle } from "lucide-react"; // Added AlertCircle
 import { getProducts } from '@/app/actions/productActions'; // Import the server action
 
 // Function to fetch full product details based on names from products.json
@@ -54,9 +54,13 @@ export function PersonalizedRecommendations() {
         } else {
           setRecommendedProductsDetails([]);
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error("Failed to get recommendations:", e);
-        setError("Could not load recommendations at this time.");
+        if (e.message && e.message.includes("429")) {
+          setError("Recommendations are temporarily unavailable due to high demand. Please try again in a few moments.");
+        } else {
+          setError("Could not load recommendations at this time.");
+        }
         setRecommendedProductsDetails([]);
       } finally {
         setLoading(false);
@@ -85,9 +89,12 @@ export function PersonalizedRecommendations() {
 
   if (error) {
      return (
-      <Alert variant="destructive">
-        <AlertTitle>Error</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
+      <Alert variant="destructive" className="bg-destructive/10 border-destructive/30">
+        <AlertCircle className="h-5 w-5 text-destructive" />
+        <AlertTitle className="text-destructive">Recommendations Unavailable</AlertTitle>
+        <AlertDescription className="text-destructive/90">
+          {error}
+        </AlertDescription>
       </Alert>
     );
   }

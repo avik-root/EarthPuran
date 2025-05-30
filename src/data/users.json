@@ -463,5 +463,166 @@
     "orders": [],
     "wishlist": [],
     "cart": []
+  },
+  "de@gmail.com": {
+    "profile": {
+      "firstName": "de ",
+      "lastName": "Gupta",
+      "email": "de@gmail.com",
+      "countryCode": "IN",
+      "phoneNumber": "6134246820",
+      "hashedPassword": "$2a$10$iDaPAOK6Ou6p2erREbDdpeNLFCC2dyv9Tg1Us2eW08WuH80u3tF0q",
+      "hashedPin": "$2a$10$SSkGZ3Ck9BoxI5kTRlyf6uA2aTCT/Pn7eA12yPayvDLTYktNYpEIq",
+      "isAdmin": false
+    },
+    "addresses": [
+      {
+        "street": "Chetla",
+        "city": "Chetla",
+        "state": "West Bengal",
+        "zipCode": "700022",
+        "country": "India",
+        "isDefault": true,
+        "id": "1748616230998"
+      }
+    ],
+    "orders": [
+      {
+        "id": "1748616703161",
+        "date": "30/05/2025",
+        "items": [
+          {
+            "productId": "5",
+            "name": "Volumizing Lash Mascara",
+            "quantity": 1,
+            "price": 24,
+            "imageUrl": "https://placehold.co/600x600.png",
+            "imageHint": "mascara product"
+          },
+          {
+            "productId": "1748521447311uiafrc3",
+            "name": "Mogra Attar",
+            "quantity": 3,
+            "price": 399,
+            "imageUrl": "https://drive.google.com/uc?export=view&id=1Qq4v0tKcER9vNiM_f302-6NwdfRb04cm",
+            "imageHint": "Fragrance"
+          },
+          {
+            "productId": "1",
+            "name": "Velvet Matte Lipstick",
+            "quantity": 1,
+            "price": 28,
+            "imageUrl": "https://placehold.co/600x600.png",
+            "imageHint": "lipstick beauty"
+          }
+        ],
+        "totalAmount": 1299,
+        "shippingDetails": {
+          "firstName": "de ",
+          "lastName": "Gupta",
+          "address": "Chetla",
+          "city": "Chetla",
+          "state": "West Bengal",
+          "pincode": "700022",
+          "country": "India",
+          "phoneNumber": "6134246820",
+          "phoneCountryCode": "+91"
+        },
+        "status": "Processing"
+      }
+    ],
+    "wishlist": [
+      {
+        "id": "5",
+        "name": "Volumizing Lash Mascara",
+        "category": "Eyes",
+        "brand": "Earth Puran",
+        "price": 24,
+        "description": "Get dramatic, voluminous lashes with this intense black mascara. The specially designed brush coats every lash for maximum impact. Smudge-proof and long-lasting. A signature product from Earth Puran.",
+        "imageUrl": "https://placehold.co/600x600.png",
+        "imageHint": "mascara product",
+        "additionalImageUrls": [],
+        "colors": [
+          {
+            "name": "Intense Black",
+            "link": "",
+            "image": ""
+          }
+        ],
+        "rating": 0,
+        "reviews": 0,
+        "productReviews": [],
+        "stock": 70,
+        "tags": [
+          "mascara",
+          "volumizing",
+          "lashes",
+          "smudge-proof",
+          "natural-waxes"
+        ]
+      },
+      {
+        "id": "1748521447311uiafrc3",
+        "name": "Mogra Attar",
+        "description": "Mogra Attar by EarthPuran\nPure | Authentic | 100% Natural | Organic | Herbal\n\nImmerse yourself in the timeless fragrance of jasmine with Mogra Attar by EarthPuran—a luxurious, all-natural perfume crafted from the delicate blossoms of the Mogra flower. Made using traditional distillation methods, this attar is 100% pure, organic, and herbal, free from any synthetic additives or chemicals.\n\nIts enchanting floral aroma not only uplifts the senses but also offers calming and therapeutic benefits. Ideal for daily wear, meditation, or spiritual rituals, EarthPuran's Mogra Attar is a tribute to nature’s purity and aromatic heritage.\n\nKey Features:\n\n    Made from premium-quality Mogra (jasmine) flowers\n\n    No alcohol, no synthetic chemicals\n\n    Gentle on skin, long-lasting fragrance\n\n    Cruelty-free and environmentally friendly\n\nExperience the essence of nature—bottled with care.\n\nWould you like a shorter or more poetic version as well?\n",
+        "price": 399,
+        "category": "Fragrance",
+        "brand": "Earth Puran",
+        "stock": 10,
+        "imageUrl": "https://drive.google.com/uc?export=view&id=1Qq4v0tKcER9vNiM_f302-6NwdfRb04cm",
+        "imageHint": "Fragrance",
+        "additionalImageUrls": [],
+        "colors": [],
+        "rating": 0,
+        "reviews": 0,
+        "productReviews": [],
+        "tags": []
+      },
+      {
+        "id": "1",
+        "name": "Velvet Matte Lipstick",
+        "category": "Lips",
+        "brand": "Earth Puran",
+        "price": 28,
+        "description": "A luxurious, long-wearing matte lipstick with a velvety finish. Infused with nourishing oils for comfortable wear. Experience intense color payoff and a smooth, non-drying feel. Exclusively from Earth Puran.",
+        "imageUrl": "https://placehold.co/600x600.png",
+        "imageHint": "lipstick beauty",
+        "additionalImageUrls": [],
+        "colors": [
+          {
+            "name": "Ruby Red",
+            "link": "",
+            "image": ""
+          },
+          {
+            "name": "Dusty Rose",
+            "link": "",
+            "image": ""
+          },
+          {
+            "name": "Nude Beige",
+            "link": "",
+            "image": ""
+          },
+          {
+            "name": "Deep Plum",
+            "link": "",
+            "image": ""
+          }
+        ],
+        "rating": 0,
+        "reviews": 0,
+        "productReviews": [],
+        "stock": 50,
+        "tags": [
+          "matte",
+          "long-wearing",
+          "lipstick",
+          "velvet",
+          "natural"
+        ]
+      }
+    ],
+    "cart": []
   }
 }
