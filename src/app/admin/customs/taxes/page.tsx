@@ -1,35 +1,41 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Percent, Save } from "lucide-react";
-
-// Each customs option uses its own dedicated key in localStorage,
-// acting as a separate client-side "database" for its settings.
-const TAX_RATE_STORAGE_KEY = "earthPuranAdminTaxRate";
+import { Percent, Save, Loader2 } from "lucide-react";
+import { getTaxRate, updateTaxRate } from "@/app/actions/taxActions";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminTaxesPage() {
-  const [taxRate, setTaxRate] = useState<string>("");
+  const [taxRateInput, setTaxRateInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const storedRate = localStorage.getItem(TAX_RATE_STORAGE_KEY);
-    if (storedRate) {
-      setTaxRate(storedRate);
-    } else {
-      setTaxRate("18"); // Default tax rate (e.g., 18%)
+  const fetchCurrentTaxRate = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const currentRateData = await getTaxRate();
+      setTaxRateInput(currentRateData.rate.toString());
+    } catch (e) {
+      toast({ title: "Error", description: "Could not load current tax rate.", variant: "destructive" });
+      setTaxRateInput("18"); // Default to 18 if fetch fails
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, []);
+  }, [toast]);
 
-  const handleSave = () => {
-    const rate = parseFloat(taxRate);
+  useEffect(() => {
+    fetchCurrentTaxRate();
+  }, [fetchCurrentTaxRate]);
+
+  const handleSave = async () => {
+    const rate = parseFloat(taxRateInput);
     if (isNaN(rate) || rate < 0 || rate > 100) {
       toast({
         title: "Invalid Input",
@@ -38,15 +44,36 @@ export default function AdminTaxesPage() {
       });
       return;
     }
-    localStorage.setItem(TAX_RATE_STORAGE_KEY, taxRate);
-    toast({
-      title: "Settings Saved",
-      description: `Default tax rate updated to ${taxRate}%.`,
-    });
+    setIsSubmitting(true);
+    const result = await updateTaxRate(rate);
+    if (result.success) {
+      toast({
+        title: "Settings Saved",
+        description: `Default tax rate updated to ${rate}%.`,
+      });
+      if (result.rate !== undefined) {
+        setTaxRateInput(result.rate.toString());
+      }
+    } else {
+      toast({
+        title: "Error Saving Tax Rate",
+        description: result.error || "Could not save tax rate.",
+        variant: "destructive",
+      });
+    }
+    setIsSubmitting(false);
   };
   
   if (isLoading) {
-    return <p>Loading tax settings...</p>;
+    return (
+        <div className="space-y-6">
+            <h1 className="text-3xl font-bold tracking-tight">Manage Taxes</h1>
+            <Card>
+                <CardHeader><Skeleton className="h-8 w-1/2" /><Skeleton className="h-4 w-3/4 mt-2" /></CardHeader>
+                <CardContent><Skeleton className="h-16 w-full" /></CardContent>
+            </Card>
+        </div>
+    );
   }
 
   return (
@@ -58,7 +85,7 @@ export default function AdminTaxesPage() {
             <Percent className="mr-2 h-5 w-5" /> Tax Configuration
           </CardTitle>
           <CardDescription>
-            Define a default tax rate for your products.
+            Define a default tax rate for your products. This rate will be applied to orders.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -67,24 +94,26 @@ export default function AdminTaxesPage() {
             <Input
               id="taxRate"
               type="number"
-              value={taxRate}
-              onChange={(e) => setTaxRate(e.target.value)}
+              value={taxRateInput}
+              onChange={(e) => setTaxRateInput(e.target.value)}
               placeholder="e.g., 18"
               className="mt-1"
+              disabled={isSubmitting}
             />
           </div>
-          <Button onClick={handleSave}>
-            <Save className="mr-2 h-4 w-4" /> Save Tax Rate
+          <Button onClick={handleSave} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save Tax Rate
           </Button>
         </CardContent>
       </Card>
-       <Card className="mt-4">
+       <Card className="mt-4 bg-muted/30">
         <CardHeader>
-            <CardTitle className="text-lg">Advanced Tax Rules (Placeholder)</CardTitle>
+            <CardTitle className="text-lg">Tax Application Notes</CardTitle>
         </CardHeader>
         <CardContent>
             <p className="text-sm text-muted-foreground">
-                Future enhancements could include: tax calculation based on region (GST, VAT), product-specific tax categories, tax-inclusive/exclusive pricing options, etc.
+                The saved tax rate will be used to calculate taxes on the cart and checkout pages. Future enhancements could include tax calculation based on region (GST, VAT), product-specific tax categories, and tax-inclusive/exclusive pricing options.
             </p>
         </CardContent>
       </Card>

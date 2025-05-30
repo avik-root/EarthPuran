@@ -1,7 +1,7 @@
 
 "use client";
 
-import { ShoppingCart, Trash2, Minus, Plus, Ticket, Loader2, Percent } from "lucide-react";
+import { ShoppingCart, Trash2, Minus, Plus, Ticket, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,15 +9,15 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { useCart, type CartItem } from "@/hooks/useCart";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { Coupon } from "@/types/coupon";
 import { getCoupons } from "@/app/actions/couponActions";
+import { getTaxRate } from "@/app/actions/taxActions"; // Import new tax action
 
-const TAX_RATE_STORAGE_KEY = "earthPuranAdminTaxRate";
-const DEFAULT_TAX_RATE_PERCENTAGE = 18; // Default if not set in admin
+const DEFAULT_TAX_RATE_PERCENTAGE = 18; // Fallback default
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, subtotal, clearCart } = useCart();
@@ -30,6 +30,7 @@ export default function CartPage() {
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [taxRatePercentage, setTaxRatePercentage] = useState<number>(DEFAULT_TAX_RATE_PERCENTAGE);
+  const [isLoadingTaxRate, setIsLoadingTaxRate] = useState(true);
 
   const fetchAvailableCoupons = useCallback(async () => {
     setIsLoadingCoupons(true);
@@ -45,22 +46,24 @@ export default function CartPage() {
     }
   }, [toast]);
 
+  const fetchCurrentTaxRate = useCallback(async () => {
+    setIsLoadingTaxRate(true);
+    try {
+        const taxData = await getTaxRate();
+        setTaxRatePercentage(taxData.rate);
+    } catch (error) {
+        console.error("Failed to fetch tax rate:", error);
+        setTaxRatePercentage(DEFAULT_TAX_RATE_PERCENTAGE); // Fallback
+        toast({ title: "Tax Rate Error", description: "Could not load tax rate, using default.", variant: "destructive" });
+    } finally {
+        setIsLoadingTaxRate(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     fetchAvailableCoupons();
-    
-    // Fetch tax rate from localStorage
-    const storedTaxRate = localStorage.getItem(TAX_RATE_STORAGE_KEY);
-    if (storedTaxRate) {
-      const rate = parseFloat(storedTaxRate);
-      if (!isNaN(rate) && rate >= 0 && rate <= 100) {
-        setTaxRatePercentage(rate);
-      } else {
-        setTaxRatePercentage(DEFAULT_TAX_RATE_PERCENTAGE);
-      }
-    } else {
-      setTaxRatePercentage(DEFAULT_TAX_RATE_PERCENTAGE);
-    }
-  }, [fetchAvailableCoupons]);
+    fetchCurrentTaxRate();
+  }, [fetchAvailableCoupons, fetchCurrentTaxRate]);
 
   const handleApplyCoupon = async () => {
     setCouponMessage(null);
@@ -99,7 +102,7 @@ export default function CartPage() {
 
   const removeAppliedCoupon = () => {
     setAppliedCoupon(null);
-    setCouponMessage({ text: "Coupon removed.", type: 'error' });
+    setCouponMessage({ text: "Coupon removed.", type: 'error' }); // Using error type for red text consistency
     toast({ title: "Coupon Removed" });
   };
 
@@ -107,7 +110,7 @@ export default function CartPage() {
   const discountAmount = appliedCoupon && appliedCoupon.discountType === 'fixed' ? appliedCoupon.value : 0;
   
   const subtotalAfterDiscount = Math.max(0, subtotal - discountAmount);
-  const taxAmount = cartItems.length > 0 ? subtotalAfterDiscount * (taxRatePercentage / 100) : 0;
+  const taxAmount = cartItems.length > 0 && !isLoadingTaxRate ? subtotalAfterDiscount * (taxRatePercentage / 100) : 0;
   
   let calculatedTotal = subtotalAfterDiscount + taxAmount + shipping;
   if (calculatedTotal < 0) calculatedTotal = 0;
@@ -236,7 +239,7 @@ export default function CartPage() {
                 </div>
               )}
                <div className="flex justify-between text-sm">
-                <span>Tax ({taxRatePercentage}%)</span>
+                <span>Tax ({isLoadingTaxRate ? '...' : taxRatePercentage}%)</span>
                 <span>+ ₹{taxAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
@@ -250,7 +253,7 @@ export default function CartPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button asChild size="lg" className="w-full" disabled={cartItems.length === 0 || cartItems.some(item => item.quantity > item.product.stock)}>
+              <Button asChild size="lg" className="w-full" disabled={isLoadingTaxRate || cartItems.length === 0 || cartItems.some(item => item.quantity > item.product.stock)}>
                 <Link href="/checkout">Proceed to Checkout</Link>
               </Button>
             </CardFooter>
@@ -265,4 +268,3 @@ export default function CartPage() {
     </div>
   );
 }
-

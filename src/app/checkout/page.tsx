@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Order, ShippingDetails as OrderShippingDetails } from "@/types/order";
 import type { UserProfile, UserAddress } from "@/types/userData";
 import { getUserData, addOrder } from "@/app/actions/userActions";
+import { getTaxRate } from "@/app/actions/taxActions"; // Import tax action
 
 const countries: { code: string; name: string; phoneCode: string }[] = [
   { code: "US", name: "United States", phoneCode: "+1" },
@@ -43,6 +44,8 @@ const shippingSchema = z.object({
 
 export type ShippingFormValues = z.infer<typeof shippingSchema>;
 
+const DEFAULT_TAX_RATE_PERCENTAGE = 18; // Fallback default
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { cartItems, subtotal, clearCart, isLoadingCart, refreshCart } = useCart();
@@ -50,9 +53,14 @@ export default function CheckoutPage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [shippingDetailsSaved, setShippingDetailsSaved] = useState<ShippingFormValues | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [taxRatePercentage, setTaxRatePercentage] = useState<number>(DEFAULT_TAX_RATE_PERCENTAGE);
+  const [isLoadingTaxRate, setIsLoadingTaxRate] = useState(true);
 
   const shippingCost = cartItems.length > 0 ? 50.00 : 0;
-  const totalAmount = subtotal + shippingCost;
+  // Assuming no coupons on checkout page directly, subtotal is pre-discount
+  const taxAmount = cartItems.length > 0 && !isLoadingTaxRate ? subtotal * (taxRatePercentage / 100) : 0;
+  const totalAmount = subtotal + taxAmount + shippingCost;
+
 
   const form = useForm<ShippingFormValues>({
     resolver: zodResolver(shippingSchema),
@@ -73,13 +81,27 @@ export default function CheckoutPage() {
     if (typeof window !== 'undefined') {
       const email = localStorage.getItem('currentUserEmail');
       setCurrentUserEmail(email);
-      if (!email) { // If not logged in, redirect
+      if (!email) { 
         toast({title: "Login Required", description: "Please log in to proceed to checkout.", variant:"destructive"});
         router.push("/login?redirect=/checkout");
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, toast]); // router and toast are stable
+  }, [router, toast]); 
+
+  const fetchCurrentTaxRate = useCallback(async () => {
+    setIsLoadingTaxRate(true);
+    try {
+        const taxData = await getTaxRate();
+        setTaxRatePercentage(taxData.rate);
+    } catch (error) {
+        console.error("Failed to fetch tax rate:", error);
+        setTaxRatePercentage(DEFAULT_TAX_RATE_PERCENTAGE); // Fallback
+        toast({ title: "Tax Rate Error", description: "Could not load tax rate, using default.", variant: "destructive" });
+    } finally {
+        setIsLoadingTaxRate(false);
+    }
+  }, [toast]);
 
   const loadInitialData = useCallback(async () => {
     if (!currentUserEmail) {
@@ -98,7 +120,7 @@ export default function CheckoutPage() {
                 defaultAddressToUse = userData.addresses.find(addr => addr.isDefault) || userData.addresses[0];
             }
         } else {
-            const storedProfile = localStorage.getItem('userProfilePrototype'); // Fallback if users.json is slow/empty
+            const storedProfile = localStorage.getItem('userProfilePrototype'); 
             if (storedProfile) profileToUse = JSON.parse(storedProfile) as UserProfile;
         }
 
@@ -124,12 +146,13 @@ export default function CheckoutPage() {
   }, [currentUserEmail, form, toast]);
 
   useEffect(() => {
-    if(currentUserEmail){ // Only load if user is identified
+    if(currentUserEmail){ 
         loadInitialData();
-        refreshCart(); // Refresh cart from server source
+        refreshCart(); 
+        fetchCurrentTaxRate();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserEmail, loadInitialData]); // refreshCart can be added if stable
+  }, [currentUserEmail, loadInitialData, fetchCurrentTaxRate]); 
 
 
   const onShippingSubmit = (values: ShippingFormValues) => {
@@ -176,7 +199,7 @@ export default function CheckoutPage() {
         imageUrl: item.product.imageUrl,
         imageHint: item.product.imageHint,
       })),
-      totalAmount: totalAmount,
+      totalAmount: totalAmount, // This totalAmount now includes tax
       shippingDetails: orderShippingDetails,
       status: 'Processing',
     };
@@ -184,7 +207,7 @@ export default function CheckoutPage() {
     try {
       const success = await addOrder(currentUserEmail, newOrder);
       if (!success) throw new Error("Failed to add order via action.");
-      await clearCart(); // This will also update users.json for the cart
+      await clearCart(); 
 
       toast({
         title: "Order Placed Successfully!",
@@ -321,7 +344,7 @@ export default function CheckoutPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {isLoadingCart ? (
+              {isLoadingCart || isLoadingTaxRate ? (
                 <Skeleton className="h-24 w-full" />
               ) : cartItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">Your cart is empty.</p>
@@ -342,6 +365,7 @@ export default function CheckoutPage() {
                   </ScrollArea>
                   <Separator />
                   <div className="flex justify-between text-sm"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-sm"><span>Tax ({taxRatePercentage}%)</span><span>₹{taxAmount.toFixed(2)}</span></div>
                   <div className="flex justify-between text-sm"><span>Shipping</span><span>₹{shippingCost.toFixed(2)}</span></div>
                   <Separator />
                   <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>₹{totalAmount.toFixed(2)}</span></div>
@@ -353,7 +377,7 @@ export default function CheckoutPage() {
                 size="lg"
                 className="w-full"
                 onClick={handlePlaceOrder}
-                disabled={!shippingDetailsSaved || cartItems.length === 0 || loadingProfile || isLoadingCart}
+                disabled={!shippingDetailsSaved || cartItems.length === 0 || loadingProfile || isLoadingCart || isLoadingTaxRate}
               >
                 Place Order (COD)
               </Button>
