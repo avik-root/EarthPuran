@@ -1,8 +1,7 @@
 
 "use client";
 
-import type { EnrichedOrder, OrderItem } from "@/app/admin/orders/page"; 
-import QRCode from "qrcode.react";
+import type { EnrichedOrder } from "@/app/admin/orders/page";
 import Image from "next/image"; 
 import { useState, useEffect } from "react";
 import { getTaxRate } from "@/app/actions/taxActions";
@@ -96,13 +95,6 @@ export function PrintableInvoice({ order, onReady }: PrintableInvoiceProps) {
     email: "support@earthpuran.example.com"
   };
 
-  const qrCodeValue = JSON.stringify({
-    customerName: order.customerName,
-    customerEmail: order.customerEmail,
-    orderId: order.id,
-    totalAmount: order.totalAmount.toFixed(2),
-  });
-
   const invoiceDate = order.date;
   const invoiceId = `INV-${order.id}`;
 
@@ -128,7 +120,6 @@ export function PrintableInvoice({ order, onReady }: PrintableInvoiceProps) {
           <p>GSTIN: {earthPuranDetails.gstin}</p>
         </div>
         <div className="text-right">
-          <QRCode value={qrCodeValue} size={80} level="H" />
           <p className="font-bold mt-2 text-sm">TAX INVOICE</p>
           {/* <p className="text-xs">Supply meant for export without payment of IGST</p> */}
         </div>

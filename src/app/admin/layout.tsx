@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
   SidebarGroup,
   SidebarGroupLabel,
-} from "@/components/ui/sidebar";
+} from '@/components/ui/sidebar';
 import { Home, Package, Users, Settings, LayoutDashboard, ShieldAlert, UserCircle, LogOut, SlidersHorizontal, Truck, Percent, Ticket, BadgePercent, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -167,6 +167,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                   <FileText /> <span>Write Blogs</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton href="/admin/blogs" tooltip="Manage Blogs" isActive={pathname === '/admin/blogs'}>
+                  <FileText /> <span>Manage Blogs</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
             </SidebarGroup>
             <SidebarGroup>
               <SidebarGroupLabel>Customs</SidebarGroupLabel>

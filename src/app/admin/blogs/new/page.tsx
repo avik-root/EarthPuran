@@ -15,7 +15,7 @@ import { FileText, Save, Loader2, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { addBlogPost, type BlogPostFormData } from "@/app/actions/blogActions";
+import { addBlogPost } from "@/app/actions/blogActions";
 import { useRouter } from "next/navigation";
 
 const blogPostSchema = z.object({
@@ -80,7 +80,7 @@ export default function WriteNewBlogPage() {
   async function onSubmit(values: BlogPostFormValues) {
     setIsSubmitting(true);
     
-    const blogPostDataForAction: BlogPostFormData = {
+    const blogPostDataForAction = {
       ...values,
       tags: values.tagsString ? values.tagsString.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
     };
